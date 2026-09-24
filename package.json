@@ -1,0 +1,16 @@
+{
+  "name": "visco",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VisCo - Visual Control & Live Production System",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
