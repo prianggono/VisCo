@@ -1,6 +1,7 @@
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import { ProgramEngine, type ProgramState } from "./program-engine.js";
 import { OutputEngine } from "./output-engine.js";
+import { assertValidTriggerAction } from "./trigger-validator.js";
 
 export type TriggerAction =
   | {
@@ -31,6 +32,8 @@ export interface TriggerContext {
 
 export class TriggerEngine {
   execute(action: TriggerAction, context: TriggerContext): ProgramState {
+    assertValidTriggerAction(action, context);
+
     const state = this.executeAction(action, context);
 
     if (context.output && action.type === "sequence") {
