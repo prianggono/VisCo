@@ -240,6 +240,105 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     });
   });
 
+  it("allows the same command type when its targets are different", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const decks = new Map([
+      [deck1.id, deck1],
+      [deck3.id, deck3]
+    ]);
+
+    expect(() =>
+      trigger.execute(
+        {
+          type: "sequence",
+          actions: [
+            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } },
+            { type: "take", target: { deckId: "deck-3", layerId: "layer-2" } }
+          ]
+        },
+        { decks, program }
+      )
+    ).not.toThrow();
+  });
+
+  it("rejects an exact duplicate command before execution", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const decks = new Map([[deck1.id, deck1]]);
+
+    expect(() =>
+      trigger.execute(
+        {
+          type: "sequence",
+          actions: [
+            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } },
+            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } }
+          ]
+        },
+        { decks, program }
+      )
+    ).toThrow('Duplicate command "TAKE deck-1/layer-2"');
+  });
+
+  it("rejects conflicting output commands before execution", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+
+    expect(() =>
+      trigger.execute(
+        {
+          type: "sequence",
+          actions: [
+            {
+              type: "set-output-enabled",
+              outputId: "display-main",
+              enabled: true
+            },
+            {
+              type: "set-output-enabled",
+              outputId: "display-main",
+              enabled: false
+            }
+          ]
+        },
+        { decks: new Map(), program, output }
+      )
+    ).toThrow("Conflicting command");
+
+    expect(output.getState("display-main").target.enabled).toBe(true);
+  });
+
+  it("rejects an invalid target before changing Program", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const decks = new Map([[deck1.id, deck1]]);
+
+    program.take(deck1, "layer-1");
+
+    expect(() =>
+      trigger.execute(
+        {
+          type: "take",
+          target: { deckId: "deck-1", layerId: "layer-99" }
+        },
+        { decks, program }
+      )
+    ).toThrow('Layer "layer-99" does not exist in deck "deck-1".');
+
+    expect(program.getState().source).toEqual({
+      deckId: "deck-1",
+      layerId: "layer-1"
+    });
+  });
+
   it("supports multi-action trigger sequences", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
