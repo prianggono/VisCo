@@ -51,7 +51,11 @@ export class OutputEngine {
     }
 
     this.targets.set(target.id, target);
-    this.states.set(target.id, { target, source: null, active: false });
+    this.states.set(target.id, {
+      target,
+      source: null,
+      active: target.enabled
+    });
   }
 
   setEnabled(targetId: string, enabled: boolean): OutputState {
@@ -114,6 +118,23 @@ export class OutputEngine {
     const state = { target, source, active: true };
     this.states.set(targetId, state);
     return state;
+  }
+
+  /**
+   * Default routing follows Program. A target with a Deck override is
+   * intentionally excluded from Program synchronization.
+   */
+  syncFromProgram(source: DeckLayerRef): readonly OutputState[] {
+    const ids = [...this.states.values()]
+      .filter(
+        (state) =>
+          state.active &&
+          state.target.enabled &&
+          state.target.deckId === undefined
+      )
+      .map((state) => state.target.id);
+
+    return ids.map((id) => this.route(id, source));
   }
 
   syncFromDeck(
