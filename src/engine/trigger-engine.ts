@@ -1,5 +1,6 @@
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import { ProgramEngine, type ProgramState } from "./program-engine.js";
+import { OutputEngine } from "./output-engine.js";
 
 export type TriggerAction =
   | {
@@ -14,6 +15,7 @@ export type TriggerAction =
 export interface TriggerContext {
   readonly decks: ReadonlyMap<string, Deck>;
   readonly program: ProgramEngine;
+  readonly output?: OutputEngine;
 }
 
 export class TriggerEngine {
@@ -24,7 +26,15 @@ export class TriggerEngine {
         if (!deck) {
           throw new Error(`Deck "${action.target.deckId}" does not exist.`);
         }
-        return context.program.take(deck, action.target.layerId);
+
+        const state = context.program.take(deck, action.target.layerId);
+
+        if (context.output) {
+          context.output.syncFromProgram(action.target);
+          context.output.syncFromDeck(deck.id, action.target);
+        }
+
+        return state;
       }
 
       case "sequence": {
