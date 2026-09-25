@@ -18,6 +18,7 @@ describe("Deck Runtime", () => {
 
     expect(runtime.register(deck)).toEqual({
       deckId: "deck-1",
+      previewLayerId: null,
       activeLayerId: null
     });
     expect(runtime.getActiveLayer(deck)).toBeNull();
@@ -28,7 +29,7 @@ describe("Deck Runtime", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
 
-    const state = runtime.setActiveLayer(deck, "layer-2");
+    const state = runtime.programLayer(deck, "layer-2");
 
     expect(state).toEqual({
       deckId: "deck-1",
@@ -45,7 +46,7 @@ describe("Deck Runtime", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
 
-    expect(() => runtime.setActiveLayer(deck, "layer-99")).toThrow(
+    expect(() => runtime.programLayer(deck, "layer-99")).toThrow(
       'Layer "layer-99" does not exist in deck "deck-1".'
     );
   });
@@ -53,7 +54,7 @@ describe("Deck Runtime", () => {
   it("requires a Deck to be registered before changing its active Layer", () => {
     const runtime = new DeckRuntime();
 
-    expect(() => runtime.setActiveLayer(deck, "layer-1")).toThrow(
+    expect(() => runtime.programLayer(deck, "layer-1")).toThrow(
       'Deck "deck-1" is not registered.'
     );
   });
@@ -61,7 +62,7 @@ describe("Deck Runtime", () => {
   it("clears the active Layer without changing Deck identity", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
-    runtime.setActiveLayer(deck, "layer-2");
+    runtime.programLayer(deck, "layer-2");
 
     expect(runtime.clearActiveLayer("deck-1")).toEqual({
       deckId: "deck-1",
