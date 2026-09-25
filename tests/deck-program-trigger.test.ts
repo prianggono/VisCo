@@ -27,14 +27,14 @@ const deck3: Deck = {
 describe("Deck -> Layer -> Program -> Trigger", () => {
   it("sends Deck 1 / Layer 2 to Program using Deck 1 transition", () => {
     const program = new ProgramEngine();
-    const state = program.take(deck1, "layer-2");
+    const state = program.program(deck1, "layer-2");
 
     expect(state.source).toEqual({ deckId: "deck-1", layerId: "layer-2" });
     expect(state.layer?.id).toBe("layer-2");
     expect(state.transition).toEqual({ type: "fade", durationMs: 500 });
   });
 
-  it("trigger can call Deck 3 / Layer 2 and Program uses Deck 3 transition", () => {
+  it("trigger can program Deck 3 / Layer 2 and Program uses Deck 3 transition", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const decks = new Map([
@@ -42,11 +42,11 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       [deck3.id, deck3]
     ]);
 
-    program.take(deck1, "layer-2");
+    program.program(deck1, "layer-2");
 
     const state = trigger.execute(
       {
-        type: "take",
+        type: "program",
         target: { deckId: "deck-3", layerId: "layer-2" }
       },
       { decks, program }
@@ -59,14 +59,14 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
 
   it("does not store transition on a trigger action", () => {
     const action = {
-      type: "take" as const,
+      type: "program" as const,
       target: { deckId: "deck-3", layerId: "layer-2" }
     };
 
     expect(action).not.toHaveProperty("transition");
   });
 
-  it("syncs Program and Deck-routed outputs from one Trigger TAKE", () => {
+  it("syncs Program and Deck-routed outputs from one Trigger PROGRAM", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
@@ -96,7 +96,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
 
     const state = trigger.execute(
       {
-        type: "take",
+        type: "program",
         target: { deckId: "deck-3", layerId: "layer-2" }
       },
       { decks, program, output }
@@ -146,8 +146,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       {
         type: "sequence",
         actions: [
-          { type: "take", target: { deckId: "deck-1", layerId: "layer-1" } },
-          { type: "take", target: { deckId: "deck-3", layerId: "layer-2" } }
+          { type: "program", target: { deckId: "deck-1", layerId: "layer-1" } },
+          { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
         ]
       },
       { decks, program, output }
@@ -253,8 +253,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         {
           type: "sequence",
           actions: [
-            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } },
-            { type: "take", target: { deckId: "deck-3", layerId: "layer-2" } }
+            { type: "program", target: { deckId: "deck-1", layerId: "layer-2" } },
+            { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
           ]
         },
         { decks, program }
@@ -272,13 +272,13 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         {
           type: "sequence",
           actions: [
-            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } },
-            { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } }
+            { type: "program", target: { deckId: "deck-1", layerId: "layer-2" } },
+            { type: "program", target: { deckId: "deck-1", layerId: "layer-2" } }
           ]
         },
         { decks, program }
       )
-    ).toThrow('Duplicate command "TAKE deck-1/layer-2"');
+    ).toThrow('Duplicate command "PROGRAM deck-1/layer-2"');
   });
 
   it("rejects conflicting output commands before execution", () => {
@@ -321,12 +321,12 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const decks = new Map([[deck1.id, deck1]]);
 
-    program.take(deck1, "layer-1");
+    program.program(deck1, "layer-1");
 
     expect(() =>
       trigger.execute(
         {
-          type: "take",
+          type: "program",
           target: { deckId: "deck-1", layerId: "layer-99" }
         },
         { decks, program }
@@ -351,8 +351,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       {
         type: "sequence",
         actions: [
-          { type: "take", target: { deckId: "deck-1", layerId: "layer-2" } },
-          { type: "take", target: { deckId: "deck-3", layerId: "layer-2" } }
+          { type: "program", target: { deckId: "deck-1", layerId: "layer-2" } },
+          { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
         ]
       },
       { decks, program }
@@ -365,7 +365,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("rejects a missing layer", () => {
     const program = new ProgramEngine();
 
-    expect(() => program.take(deck1, "layer-99")).toThrow(
+    expect(() => program.program(deck1, "layer-99")).toThrow(
       'Layer "layer-99" does not exist in deck "deck-1".'
     );
   });
