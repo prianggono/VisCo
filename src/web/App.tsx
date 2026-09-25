@@ -9,20 +9,21 @@ type Deck = {
   kind: DeckKind;
   transition: string;
   loop: boolean;
-  color?: string;
   layers: Layer[];
 };
 
 const makeLayers = (): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
-    id: `layer-${index + 1}`,
-    name: `Layer ${index + 1}`
+    id: "layer-" + (index + 1),
+    name: "Layer " + (index + 1)
   }));
 
 const initialDecks: Deck[] = [
   { id: "deck-1", name: "Deck 1", kind: "visual", transition: "Fade · 500 ms", loop: true, layers: makeLayers() },
   { id: "deck-2", name: "Deck 2", kind: "visual", transition: "Cut · 0 ms", loop: false, layers: makeLayers() }
 ];
+
+const inputTypes = ["Video", "Image", "Audio", "Capture", "Composition"];
 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
@@ -38,6 +39,7 @@ export function App() {
   const [showAddInput, setShowAddInput] = useState(false);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
+  const [columnState, setColumnState] = useState<Record<number, boolean>>({});
 
   const selectPreview = (deckId: string, layerId: string) => {
     setPreview({ deckId, layerId });
@@ -53,24 +55,25 @@ export function App() {
   const addDeck = (kind: DeckKind) => {
     const number = decks.length + 1;
     const deck: Deck = {
-      id: `deck-${Date.now()}`,
-      name: kind === "audio" ? `Audio Deck ${number}` : `Deck ${number}`,
+      id: "deck-" + Date.now(),
+      name: kind === "audio" ? "Audio Deck " + number : "Deck " + number,
       kind,
       transition: "Fade · 500 ms",
       loop: false,
       layers: makeLayers()
     };
-    setDecks([...decks, deck]);
-    setFaders({
-      ...faders,
-      [deck.id]: { master: 100, audio: 100, opacity: 100 }
-    });
+    setDecks((items) => [...items, deck]);
+    setFaders((items) => ({ ...items, [deck.id]: { master: 100, audio: 100, opacity: 100 } }));
     setShowAddDeck(false);
   };
 
   const addInput = (kind: string) => {
     const extension = kind === "Video" ? "mp4" : kind === "Image" ? "jpg" : kind === "Audio" ? "wav" : kind.toLowerCase();
-    const item = { id: \`input-\${Date.now()}\`, name: \`New ${kind}\\.${extension}\`, kind };
+    const item: LibraryItem = {
+      id: "input-" + Date.now(),
+      name: "New " + kind + "." + extension,
+      kind
+    };
     setLibraryItems((items) => [...items, item]);
     setShowAddInput(false);
   };
@@ -81,7 +84,11 @@ export function App() {
     if (!files.length) return;
     setLibraryItems((items) => [
       ...items,
-      ...files.map((file) => ({ id: \`file-\${Date.now()}-\${file.name}\`, name: file.name, kind: "File" }))
+      ...files.map((file, index) => ({
+        id: "file-" + Date.now() + "-" + index,
+        name: file.name,
+        kind: "File"
+      }))
     ]);
   };
 
@@ -89,14 +96,13 @@ export function App() {
     event.preventDefault();
     const itemId = event.dataTransfer.getData("text/library-id");
     const item = libraryItems.find((entry) => entry.id === itemId);
-    if (item) setLayerMedia((media) => ({ ...media, [\`\${deckId}:\${layerId}\`]: item.name }));
+    if (item) {
+      setLayerMedia((items) => ({ ...items, [deckId + ":" + layerId]: item.name }));
+    }
   };
 
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
-    setFaders({
-      ...faders,
-      [deckId]: { ...faders[deckId], [key]: value }
-    });
+    setFaders((items) => ({ ...items, [deckId]: { ...items[deckId], [key]: value } }));
   };
 
   return (
@@ -114,22 +120,42 @@ export function App() {
 
       <section
         className="workspace"
-        style={{ gridTemplateColumns: `${workspace.library}px minmax(600px, 1fr) ${workspace.properties}px` }}
+        style={{ gridTemplateColumns: workspace.library + "px minmax(600px, 1fr) " + workspace.properties + "px" }}
       >
         <aside className="library panel">
-          <div className="panel-title"><span>LIBRARY</span><button className="icon-button">+</button></div>
-          <div className="search">Search media…</div>
-          <div className="library-items">
-            {["Video", "Image", "Audio", "Capture", "Composition"].map((item) => (
-              <button className="library-item" key={item}><span className="library-icon">{item[0]}</span>{item}</button>
-            ))}
+          <div className="panel-title">
+            <span>LIBRARY</span>
+            <button className="icon-button" onClick={() => setShowAddInput((value) => !value)}>+</button>
           </div>
-          <div className="library-add-wrap">
-            <button className="add-deck-button" onClick={() => setShowAddDeck(!showAddDeck)}>+ Add Deck</button>
-            {showAddDeck && (
-              <div className="add-deck-menu">
-                <button onClick={() => addDeck("visual")}><b>Visual Deck</b><small>Video, image, capture & composition</small></button>
-                <button onClick={() => addDeck("audio")}><b>Audio Deck</b><small>Music and background audio</small></button>
+          <div className="search">Search media…</div>
+          <div
+            className="library-dropzone"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleLibraryDrop}
+          >
+            <button className="add-input-button" onClick={() => setShowAddInput((value) => !value)}>+ ADD INPUT</button>
+            {showAddInput && (
+              <div className="add-input-menu">
+                {inputTypes.map((item) => (
+                  <button key={item} onClick={() => addInput(item)}>{item}</button>
+                ))}
+              </div>
+            )}
+            {libraryItems.length === 0 ? (
+              <div className="library-empty">Drag & drop files here</div>
+            ) : (
+              <div className="library-items">
+                {libraryItems.map((item) => (
+                  <button
+                    className="library-item"
+                    key={item.id}
+                    draggable
+                    onDragStart={(event) => event.dataTransfer.setData("text/library-id", item.id)}
+                  >
+                    <span className="library-icon">{item.name.slice(0, 1).toUpperCase()}</span>
+                    {item.name}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -148,10 +174,34 @@ export function App() {
           </div>
 
           <div className="decks">
+            <div className="deck-toolbar">
+              <button className="add-deck-button" onClick={() => setShowAddDeck((value) => !value)}>+ Add Deck</button>
+              {showAddDeck && (
+                <div className="add-deck-menu">
+                  <button onClick={() => addDeck("visual")}><b>Visual Deck</b><small>Video, image, capture & composition</small></button>
+                  <button onClick={() => addDeck("audio")}><b>Audio Deck</b><small>Music and background audio</small></button>
+                </div>
+              )}
+            </div>
+
+            <div className="column-header">
+              <div className="column-spacer" />
+              {Array.from({ length: 8 }, (_, index) => (
+                <button
+                  key={index}
+                  className={columnState[index + 1] ? "column-toggle active" : "column-toggle"}
+                  onClick={() => setColumnState((items) => ({ ...items, [index + 1]: !items[index + 1] }))}
+                  title={"Toggle column " + (index + 1)}
+                >
+                  L{index + 1}
+                </button>
+              ))}
+            </div>
+
             {decks.map((deck) => {
               const values = faders[deck.id];
               return (
-                <section className={`deck-row ${deck.kind === "audio" ? "audio-deck" : ""}`} key={deck.id}>
+                <section className={"deck-row " + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
                     <div className="deck-heading">
                       <span>{deck.name}</span>
@@ -162,19 +212,18 @@ export function App() {
                         <label className="fader" key={label}>
                           <span>{label}</span>
                           <input
-                            type="range" min="0" max="100" value={values[key]}
-                            onChange={(e) => updateFader(deck.id, key, Number(e.target.value))}
-                            title={`${label} fader`}
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={values[key]}
+                            onChange={(event) => updateFader(deck.id, key, Number(event.target.value))}
+                            title={label + " fader"}
                           />
                           <small>{values[key]}</small>
                         </label>
                       ))}
                     </div>
                     <div className="deck-actions">
-                      <button className="deck-action" title="Play">▶</button>
-                      <button className="deck-action" title="Pause">Ⅱ</button>
-                      <button className={deck.loop ? "deck-action active" : "deck-action"} title="Loop"
-                        onClick={() => setDecks(decks.map((d) => d.id === deck.id ? { ...d, loop: !d.loop } : d))}>↻</button>
                       <button className="deck-action" title="Deck settings">⚙</button>
                     </div>
                   </div>
@@ -183,14 +232,19 @@ export function App() {
                     {deck.layers.map((layer, index) => {
                       const isProgram = deck.kind === "visual" && program.deckId === deck.id && program.layerId === layer.id;
                       const isPreview = deck.kind === "visual" && preview.deckId === deck.id && preview.layerId === layer.id;
-                      const selected = selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id;
+                      const mediaName = layerMedia[deck.id + ":" + layer.id];
                       return (
-                        <article className={["layer-card", isProgram ? "program" : "", isPreview ? "preview" : ""].join(" ")} key={layer.id}>
-                          <button className={`layer-name ${isPreview ? "preview-name" : ""}`} onClick={() => selectPreview(deck.id, layer.id)}>
+                        <article className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")} key={layer.id}>
+                          <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
                             <span>{layer.name}</span>{isPreview && <small>PREVIEW</small>}
                           </button>
-                          <button className="layer-box" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleLayerDrop(e, deck.id, layer.id)} onClick={() => deck.kind === "visual" && programLayer(deck.id, layer.id)}>
-                            <div className="layer-thumb"><span>{layerMedia[`${deck.id}:${layer.id}`] || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
+                          <button
+                            className="layer-box"
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
+                            onClick={() => deck.kind === "visual" && programLayer(deck.id, layer.id)}
+                          >
+                            <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
                             <div className="layer-tools"><span>◌</span><span className={isProgram ? "eye on" : "eye"}>◉</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">PROGRAM</div>}
@@ -198,7 +252,6 @@ export function App() {
                         </article>
                       );
                     })}
-                    <button className="add-layer">+</button>
                   </div>
                 </section>
               );
@@ -208,7 +261,7 @@ export function App() {
 
         <aside className="properties panel">
           <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
-          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Output", "Advanced"].map((item, index) => (
+          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item, index) => (
             <button className={index === 0 ? "property-row active" : "property-row"} key={item}><span>{item}</span><span>›</span></button>
           ))}
         </aside>
@@ -233,17 +286,21 @@ export function App() {
         <div className="resolution"><span>1920 × 1080</span><span>60 FPS</span></div>
       </footer>
 
-      <div className="resize-handle left-handle" onMouseDown={(e) => {
-        const start = e.clientX; const startWidth = workspace.library;
-        const move = (ev: MouseEvent) => setWorkspace((w) => ({ ...w, library: Math.max(150, Math.min(340, startWidth + ev.clientX - start)) }));
+      <div className="resize-handle left-handle" onMouseDown={(event) => {
+        const start = event.clientX;
+        const startWidth = workspace.library;
+        const move = (current: MouseEvent) => setWorkspace((items) => ({ ...items, library: Math.max(150, Math.min(340, startWidth + current.clientX - start)) }));
         const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
-        window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up);
       }} />
-      <div className="resize-handle right-handle" onMouseDown={(e) => {
-        const start = e.clientX; const startWidth = workspace.properties;
-        const move = (ev: MouseEvent) => setWorkspace((w) => ({ ...w, properties: Math.max(180, Math.min(360, startWidth - (ev.clientX - start))) }));
+      <div className="resize-handle right-handle" onMouseDown={(event) => {
+        const start = event.clientX;
+        const startWidth = workspace.properties;
+        const move = (current: MouseEvent) => setWorkspace((items) => ({ ...items, properties: Math.max(180, Math.min(360, startWidth - (current.clientX - start))) }));
         const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
-        window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up);
       }} />
     </main>
   );
