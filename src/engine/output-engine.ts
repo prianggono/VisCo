@@ -7,6 +7,10 @@ export interface OutputTarget {
   readonly id: string;
   readonly kind: OutputKind;
   readonly enabled: boolean;
+  /**
+   * Output is routed by Deck only. The currently active layer of that Deck
+   * is always carried with the output automatically.
+   */
   readonly deckId?: string;
 }
 
@@ -30,7 +34,8 @@ export class OutputEngine {
     const target = this.requireTarget(targetId);
     const updated = { ...target, enabled };
     this.targets.set(targetId, updated);
-    const state = { ...this.requireState(targetId), target: updated, active: enabled && this.requireState(targetId).active };
+    const current = this.requireState(targetId);
+    const state = { ...current, target: updated, active: enabled && current.active };
     this.states.set(targetId, state);
     return state;
   }
@@ -40,6 +45,7 @@ export class OutputEngine {
     const updated: OutputTarget = deckId === undefined
       ? { id: target.id, kind: target.kind, enabled: target.enabled }
       : { ...target, deckId };
+
     this.targets.set(targetId, updated);
     this.states.set(targetId, { ...this.requireState(targetId), target: updated });
     return updated;
@@ -57,29 +63,53 @@ export class OutputEngine {
     return targetIds.map((targetId) => this.route(targetId, program));
   }
 
-  routeDeck(targetId: string, deckId: string, source: DeckLayerRef): OutputState {
+  /**
+   * Synchronize all active outputs assigned to a Deck.
+   * Layer is intentionally NOT a routing choice: the Deck's current layer
+   * becomes the output source automatically.
+   */
+  syncFromDeck(deckId: string, currentLayer: DeckLayerRef): readonly OutputState[] {
+    if (currentLayer.deckId !== deckId) {
+      throw new Error(`Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`);
+    }
+
+    const ids = [...this.states.values()]
+      .filter((state) =>
+        state.active &&
+        state.target.enabled &&
+        state.target.deckId === deckId
+      )
+      .map((state) => state.target.id);
+
+    return ids.map((id) => this.routeDeck(id, deckId, currentLayer));
+  }
+
+  /**
+   * Program-routed outputs are outputs without a fixed Deck target.
+   * Fixed Deck outputs are deliberately untouched by Program changes.
+   */
+  syncFromProgram(program: ProgramState): readonly OutputState[] {
+    const ids = [...this.states.values()]
+      .filter((state) =>
+        state.active &&
+        state.target.enabled &&
+        state.target.deckId === undefined
+      )
+      .map((state) => state.target.id);
+
+    return this.routeMany(ids, program);
+  }
+
+  private routeDeck(targetId: string, deckId: string, currentLayer: DeckLayerRef): OutputState {
     const target = this.requireTarget(targetId);
     if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
     if (target.deckId !== deckId) {
       throw new Error(`Output "${target.id}" targets deck "${target.deckId ?? "Program"}", not "${deckId}".`);
     }
-    const state = { target, source, active: true };
+
+    const state = { target, source: currentLayer, active: true };
     this.states.set(targetId, state);
     return state;
-  }
-
-  syncFromProgram(program: ProgramState): readonly OutputState[] {
-    const ids = [...this.states.values()]
-      .filter((s) => s.active && s.target.enabled && s.target.deckId === undefined)
-      .map((s) => s.target.id);
-    return this.routeMany(ids, program);
-  }
-
-  syncFromDeck(deckId: string, source: DeckLayerRef): readonly OutputState[] {
-    const ids = [...this.states.values()]
-      .filter((s) => s.active && s.target.enabled && s.target.deckId === deckId)
-      .map((s) => s.target.id);
-    return ids.map((id) => this.routeDeck(id, deckId, source));
   }
 
   stop(targetId: string): OutputState {
@@ -88,10 +118,12 @@ export class OutputEngine {
     return state;
   }
 
-  getState(targetId: string): OutputState { return this.requireState(targetId); }
+  getState(targetId: string): OutputState {
+    return this.requireState(targetId);
+  }
 
   getActiveStates(): readonly OutputState[] {
-    return [...this.states.values()].filter((s) => s.active);
+    return [...this.states.values()].filter((state) => state.active);
   }
 
   private requireTarget(targetId: string): OutputTarget {
