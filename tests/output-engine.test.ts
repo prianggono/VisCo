@@ -171,6 +171,23 @@ describe("Output Engine", () => {
     );
   });
 
+  it("re-enables an output after it was stopped", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+
+    output.route("display-main", deck1Layer2);
+    output.stop("display-main");
+    const state = output.setEnabled("display-main", true);
+
+    expect(state.target.enabled).toBe(true);
+    expect(state.active).toBe(true);
+  });
+
   it("can stop an active output without changing its source", () => {
     const output = new OutputEngine();
     output.register({
