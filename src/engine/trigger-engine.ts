@@ -10,6 +10,17 @@ export type TriggerAction =
   | {
       readonly type: "sequence";
       readonly actions: readonly TriggerAction[];
+    }
+  | {
+      readonly type: "set-output-enabled";
+      readonly outputId: string;
+      readonly enabled: boolean;
+    }
+  | {
+      readonly type: "set-media-feature";
+      readonly outputId: string;
+      readonly feature: "stream" | "record" | "virtual";
+      readonly enabled: boolean;
     };
 
 export interface TriggerContext {
@@ -63,6 +74,13 @@ export class TriggerEngine {
 
         return state;
       }
+
+      case "set-output-enabled":
+      case "set-media-feature":
+        if (!context.output) {
+          throw new Error("Output engine is required for output trigger actions.");
+        }
+        return context.program.getState();
     }
   }
 
@@ -86,6 +104,18 @@ export class TriggerEngine {
         }
         return state;
       }
+
+      case "set-output-enabled":
+        context.output?.setEnabled(action.outputId, action.enabled);
+        return context.program.getState();
+
+      case "set-media-feature":
+        context.output?.setMediaFeature(
+          action.outputId,
+          action.feature,
+          action.enabled
+        );
+        return context.program.getState();
     }
   }
 }
