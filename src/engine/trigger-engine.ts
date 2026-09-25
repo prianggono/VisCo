@@ -76,10 +76,21 @@ export class TriggerEngine {
       }
 
       case "set-output-enabled":
+        if (!context.output) {
+          throw new Error("Output engine is required for output trigger actions.");
+        }
+        context.output.setEnabled(action.outputId, action.enabled);
+        return context.program.getState();
+
       case "set-media-feature":
         if (!context.output) {
           throw new Error("Output engine is required for output trigger actions.");
         }
+        context.output.setMediaFeature(
+          action.outputId,
+          action.feature,
+          action.enabled
+        );
         return context.program.getState();
     }
   }
