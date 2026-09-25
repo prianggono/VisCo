@@ -18,7 +18,7 @@ export class ProgramEngine {
     return this.state;
   }
 
-  take(deck: Deck, layerId: string): ProgramState {
+  program(deck: Deck, layerId: string): ProgramState {
     const layer = getDeckLayer(deck, { deckId: deck.id, layerId });
 
     this.state = {
