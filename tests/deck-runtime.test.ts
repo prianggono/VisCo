@@ -25,6 +25,21 @@ describe("Deck Runtime", () => {
     expect(runtime.getActiveSource(deck)).toBeNull();
   });
 
+  it("previews a Layer without changing Program", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+
+    const state = runtime.previewLayer(deck, "layer-2");
+
+    expect(state.previewLayerId).toBe("layer-2");
+    expect(state.activeLayerId).toBeNull();
+    expect(runtime.getPreviewSource(deck)).toEqual({
+      deckId: "deck-1",
+      layerId: "layer-2"
+    });
+    expect(runtime.getActiveSource(deck)).toBeNull();
+  });
+
   it("changes the Deck active Layer and exposes its source", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
