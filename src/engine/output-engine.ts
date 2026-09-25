@@ -1,17 +1,30 @@
 import type { DeckLayerRef } from "../domain/deck.js";
-import type { ProgramState } from "./program-engine.js";
 
-export type OutputKind = "display" | "stream" | "record";
+export type OutputKind = "display" | "media";
+export type MediaOutputKind = "stream" | "record" | "virtual";
+
+export interface MediaOutputSettings {
+  readonly resolution: readonly [width: number, height: number];
+  readonly fps: number;
+  readonly streaming: boolean;
+  readonly recording: boolean;
+  readonly virtual: boolean;
+}
 
 export interface OutputTarget {
   readonly id: string;
   readonly kind: OutputKind;
   readonly enabled: boolean;
   /**
-   * Output is routed by Deck only. The currently active layer of that Deck
+   * Outputs are routed by Deck only. The currently active layer of that Deck
    * is always carried with the output automatically.
    */
   readonly deckId?: string;
+  /**
+   * Stream, Record and Virtual Out share one render pipeline and one
+   * resolution/FPS configuration.
+   */
+  readonly media?: MediaOutputSettings;
 }
 
 export interface OutputState {
@@ -25,7 +38,18 @@ export class OutputEngine {
   private readonly states = new Map<string, OutputState>();
 
   register(target: OutputTarget): void {
-    if (this.targets.has(target.id)) throw new Error(`Output "${target.id}" is already registered.`);
+    if (this.targets.has(target.id)) {
+      throw new Error(`Output "${target.id}" is already registered.`);
+    }
+
+    if (target.kind === "media" && !target.media) {
+      throw new Error(`Media output "${target.id}" requires media settings.`);
+    }
+
+    if (target.kind === "display" && target.media) {
+      throw new Error(`Display output "${target.id}" cannot have media settings.`);
+    }
+
     this.targets.set(target.id, target);
     this.states.set(target.id, { target, source: null, active: false });
   }
@@ -34,8 +58,13 @@ export class OutputEngine {
     const target = this.requireTarget(targetId);
     const updated = { ...target, enabled };
     this.targets.set(targetId, updated);
+
     const current = this.requireState(targetId);
-    const state = { ...current, target: updated, active: enabled && current.active };
+    const state = {
+      ...current,
+      target: updated,
+      active: enabled && current.active
+    };
     this.states.set(targetId, state);
     return state;
   }
@@ -43,7 +72,7 @@ export class OutputEngine {
   setDeckTarget(targetId: string, deckId: string | undefined): OutputTarget {
     const target = this.requireTarget(targetId);
     const updated: OutputTarget = deckId === undefined
-      ? { id: target.id, kind: target.kind, enabled: target.enabled }
+      ? { ...target, deckId: undefined }
       : { ...target, deckId };
 
     this.targets.set(targetId, updated);
@@ -51,65 +80,59 @@ export class OutputEngine {
     return updated;
   }
 
-  route(targetId: string, program: ProgramState): OutputState {
+  setMediaFeature(
+    targetId: string,
+    feature: MediaOutputKind,
+    enabled: boolean
+  ): OutputTarget {
     const target = this.requireTarget(targetId);
-    if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
-    const state = { target, source: program.source, active: true };
+
+    if (target.kind !== "media" || !target.media) {
+      throw new Error(`Output "${target.id}" is not a media output.`);
+    }
+
+    const media = {
+      ...target.media,
+      [feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual"]: enabled
+    };
+
+    const updated: OutputTarget = { ...target, media };
+    this.targets.set(targetId, updated);
+    this.states.set(targetId, { ...this.requireState(targetId), target: updated });
+    return updated;
+  }
+
+  route(targetId: string, source: DeckLayerRef): OutputState {
+    const target = this.requireTarget(targetId);
+    if (!target.enabled) {
+      throw new Error(`Output "${target.id}" is disabled.`);
+    }
+
+    const state = { target, source, active: true };
     this.states.set(targetId, state);
     return state;
   }
 
-  routeMany(targetIds: readonly string[], program: ProgramState): readonly OutputState[] {
-    return targetIds.map((targetId) => this.route(targetId, program));
-  }
-
-  /**
-   * Synchronize all active outputs assigned to a Deck.
-   * Layer is intentionally NOT a routing choice: the Deck's current layer
-   * becomes the output source automatically.
-   */
-  syncFromDeck(deckId: string, currentLayer: DeckLayerRef): readonly OutputState[] {
+  syncFromDeck(
+    deckId: string,
+    currentLayer: DeckLayerRef
+  ): readonly OutputState[] {
     if (currentLayer.deckId !== deckId) {
-      throw new Error(`Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`);
+      throw new Error(
+        `Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`
+      );
     }
 
     const ids = [...this.states.values()]
-      .filter((state) =>
-        state.active &&
-        state.target.enabled &&
-        state.target.deckId === deckId
+      .filter(
+        (state) =>
+          state.active &&
+          state.target.enabled &&
+          state.target.deckId === deckId
       )
       .map((state) => state.target.id);
 
-    return ids.map((id) => this.routeDeck(id, deckId, currentLayer));
-  }
-
-  /**
-   * Program-routed outputs are outputs without a fixed Deck target.
-   * Fixed Deck outputs are deliberately untouched by Program changes.
-   */
-  syncFromProgram(program: ProgramState): readonly OutputState[] {
-    const ids = [...this.states.values()]
-      .filter((state) =>
-        state.active &&
-        state.target.enabled &&
-        state.target.deckId === undefined
-      )
-      .map((state) => state.target.id);
-
-    return this.routeMany(ids, program);
-  }
-
-  private routeDeck(targetId: string, deckId: string, currentLayer: DeckLayerRef): OutputState {
-    const target = this.requireTarget(targetId);
-    if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
-    if (target.deckId !== deckId) {
-      throw new Error(`Output "${target.id}" targets deck "${target.deckId ?? "Program"}", not "${deckId}".`);
-    }
-
-    const state = { target, source: currentLayer, active: true };
-    this.states.set(targetId, state);
-    return state;
+    return ids.map((id) => this.route(id, currentLayer));
   }
 
   stop(targetId: string): OutputState {
@@ -128,13 +151,17 @@ export class OutputEngine {
 
   private requireTarget(targetId: string): OutputTarget {
     const target = this.targets.get(targetId);
-    if (!target) throw new Error(`Output "${targetId}" does not exist.`);
+    if (!target) {
+      throw new Error(`Output "${targetId}" does not exist.`);
+    }
     return target;
   }
 
   private requireState(targetId: string): OutputState {
     const state = this.states.get(targetId);
-    if (!state) throw new Error(`Output "${targetId}" does not exist.`);
+    if (!state) {
+      throw new Error(`Output "${targetId}" does not exist.`);
+    }
     return state;
   }
 }
