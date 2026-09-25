@@ -72,7 +72,10 @@ export class OutputEngine {
   setDeckTarget(targetId: string, deckId: string | undefined): OutputTarget {
     const target = this.requireTarget(targetId);
     const updated: OutputTarget = deckId === undefined
-      ? { ...target, deckId: undefined }
+      ? (() => {
+          const { deckId: _deckId, ...withoutDeck } = target;
+          return withoutDeck;
+        })()
       : { ...target, deckId };
 
     this.targets.set(targetId, updated);
