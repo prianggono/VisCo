@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-type Layer = { id: string; name: string };
+type Layer = { id: string; name: string };\ntype LibraryItem = { id: string; name: string; kind: string };
 type DeckKind = "visual" | "audio";
 type Deck = {
   id: string;
@@ -33,7 +33,7 @@ export function App() {
   const [faders, setFaders] = useState<Record<string, { master: number; audio: number; opacity: number }>>(
     Object.fromEntries(initialDecks.map((deck) => [deck.id, { master: 100, audio: 100, opacity: 100 }]))
   );
-  const [showAddDeck, setShowAddDeck] = useState(false);
+  const [showAddDeck, setShowAddDeck] = useState(false);\n  const [showAddInput, setShowAddInput] = useState(false);\n  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);\n  const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
 
   const selectPreview = (deckId: string, layerId: string) => {
     setPreview({ deckId, layerId });
@@ -64,7 +64,7 @@ export function App() {
     setShowAddDeck(false);
   };
 
-  const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
+  const addInput = (kind: string) => {\n    const extension = kind === "Video" ? "mp4" : kind === "Image" ? "jpg" : kind === "Audio" ? "wav" : kind.toLowerCase();\n    const item = { id: \`input-\\${Date.now()}\`, name: \`New \${kind}\\.${extension}\`, kind };\n    setLibraryItems((items) => [...items, item]);\n    setShowAddInput(false);\n  };\n\n  const handleLibraryDrop = (event: React.DragEvent<HTMLDivElement>) => {\n    event.preventDefault();\n    const files = Array.from(event.dataTransfer.files);\n    if (!files.length) return;\n    setLibraryItems((items) => [\n      ...items,\n      ...files.map((file) => ({ id: \`file-\\${Date.now()}-\\${file.name}\`, name: file.name, kind: "File" }))\n    ]);\n  };\n\n  const handleLayerDrop = (event: React.DragEvent<HTMLButtonElement>, deckId: string, layerId: string) => {\n    event.preventDefault();\n    const itemId = event.dataTransfer.getData("text/library-id");\n    const item = libraryItems.find((entry) => entry.id === itemId);\n    if (item) setLayerMedia((media) => ({ ...media, [\`\\${deckId}:\\${layerId}\`]: item.name }));\n  };\n\n  const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
     setFaders({
       ...faders,
       [deckId]: { ...faders[deckId], [key]: value }
@@ -161,8 +161,8 @@ export function App() {
                           <button className={`layer-name ${isPreview ? "preview-name" : ""}`} onClick={() => selectPreview(deck.id, layer.id)}>
                             <span>{layer.name}</span>{isPreview && <small>PREVIEW</small>}
                           </button>
-                          <button className="layer-box" onClick={() => deck.kind === "visual" && programLayer(deck.id, layer.id)}>
-                            <div className="layer-thumb"><span>{deck.kind === "audio" ? "AUDIO" : layer.name}</span></div>
+                          <button className="layer-box" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleLayerDrop(e, deck.id, layer.id)} onClick={() => deck.kind === "visual" && programLayer(deck.id, layer.id)}>
+                            <div className="layer-thumb"><span>{layerMedia[`${deck.id}:${layer.id}`] || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
                             <div className="layer-tools"><span>◌</span><span className={isProgram ? "eye on" : "eye"}>◉</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">PROGRAM</div>}
