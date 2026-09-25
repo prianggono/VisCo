@@ -113,6 +113,55 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     });
   });
 
+  it("syncs outputs once after a multi-action sequence", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+    const decks = new Map([
+      [deck1.id, deck1],
+      [deck3.id, deck3]
+    ]);
+
+    let programSyncs = 0;
+    let deckSyncs = 0;
+    const originalProgramSync = output.syncFromProgram.bind(output);
+    const originalDeckSync = output.syncFromDeck.bind(output);
+
+    output.syncFromProgram = (source) => {
+      programSyncs += 1;
+      return originalProgramSync(source);
+    };
+    output.syncFromDeck = (deckId, source) => {
+      deckSyncs += 1;
+      return originalDeckSync(deckId, source);
+    };
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+
+    const state = trigger.execute(
+      {
+        type: "sequence",
+        actions: [
+          { type: "take", target: { deckId: "deck-1", layerId: "layer-1" } },
+          { type: "take", target: { deckId: "deck-3", layerId: "layer-2" } }
+        ]
+      },
+      { decks, program, output }
+    );
+
+    expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
+    expect(programSyncs).toBe(1);
+    expect(deckSyncs).toBe(1);
+    expect(output.getState("display-main").source).toEqual({
+      deckId: "deck-3",
+      layerId: "layer-2"
+    });
+  });
+
   it("supports multi-action trigger sequences", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
