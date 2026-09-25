@@ -130,9 +130,10 @@ export function App() {
                       <small>{deck.kind.toUpperCase()}</small>
                     </div>
                     <div className="deck-faders">
-                      {([
-                        ["M", "master"], ["A", "audio"], ...(deck.kind === "visual" ? [["V", "opacity"]] : [])
-                      ] as const).map(([label, key]) => (
+                      {(deck.kind === "visual"
+                        ? ([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const)
+                        : ([["M", "master"], ["A", "audio"]] as const)
+                      ).map(([label, key]) => (
                         <label className="fader" key={label}>
                           <span>{label}</span>
                           <input
