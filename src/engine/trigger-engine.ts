@@ -20,6 +20,23 @@ export interface TriggerContext {
 
 export class TriggerEngine {
   execute(action: TriggerAction, context: TriggerContext): ProgramState {
+    const state = this.executeAction(action, context);
+
+    if (context.output && action.type === "sequence") {
+      const source = state.source;
+      if (source) {
+        context.output.syncFromProgram(source);
+        context.output.syncFromDeck(source.deckId, source);
+      }
+    }
+
+    return state;
+  }
+
+  private executeAction(
+    action: TriggerAction,
+    context: TriggerContext
+  ): ProgramState {
     switch (action.type) {
       case "take": {
         const deck = context.decks.get(action.target.deckId);
@@ -39,8 +56,33 @@ export class TriggerEngine {
 
       case "sequence": {
         let state = context.program.getState();
+
         for (const nestedAction of action.actions) {
-          state = this.execute(nestedAction, context);
+          state = this.executeSequenceAction(nestedAction, context);
+        }
+
+        return state;
+      }
+    }
+  }
+
+  private executeSequenceAction(
+    action: TriggerAction,
+    context: TriggerContext
+  ): ProgramState {
+    switch (action.type) {
+      case "take": {
+        const deck = context.decks.get(action.target.deckId);
+        if (!deck) {
+          throw new Error(`Deck "${action.target.deckId}" does not exist.`);
+        }
+        return context.program.take(deck, action.target.layerId);
+      }
+
+      case "sequence": {
+        let state = context.program.getState();
+        for (const nestedAction of action.actions) {
+          state = this.executeSequenceAction(nestedAction, context);
         }
         return state;
       }
