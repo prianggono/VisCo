@@ -28,12 +28,9 @@ describe("Deck click -> Preview / Program -> Output", () => {
     });
     output.syncFromProgram({ deckId: "deck-1", layerId: "layer-1" });
 
-    const controller = new DeckProgramController(
-      new DeckRuntime(),
-      program,
-      output
-    );
-    controller["deckRuntime"].register(deck);
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+    const controller = new DeckProgramController(runtime, program, output);
 
     const state = controller.preview(deck, "layer-2");
 
