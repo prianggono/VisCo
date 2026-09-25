@@ -6,7 +6,7 @@ VisCo is being built as a Windows live production application combining broadcas
 
 ## Current core
 
-The first implementation deliberately focuses on the execution model:
+The current implementation focuses on the execution model before the desktop UI:
 
 - Deck owns its Layers.
 - Deck owns its Transition.
@@ -14,6 +14,11 @@ The first implementation deliberately focuses on the execution model:
 - Trigger only describes and executes Actions. It does not own Transition.
 - Trigger Actions can target another Deck/Layer.
 - Multi-action Trigger sequences are supported.
+- Outputs are routed by Deck, never by Layer.
+- Default output routing follows Program.
+- A Deck target is an explicit output override; its active Layer follows automatically.
+- Display output is separate from the shared Media Output Pipeline.
+- Stream, Record and Virtual Out share one render source, resolution and FPS, with independent ON/OFF controls.
 
 ### Core flow
 
@@ -37,6 +42,53 @@ Deck 3 / Layer 2
       +--> Transition from Deck 3
 ```
 
+### Output flow
+
+```
+                         DECK
+                          |
+                    Active Layer
+                          |
+                          v
+                      COMPOSITE
+                      1x RENDER
+                          |
+                          v
+                 MEDIA OUTPUT BUS
+                  Resolution / FPS
+               +----------+----------+
+               |          |          |
+               v          v          v
+           STREAMING   RECORDING   VIRTUAL OUT
+             ON/OFF      ON/OFF       ON/OFF
+
+Deck / Program --------------------> DISPLAY
+```
+
+### Output routing rule
+
+```
+Default:
+Program -> Display
+Program -> Media Output Bus
+
+Override:
+Deck 1 -> Display
+Deck 2 -> Media Output Bus
+
+Layer selection is never part of output routing.
+The active Layer inside the selected Deck follows automatically.
+```
+
+### Trigger output controls
+
+Triggers can also control output state:
+
+- Enable/disable an output target.
+- Toggle Stream, Record or Virtual Out independently.
+- Multi-action sequences can combine output controls with other actions.
+- A sequence containing multiple actions is synchronized without duplicating the final Program/Deck output routing step.
+
 ## Development
 
 Requirements:
@@ -52,4 +104,4 @@ npm test
 npm run typecheck
 ```
 
-Output engines (LED, Stream, Record) and the desktop UI are intentionally not implemented in this first core step.
+The desktop UI, media decoding/rendering, capture, display discovery, streaming transport, recording backend, virtual output backend, and hardware acceleration layers are not implemented yet.
