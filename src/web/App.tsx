@@ -180,7 +180,7 @@ export function App() {
 
         <aside className="properties panel">
           <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
-          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "MIDI", "Slice", "Output", "Advanced"].map((item, index) => (
+          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Output", "Advanced"].map((item, index) => (
             <button className={index === 0 ? "property-row active" : "property-row"} key={item}><span>{item}</span><span>›</span></button>
           ))}
         </aside>
