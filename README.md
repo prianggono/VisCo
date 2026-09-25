@@ -10,9 +10,11 @@ The current implementation focuses on the execution model before the desktop UI:
 
 - Deck owns its Layers.
 - Deck owns its Transition.
-- Program receives a Layer from a Deck and carries that Deck's Transition with the Program state.
+- Clicking a Layer name is Preview-only; it changes Deck Preview without changing Program.
+- Clicking a Layer box programs it immediately; there is no separate TAKE command in the operator workflow.
+- Program receives the selected Layer from a Deck and carries that Deck's Transition with the Program state.
 - Trigger only describes and executes Actions. It does not own Transition.
-- Trigger Actions can target another Deck/Layer.
+- Trigger Actions can target another Deck/Layer using the Program action.
 - Multi-action Trigger sequences are supported.
 - Outputs are routed by Deck, never by Layer.
 - Default output routing follows Program.
