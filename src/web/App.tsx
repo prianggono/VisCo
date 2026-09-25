@@ -40,6 +40,8 @@ export function App() {
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
   const [columnState, setColumnState] = useState<Record<number, boolean>>({});
+  const [openProperty, setOpenProperty] = useState("General");
+  const [layerName, setLayerName] = useState("Layer 2");
 
   const selectPreview = (deckId: string, layerId: string) => {
     setPreview({ deckId, layerId });
@@ -101,6 +103,8 @@ export function App() {
     }
   };
 
+  const openInputDialog = () => setShowAddInput(true);
+
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
     setFaders((items) => ({ ...items, [deckId]: { ...items[deckId], [key]: value } }));
   };
@@ -123,24 +127,15 @@ export function App() {
         style={{ gridTemplateColumns: workspace.library + "px minmax(600px, 1fr) " + workspace.properties + "px" }}
       >
         <aside className="library panel">
-          <div className="panel-title">
-            <span>LIBRARY</span>
-            <button className="icon-button" onClick={() => setShowAddInput((value) => !value)}>+</button>
-          </div>
+          <div className="panel-title"><span>LIBRARY</span></div>
           <div className="search">Search media…</div>
           <div
             className="library-dropzone"
             onDragOver={(event) => event.preventDefault()}
             onDrop={handleLibraryDrop}
           >
-            <button className="add-input-button" onClick={() => setShowAddInput((value) => !value)}>+ ADD INPUT</button>
-            {showAddInput && (
-              <div className="add-input-menu">
-                {inputTypes.map((item) => (
-                  <button key={item} onClick={() => addInput(item)}>{item}</button>
-                ))}
-              </div>
-            )}
+            <button className="add-input-button" onClick={openInputDialog}>+ ADD INPUT</button>
+
             {libraryItems.length === 0 ? (
               <div className="library-empty">Drag & drop files here</div>
             ) : (
@@ -261,8 +256,24 @@ export function App() {
 
         <aside className="properties panel">
           <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
-          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item, index) => (
-            <button className={index === 0 ? "property-row active" : "property-row"} key={item}><span>{item}</span><span>›</span></button>
+          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item) => (
+            <div className="property-section" key={item}>
+              <button className={openProperty === item ? "property-row active" : "property-row"} onClick={() => setOpenProperty(openProperty === item ? "" : item)}>
+                <span>{item}</span><span>{openProperty === item ? "⌄" : "›"}</span>
+              </button>
+              {openProperty === item && (
+                <div className="property-content">
+                  {item === "General" && <><label>Name<input value={layerName} onChange={(event) => setLayerName(event.target.value)} /></label><label>Type<div className="property-value">Media Layer</div></label></>}
+                  {item === "Playback" && <><div className="property-buttons"><button>▶ Play</button><button>Ⅱ Pause</button><button>↻ Loop</button></div><label>Speed<input type="range" min="0" max="200" defaultValue="100" /></label></>}
+                  {item === "Transform" && <div className="property-grid">{["X","Y","Scale X","Scale Y","Rotation"].map((field) => <label key={field}>{field}<input type="number" defaultValue={field.includes("Scale") ? 100 : 0} /></label>)}</div>}
+                  {item === "Layering" && <div className="property-grid">{["Order","Opacity","Blend"].map((field) => <label key={field}>{field}<input defaultValue={field === "Blend" ? "Normal" : "100"} /></label>)}</div>}
+                  {item === "Audio" && <><label>Volume<input type="range" min="0" max="100" defaultValue="100" /></label><label>Pan<input type="range" min="-100" max="100" defaultValue="0" /></label></>}
+                  {item === "Trigger" && <div className="property-empty">No triggers assigned to this layer.</div>}
+                  {item === "Slice" && <div className="property-buttons"><button>Add Slice</button><button>Reset Slice</button></div>}
+                  {item === "Advanced" && <div className="property-empty">Advanced layer options.</div>}
+                </div>
+              )}
+            </div>
           ))}
         </aside>
       </section>
@@ -302,6 +313,19 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {showAddInput && (
+        <div className="modal-backdrop" onClick={() => setShowAddInput(false)}>
+          <div className="add-input-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>ADD INPUT</strong><span>Select the type of source to add to the Library</span></div><button onClick={() => setShowAddInput(false)}>×</button></div>
+            <div className="input-choice-grid">
+              {inputTypes.map((item) => (
+                <button className="input-choice" key={item} onClick={() => addInput(item)}><strong>{item}</strong><small>{item === "Video" ? "Video files and clips" : item === "Image" ? "Still images and graphics" : item === "Audio" ? "Music and audio files" : item === "Capture" ? "Camera, HDMI, SDI and capture devices" : "Generated and composed sources"}</small></button>
+              ))}
+            </div>
+            <div className="modal-drop">Or drag files directly into Library</div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
