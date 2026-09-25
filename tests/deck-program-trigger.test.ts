@@ -162,6 +162,84 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     });
   });
 
+  it("supports output enable/disable as a Trigger action", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+
+    trigger.execute(
+      {
+        type: "set-output-enabled",
+        outputId: "display-main",
+        enabled: false
+      },
+      { decks: new Map(), program, output }
+    );
+
+    expect(output.getState("display-main").target.enabled).toBe(false);
+    expect(output.getState("display-main").active).toBe(false);
+  });
+
+  it("supports Stream/Record/Virtual controls as Trigger actions", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+
+    output.register({
+      id: "media-main",
+      kind: "media",
+      enabled: true,
+      media: {
+        resolution: [1920, 1080],
+        fps: 60,
+        streaming: false,
+        recording: false,
+        virtual: false
+      }
+    });
+
+    trigger.execute(
+      {
+        type: "sequence",
+        actions: [
+          {
+            type: "set-media-feature",
+            outputId: "media-main",
+            feature: "stream",
+            enabled: true
+          },
+          {
+            type: "set-media-feature",
+            outputId: "media-main",
+            feature: "record",
+            enabled: true
+          },
+          {
+            type: "set-media-feature",
+            outputId: "media-main",
+            feature: "virtual",
+            enabled: true
+          }
+        ]
+      },
+      { decks: new Map(), program, output }
+    );
+
+    expect(output.getState("media-main").target.media).toEqual({
+      resolution: [1920, 1080],
+      fps: 60,
+      streaming: true,
+      recording: true,
+      virtual: true
+    });
+  });
+
   it("supports multi-action trigger sequences", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
