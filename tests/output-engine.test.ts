@@ -88,3 +88,51 @@ describe("Output Engine", () => {
     expect(state.source).toEqual(program1.source);
   });
 });
+
+
+describe("Per-output Deck routing", () => {
+  it("can target Display to Deck 1 and Stream/Record to Deck 2", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
+    output.register({ id: "stream-main", kind: "stream", enabled: true, deckId: "deck-2" });
+    output.register({ id: "record-main", kind: "record", enabled: true, deckId: "deck-2" });
+
+    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-2" });
+    output.routeDeck("stream-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
+    output.routeDeck("record-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
+
+    expect(output.getState("display-main").source).toEqual({ deckId: "deck-1", layerId: "layer-2" });
+    expect(output.getState("stream-main").source).toEqual({ deckId: "deck-2", layerId: "layer-1" });
+    expect(output.getState("record-main").source).toEqual({ deckId: "deck-2", layerId: "layer-1" });
+  });
+
+  it("Program sync does not overwrite outputs fixed to a Deck", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
+    output.register({ id: "stream-main", kind: "stream", enabled: true });
+
+    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-2" });
+    output.route("stream-main", program1);
+
+    output.syncFromProgram(program3);
+
+    expect(output.getState("display-main").source).toEqual({ deckId: "deck-1", layerId: "layer-2" });
+    expect(output.getState("stream-main").source).toEqual(program3.source);
+  });
+
+  it("syncs only outputs assigned to the requested Deck", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
+    output.register({ id: "stream-main", kind: "stream", enabled: true, deckId: "deck-2" });
+
+    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-1" });
+    output.routeDeck("stream-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
+
+    const states = output.syncFromDeck("deck-2", { deckId: "deck-2", layerId: "layer-2" });
+
+    expect(states).toHaveLength(1);
+    expect(states[0]?.target.id).toBe("stream-main");
+    expect(output.getState("display-main").source?.layerId).toBe("layer-1");
+    expect(output.getState("stream-main").source?.layerId).toBe("layer-2");
+  });
+});
