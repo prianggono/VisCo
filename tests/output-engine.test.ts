@@ -99,6 +99,42 @@ describe("Output Engine", () => {
     expect(media?.fps).toBe(30);
   });
 
+  it("defaults enabled outputs to Program and syncs Program targets", () => {
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+    output.register(mediaTarget({ deckId: undefined }));
+
+    expect(output.getState("display-main").active).toBe(true);
+    expect(output.getState("media-main").active).toBe(true);
+
+    const states = output.syncFromProgram(deck2Layer1);
+
+    expect(states).toHaveLength(2);
+    expect(output.getState("display-main").source).toEqual(deck2Layer1);
+    expect(output.getState("media-main").source).toEqual(deck2Layer1);
+  });
+
+  it("does not let a Deck override follow Program", () => {
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+    output.route("display-main", deck1Layer2);
+
+    output.syncFromProgram(deck2Layer1);
+
+    expect(output.getState("display-main").source).toEqual(deck1Layer2);
+  });
+
   it("syncs only active outputs assigned to the requested Deck", () => {
     const output = new OutputEngine();
 
