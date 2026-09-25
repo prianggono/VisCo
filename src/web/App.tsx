@@ -188,12 +188,20 @@ export function App() {
 
       <footer className="media-bar">
         <div className="output-group">
-          <button className={media.fullscreen ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, fullscreen: !media.fullscreen })}>FULLSCREEN</button>
-          <button className={media.stream ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, stream: !media.stream })}>STREAM</button>
-          <button className={media.record ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, record: !media.record })}>RECORD</button>
+          <div className="output-control">
+            <button className={media.fullscreen ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, fullscreen: !media.fullscreen })}>FULLSCREEN</button>
+            <button className="output-gear" title="Fullscreen settings">⚙</button>
+          </div>
+          <div className="output-control">
+            <button className={media.stream ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, stream: !media.stream })}>STREAM</button>
+            <button className="output-gear" title="Stream settings">⚙</button>
+          </div>
+          <div className="output-control">
+            <button className={media.record ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, record: !media.record })}>RECORD</button>
+            <button className="output-gear" title="Record settings">⚙</button>
+          </div>
           <button className={media.virtual ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, virtual: !media.virtual })}>VIRTUAL OUT</button>
         </div>
-        <div className="output-gear">⚙</div>
         <div className="resolution"><span>1920 × 1080</span><span>60 FPS</span></div>
       </footer>
 
