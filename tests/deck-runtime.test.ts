@@ -48,6 +48,7 @@ describe("Deck Runtime", () => {
 
     expect(state).toEqual({
       deckId: "deck-1",
+      previewLayerId: "layer-2",
       activeLayerId: "layer-2"
     });
     expect(runtime.getActiveLayer(deck)?.id).toBe("layer-2");
