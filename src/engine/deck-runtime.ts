@@ -3,6 +3,7 @@ import { getDeckLayer } from "../domain/deck.js";
 
 export interface DeckRuntimeState {
   readonly deckId: string;
+  readonly previewLayerId: string | null;
   readonly activeLayerId: string | null;
 }
 
@@ -16,6 +17,7 @@ export class DeckRuntime {
 
     const state: DeckRuntimeState = {
       deckId: deck.id,
+      previewLayerId: null,
       activeLayerId: null
     };
 
@@ -23,23 +25,46 @@ export class DeckRuntime {
     return state;
   }
 
-  setActiveLayer(deck: Deck, layerId: string): DeckRuntimeState {
+  previewLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
+    this.require(deck.id);
 
     const state: DeckRuntimeState = {
-      deckId: deck.id,
-      activeLayerId: layerId
+      ...this.require(deck.id),
+      previewLayerId: layerId
     };
 
+    this.states.set(deck.id, state);
+    return state;
+  }
+
+  clearPreview(deckId: string): DeckRuntimeState {
+    const state: DeckRuntimeState = {
+      ...this.require(deckId),
+      previewLayerId: null
+    };
+
+    this.states.set(deckId, state);
+    return state;
+  }
+
+  programLayer(deck: Deck, layerId: string): DeckRuntimeState {
+    getDeckLayer(deck, { deckId: deck.id, layerId });
     this.require(deck.id);
+
+    const state: DeckRuntimeState = {
+      ...this.require(deck.id),
+      activeLayerId: layerId,
+      previewLayerId: layerId
+    };
+
     this.states.set(deck.id, state);
     return state;
   }
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
-    const current = this.require(deckId);
     const state: DeckRuntimeState = {
-      ...current,
+      ...this.require(deckId),
       activeLayerId: null
     };
 
@@ -51,16 +76,23 @@ export class DeckRuntime {
     return this.require(deckId);
   }
 
+  getPreviewLayer(deck: Deck): Layer | null {
+    const state = this.require(deck.id);
+    return state.previewLayerId === null
+      ? null
+      : getDeckLayer(deck, { deckId: deck.id, layerId: state.previewLayerId });
+  }
+
   getActiveLayer(deck: Deck): Layer | null {
     const state = this.require(deck.id);
-    if (state.activeLayerId === null) {
-      return null;
-    }
+    return state.activeLayerId === null
+      ? null
+      : getDeckLayer(deck, { deckId: deck.id, layerId: state.activeLayerId });
+  }
 
-    return getDeckLayer(deck, {
-      deckId: deck.id,
-      layerId: state.activeLayerId
-    });
+  getPreviewSource(deck: Deck): DeckLayerRef | null {
+    const layer = this.getPreviewLayer(deck);
+    return layer ? { deckId: deck.id, layerId: layer.id } : null;
   }
 
   getActiveSource(deck: Deck): DeckLayerRef | null {
