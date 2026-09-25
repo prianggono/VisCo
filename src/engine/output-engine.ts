@@ -67,7 +67,7 @@ export class OutputEngine {
     const state = {
       ...current,
       target: updated,
-      active: enabled && current.active
+      active: enabled
     };
     this.states.set(targetId, state);
     return state;
