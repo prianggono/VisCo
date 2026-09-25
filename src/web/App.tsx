@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react";
 
-type Layer = { id: string; name: string };\ntype LibraryItem = { id: string; name: string; kind: string };
+type Layer = { id: string; name: string };
+type LibraryItem = { id: string; name: string; kind: string };
 type DeckKind = "visual" | "audio";
 type Deck = {
   id: string;
@@ -33,7 +34,10 @@ export function App() {
   const [faders, setFaders] = useState<Record<string, { master: number; audio: number; opacity: number }>>(
     Object.fromEntries(initialDecks.map((deck) => [deck.id, { master: 100, audio: 100, opacity: 100 }]))
   );
-  const [showAddDeck, setShowAddDeck] = useState(false);\n  const [showAddInput, setShowAddInput] = useState(false);\n  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);\n  const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
+  const [showAddDeck, setShowAddDeck] = useState(false);
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
 
   const selectPreview = (deckId: string, layerId: string) => {
     setPreview({ deckId, layerId });
@@ -64,7 +68,31 @@ export function App() {
     setShowAddDeck(false);
   };
 
-  const addInput = (kind: string) => {\n    const extension = kind === "Video" ? "mp4" : kind === "Image" ? "jpg" : kind === "Audio" ? "wav" : kind.toLowerCase();\n    const item = { id: \`input-\\${Date.now()}\`, name: \`New \${kind}\\.${extension}\`, kind };\n    setLibraryItems((items) => [...items, item]);\n    setShowAddInput(false);\n  };\n\n  const handleLibraryDrop = (event: DragEvent<HTMLDivElement>) => {\n    event.preventDefault();\n    const files = Array.from(event.dataTransfer.files);\n    if (!files.length) return;\n    setLibraryItems((items) => [\n      ...items,\n      ...files.map((file) => ({ id: \`file-\\${Date.now()}-\\${file.name}\`, name: file.name, kind: "File" }))\n    ]);\n  };\n\n  const handleLayerDrop = (event: DragEvent<HTMLButtonElement>, deckId: string, layerId: string) => {\n    event.preventDefault();\n    const itemId = event.dataTransfer.getData("text/library-id");\n    const item = libraryItems.find((entry) => entry.id === itemId);\n    if (item) setLayerMedia((media) => ({ ...media, [\`\\${deckId}:\\${layerId}\`]: item.name }));\n  };\n\n  const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
+  const addInput = (kind: string) => {
+    const extension = kind === "Video" ? "mp4" : kind === "Image" ? "jpg" : kind === "Audio" ? "wav" : kind.toLowerCase();
+    const item = { id: \`input-\${Date.now()}\`, name: \`New ${kind}\\.${extension}\`, kind };
+    setLibraryItems((items) => [...items, item]);
+    setShowAddInput(false);
+  };
+
+  const handleLibraryDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    if (!files.length) return;
+    setLibraryItems((items) => [
+      ...items,
+      ...files.map((file) => ({ id: \`file-\${Date.now()}-\${file.name}\`, name: file.name, kind: "File" }))
+    ]);
+  };
+
+  const handleLayerDrop = (event: DragEvent<HTMLButtonElement>, deckId: string, layerId: string) => {
+    event.preventDefault();
+    const itemId = event.dataTransfer.getData("text/library-id");
+    const item = libraryItems.find((entry) => entry.id === itemId);
+    if (item) setLayerMedia((media) => ({ ...media, [\`\${deckId}:\${layerId}\`]: item.name }));
+  };
+
+  const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
     setFaders({
       ...faders,
       [deckId]: { ...faders[deckId], [key]: value }
