@@ -1,138 +1,153 @@
 import { describe, expect, it } from "vitest";
-import type { ProgramState } from "../src/engine/program-engine.js";
-import { OutputEngine } from "../src/engine/output-engine.js";
+import { OutputEngine, type OutputTarget } from "../src/engine/output-engine.js";
 
-const program1: ProgramState = {
-  source: { deckId: "deck-1", layerId: "layer-2" },
-  layer: { id: "layer-2", name: "Layer 2" },
-  transition: { type: "fade", durationMs: 500 }
-};
+const deck1Layer2 = { deckId: "deck-1", layerId: "layer-2" };
+const deck2Layer1 = { deckId: "deck-2", layerId: "layer-1" };
+const deck2Layer2 = { deckId: "deck-2", layerId: "layer-2" };
 
-const program3: ProgramState = {
-  source: { deckId: "deck-3", layerId: "layer-2" },
-  layer: { id: "layer-2", name: "Layer 2" },
-  transition: { type: "wipe", durationMs: 300 }
-};
+const mediaTarget = (overrides: Partial<OutputTarget> = {}): OutputTarget => ({
+  id: "media-main",
+  kind: "media",
+  enabled: true,
+  deckId: "deck-2",
+  media: {
+    resolution: [1920, 1080],
+    fps: 60,
+    streaming: false,
+    recording: false,
+    virtual: false
+  },
+  ...overrides
+});
 
 describe("Output Engine", () => {
-  it("registers LED, Stream and Record independently", () => {
+  it("registers Display separately from the shared Media Output Pipeline", () => {
     const output = new OutputEngine();
 
-    output.register({ id: "led-main", kind: "led", enabled: true });
-    output.register({ id: "stream-main", kind: "stream", enabled: true });
-    output.register({ id: "record-main", kind: "record", enabled: true });
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+    output.register(mediaTarget());
 
-    expect(output.getState("led-main").target.kind).toBe("led");
-    expect(output.getState("stream-main").target.kind).toBe("stream");
-    expect(output.getState("record-main").target.kind).toBe("record");
+    expect(output.getState("display-main").target.kind).toBe("display");
+    expect(output.getState("media-main").target.kind).toBe("media");
   });
 
-  it("routes the current Program source to LED", () => {
+  it("rejects media output without shared media settings", () => {
     const output = new OutputEngine();
-    output.register({ id: "led-main", kind: "led", enabled: true });
 
-    const state = output.route("led-main", program3);
+    expect(() =>
+      output.register({
+        id: "media-main",
+        kind: "media",
+        enabled: true,
+        deckId: "deck-2"
+      })
+    ).toThrow('Media output "media-main" requires media settings.');
+  });
+
+  it("routes a Deck source to its output", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+
+    const state = output.route("display-main", deck1Layer2);
 
     expect(state.active).toBe(true);
-    expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
+    expect(state.source).toEqual(deck1Layer2);
   });
 
-  it("routes Program to multiple outputs without coupling them", () => {
+  it("keeps Stream, Record and Virtual as independent switches on one pipeline", () => {
     const output = new OutputEngine();
-    output.register({ id: "led-main", kind: "led", enabled: true });
-    output.register({ id: "stream-main", kind: "stream", enabled: true });
-    output.register({ id: "record-main", kind: "record", enabled: true });
+    output.register(mediaTarget());
 
-    const states = output.routeMany(["led-main", "stream-main"], program1);
+    output.setMediaFeature("media-main", "stream", true);
+    output.setMediaFeature("media-main", "virtual", true);
 
-    expect(states).toHaveLength(2);
-    expect(output.getState("led-main").active).toBe(true);
-    expect(output.getState("stream-main").active).toBe(true);
-    expect(output.getState("record-main").active).toBe(false);
+    expect(output.getState("media-main").target.media).toEqual({
+      resolution: [1920, 1080],
+      fps: 60,
+      streaming: true,
+      recording: false,
+      virtual: true
+    });
   });
 
-  it("syncs only active outputs when Program changes", () => {
+  it("shares one resolution and FPS configuration for all media outputs", () => {
     const output = new OutputEngine();
-    output.register({ id: "led-main", kind: "led", enabled: true });
-    output.register({ id: "stream-main", kind: "stream", enabled: true });
-    output.register({ id: "record-main", kind: "record", enabled: true });
+    output.register(
+      mediaTarget({
+        media: {
+          resolution: [3840, 2160],
+          fps: 30,
+          streaming: true,
+          recording: true,
+          virtual: false
+        }
+      })
+    );
 
-    output.route("led-main", program1);
-    output.route("stream-main", program1);
+    const media = output.getState("media-main").target.media;
+    expect(media?.resolution).toEqual([3840, 2160]);
+    expect(media?.fps).toBe(30);
+  });
 
-    const states = output.syncFromProgram(program3);
+  it("syncs only active outputs assigned to the requested Deck", () => {
+    const output = new OutputEngine();
 
-    expect(states).toHaveLength(2);
-    expect(output.getState("led-main").source).toEqual(program3.source);
-    expect(output.getState("stream-main").source).toEqual(program3.source);
-    expect(output.getState("record-main").source).toBeNull();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+    output.register(mediaTarget());
+
+    output.route("display-main", deck1Layer2);
+    output.route("media-main", deck2Layer1);
+
+    const states = output.syncFromDeck("deck-2", deck2Layer2);
+
+    expect(states).toHaveLength(1);
+    expect(states[0]?.target.id).toBe("media-main");
+    expect(output.getState("display-main").source).toEqual(deck1Layer2);
+    expect(output.getState("media-main").source).toEqual(deck2Layer2);
   });
 
   it("does not route to a disabled output", () => {
     const output = new OutputEngine();
-    output.register({ id: "led-main", kind: "led", enabled: false });
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: false,
+      deckId: "deck-1"
+    });
 
-    expect(() => output.route("led-main", program1)).toThrow(
-      'Output "led-main" is disabled.'
+    expect(() => output.route("display-main", deck1Layer2)).toThrow(
+      'Output "display-main" is disabled.'
     );
   });
 
-  it("can stop an active output without changing Program", () => {
+  it("can stop an active output without changing its source", () => {
     const output = new OutputEngine();
-    output.register({ id: "record-main", kind: "record", enabled: true });
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
 
-    output.route("record-main", program1);
-    const state = output.stop("record-main");
+    output.route("display-main", deck1Layer2);
+    const state = output.stop("display-main");
 
     expect(state.active).toBe(false);
-    expect(state.source).toEqual(program1.source);
-  });
-});
-
-
-describe("Per-output Deck routing", () => {
-  it("can target Display to Deck 1 and Stream/Record to Deck 2", () => {
-    const output = new OutputEngine();
-    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
-    output.register({ id: "stream-main", kind: "stream", enabled: true, deckId: "deck-2" });
-    output.register({ id: "record-main", kind: "record", enabled: true, deckId: "deck-2" });
-
-    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-2" });
-    output.routeDeck("stream-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
-    output.routeDeck("record-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
-
-    expect(output.getState("display-main").source).toEqual({ deckId: "deck-1", layerId: "layer-2" });
-    expect(output.getState("stream-main").source).toEqual({ deckId: "deck-2", layerId: "layer-1" });
-    expect(output.getState("record-main").source).toEqual({ deckId: "deck-2", layerId: "layer-1" });
-  });
-
-  it("Program sync does not overwrite outputs fixed to a Deck", () => {
-    const output = new OutputEngine();
-    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
-    output.register({ id: "stream-main", kind: "stream", enabled: true });
-
-    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-2" });
-    output.route("stream-main", program1);
-
-    output.syncFromProgram(program3);
-
-    expect(output.getState("display-main").source).toEqual({ deckId: "deck-1", layerId: "layer-2" });
-    expect(output.getState("stream-main").source).toEqual(program3.source);
-  });
-
-  it("syncs only outputs assigned to the requested Deck", () => {
-    const output = new OutputEngine();
-    output.register({ id: "display-main", kind: "display", enabled: true, deckId: "deck-1" });
-    output.register({ id: "stream-main", kind: "stream", enabled: true, deckId: "deck-2" });
-
-    output.routeDeck("display-main", "deck-1", { deckId: "deck-1", layerId: "layer-1" });
-    output.routeDeck("stream-main", "deck-2", { deckId: "deck-2", layerId: "layer-1" });
-
-    const states = output.syncFromDeck("deck-2", { deckId: "deck-2", layerId: "layer-2" });
-
-    expect(states).toHaveLength(1);
-    expect(states[0]?.target.id).toBe("stream-main");
-    expect(output.getState("display-main").source?.layerId).toBe("layer-1");
-    expect(output.getState("stream-main").source?.layerId).toBe("layer-2");
+    expect(state.source).toEqual(deck1Layer2);
   });
 });
