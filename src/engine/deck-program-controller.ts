@@ -1,0 +1,43 @@
+import type { Deck } from "../domain/deck.js";
+import { DeckRuntime, type DeckRuntimeState } from "./deck-runtime.js";
+import { OutputEngine } from "./output-engine.js";
+import { ProgramEngine, type ProgramState } from "./program-engine.js";
+
+export interface DeckProgramControllerState {
+  readonly deck: DeckRuntimeState;
+  readonly program: ProgramState;
+}
+
+export class DeckProgramController {
+  constructor(
+    private readonly deckRuntime: DeckRuntime,
+    private readonly programEngine: ProgramEngine,
+    private readonly outputEngine?: OutputEngine
+  ) {}
+
+  preview(deck: Deck, layerId: string): DeckRuntimeState {
+    return this.deckRuntime.previewLayer(deck, layerId);
+  }
+
+  program(deck: Deck, layerId: string): DeckProgramControllerState {
+    const deckState = this.deckRuntime.programLayer(deck, layerId);
+    const programState = this.programEngine.program(deck, layerId);
+
+    if (this.outputEngine && programState.source) {
+      this.outputEngine.syncFromProgram(programState.source);
+      this.outputEngine.syncFromDeck(deck.id, programState.source);
+    }
+
+    return {
+      deck: deckState,
+      program: programState
+    };
+  }
+
+  getState(deckId: string): DeckProgramControllerState {
+    return {
+      deck: this.deckRuntime.getState(deckId),
+      program: this.programEngine.getState()
+    };
+  }
+}
