@@ -130,10 +130,7 @@ export function App() {
                       <small>{deck.kind.toUpperCase()}</small>
                     </div>
                     <div className="deck-faders">
-                      {(deck.kind === "visual"
-                        ? ([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const)
-                        : ([["M", "master"], ["A", "audio"]] as const)
-                      ).map(([label, key]) => (
+                      {([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const).map(([label, key]) => (
                         <label className="fader" key={label}>
                           <span>{label}</span>
                           <input
@@ -160,7 +157,7 @@ export function App() {
                       const isPreview = deck.kind === "visual" && preview.deckId === deck.id && preview.layerId === layer.id;
                       const selected = selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id;
                       return (
-                        <article className={[`layer-card`, isProgram ? "program" : "", isPreview ? "preview" : "", selected ? "selected" : ""].join(" ")} key={layer.id}>
+                        <article className={["layer-card", isProgram ? "program" : "", isPreview ? "preview" : ""].join(" ")} key={layer.id}>
                           <button className={`layer-name ${isPreview ? "preview-name" : ""}`} onClick={() => selectPreview(deck.id, layer.id)}>
                             <span>{layer.name}</span>{isPreview && <small>PREVIEW</small>}
                           </button>
