@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Deck } from "../src/domain/deck.js";
 import { ProgramEngine } from "../src/engine/program-engine.js";
 import { TriggerEngine } from "../src/engine/trigger-engine.js";
+import { OutputEngine } from "../src/engine/output-engine.js";
 
 const deck1: Deck = {
   id: "deck-1",
@@ -63,6 +64,53 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     };
 
     expect(action).not.toHaveProperty("transition");
+  });
+
+  it("syncs Program and Deck-routed outputs from one Trigger TAKE", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+    const decks = new Map([
+      [deck1.id, deck1],
+      [deck3.id, deck3]
+    ]);
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+    output.register({
+      id: "media-main",
+      kind: "media",
+      enabled: true,
+      deckId: "deck-3",
+      media: {
+        resolution: [1920, 1080],
+        fps: 60,
+        streaming: true,
+        recording: false,
+        virtual: true
+      }
+    });
+
+    const state = trigger.execute(
+      {
+        type: "take",
+        target: { deckId: "deck-3", layerId: "layer-2" }
+      },
+      { decks, program, output }
+    );
+
+    expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
+    expect(output.getState("display-main").source).toEqual({
+      deckId: "deck-3",
+      layerId: "layer-2"
+    });
+    expect(output.getState("media-main").source).toEqual({
+      deckId: "deck-3",
+      layerId: "layer-2"
+    });
   });
 
   it("supports multi-action trigger sequences", () => {
