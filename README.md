@@ -82,6 +82,28 @@ Layer selection is never part of output routing.
 The active Layer inside the selected Deck follows automatically.
 ```
 
+### Audio flow
+
+External audio:
+
+```
+Sound Card IN
+     |
+     v
+  Audio In
+     |
+     v
+ VisCo VB
+  +---+---+---+
+  |   |   |   |
+  v   v   v
+Record Stream Zoom
+```
+
+Monitoring is diagnostic only: it verifies signal presence at the routing points and is not an audio destination.
+
+Audio Deck remains a separate internal audio source/mix and does not enter the visual Program.
+
 ### Trigger output controls
 
 Triggers can also control output state:
