@@ -122,6 +122,14 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
+  const updateSelectedPlayback = (patch: Partial<NonNullable<Layer["playback"]>>) => {
+    if (!selectedDeck || !selectedLayerModel) return;
+    const current = deckRuntime.getState(selectedDeck.id).playback.get(selectedLayerModel.id);
+    if (!current) return;
+    deckRuntime.setLayerPlayback(selectedDeck.id, selectedLayerModel.id, patch);
+    setRuntimeRevision((value) => value + 1);
+  };
+
   const updateSelectedTransform = (patch: Partial<NonNullable<Layer["transform"]>>) => {
     if (!selectedLayerModel) return;
     const transform = {
@@ -416,7 +424,16 @@ export function App() {
               {openProperty === item && (
                 <div className="property-content">
                   {item === "General" && <><label>Name<input value={selectedLayerModel?.name ?? ""} onChange={(event) => updateSelectedLayer({ name: event.target.value })} /></label><label>Type<div className="property-value">Media Layer</div></label></>}
-                  {item === "Playback" && <><div className="property-buttons"><button>▶ Play</button><button>Ⅱ Pause</button><button>↻ Loop</button></div><label>Speed<input type="range" min="0" max="200" defaultValue="100" /></label></>}
+                  {item === "Playback" && (() => {
+                    const playback = selectedDeck && selectedLayerModel
+                      ? deckRuntime.getState(selectedDeck.id).playback.get(selectedLayerModel.id)
+                      : undefined;
+                    return <><div className="property-buttons">
+                      <button onClick={() => updateSelectedPlayback({ playing: true })}>▶ Play</button>
+                      <button onClick={() => updateSelectedPlayback({ playing: false })}>Ⅱ Pause</button>
+                      <button className={playback?.loop ? "active" : ""} onClick={() => updateSelectedPlayback({ loop: !playback?.loop })}>↻ Loop</button>
+                    </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
+                  })()}
                   {item === "Transform" && <div className="property-grid">
                     {[
                       ["X", "x", 0], ["Y", "y", 0], ["Scale X", "scaleX", 100], ["Scale Y", "scaleY", 100], ["Rotation", "rotation", 0]
