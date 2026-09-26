@@ -61,6 +61,7 @@ export function App() {
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
+  const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
   const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
   const [columnState, setColumnState] = useState<Record<number, boolean>>({});
   const [openProperty, setOpenProperty] = useState("General");
@@ -162,7 +163,10 @@ export function App() {
     }
   };
 
-  const openInputDialog = () => setShowAddInput(true);
+  const openInputDialog = () => {
+    setSelectedInputKind("video");
+    setShowAddInput(true);
+  };
 
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
     setFaders((items) => ({ ...items, [deckId]: { ...items[deckId], [key]: value } }));
@@ -375,18 +379,67 @@ export function App() {
       }} />
       {showAddInput && (
         <div className="modal-backdrop" onClick={() => setShowAddInput(false)}>
-          <div className="add-input-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-head"><div><strong>ADD INPUT</strong><span>Select the type of source to add to the Library</span></div><button onClick={() => setShowAddInput(false)}>×</button></div>
-            <div className="input-choice-grid">
-              {inputTypes.map((item) => (
-                <button className="input-choice" key={item.kind} onClick={() => addInput(item.kind, item.accept)}>
-                  <strong>{item.label}</strong>
-                  <small>{item.accept ? "Add source files to Library" : "Configure source in Properties"}</small>
-                </button>
-              ))}
-              <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
+          <div className="add-input-modal input-select-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <div><strong>INPUT SELECT</strong><span>Choose a source type, then configure or add it to the Library.</span></div>
+              <button onClick={() => setShowAddInput(false)}>×</button>
             </div>
-            <div className="modal-drop">Or drag files directly into Library</div>
+            <div className="input-select-body">
+              <div className="input-sidebar">
+                <div className="input-group-title">MEDIA</div>
+                {inputTypes.filter((item) => ["video","image","audio","audio-input","list","image-sequence","powerpoint","pdf"].includes(item.kind)).map((item) => (
+                  <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
+                ))}
+                <div className="input-group-title">LIVE / CAPTURE</div>
+                {inputTypes.filter((item) => ["camera","ndi","ip-camera"].includes(item.kind)).map((item) => (
+                  <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
+                ))}
+                <div className="input-group-title">GENERATED / INTERNAL</div>
+                {inputTypes.filter((item) => ["colour","timer","title","composition","video-delay"].includes(item.kind)).map((item) => (
+                  <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
+                ))}
+                <div className="input-group-title">EMBEDDED</div>
+                {inputTypes.filter((item) => item.kind === "web-browser").map((item) => (
+                  <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
+                ))}
+              </div>
+              <div className="input-config">
+                {(() => {
+                  const selected = inputTypes.find((item) => item.kind === selectedInputKind) ?? inputTypes[0];
+                  const fileBased = Boolean(selected.accept);
+                  return (
+                    <>
+                      <div className="input-config-title"><strong>{selected.label}</strong><span>{fileBased ? "File source" : "Source configuration"}</span></div>
+                      {fileBased ? (
+                        <div className="input-file-config">
+                          <div className="input-file-drop">Select one or more source files for the Library.</div>
+                          <button className="input-browse" onClick={() => addInput(selected.kind, selected.accept)}>BROWSE FILES</button>
+                          <div className="input-config-note">Accepted: {selected.accept}</div>
+                        </div>
+                      ) : (
+                        <div className="input-technical-config">
+                          {selected.kind === "camera" && <><label>Device<select defaultValue=""><option value="">Auto Detect</option></select></label><label>Video Format<select defaultValue="auto"><option value="auto">Auto</option></select></label><label>FPS<select defaultValue="auto"><option value="auto">Auto / Best Performance</option></select></label></>}
+                          {selected.kind === "ndi" && <><label>Source<select defaultValue=""><option value="">Detect NDI sources on LAN</option></select></label><label>Capture<select defaultValue="desktop"><option value="desktop">Desktop / Window</option></select></label></>}
+                          {selected.kind === "ip-camera" && <><label>Protocol<select defaultValue="rtsp"><option value="rtsp">RTSP</option><option value="onvif">ONVIF</option></select></label><label>Address<input placeholder="rtsp://..." /></label><label>Latency<select defaultValue="low"><option value="low">Low Latency</option></select></label></>}
+                          {selected.kind === "audio-input" && <><label>Device<select defaultValue=""><option value="">Detect audio devices</option></select></label><label>Channels<select defaultValue="stereo"><option value="mono">Mono</option><option value="stereo">Stereo</option></select></label></>}
+                          {selected.kind === "web-browser" && <><label>URL<input placeholder="https://..." /></label><label>Resolution<select defaultValue="auto"><option value="auto">Auto</option></select></label></>}
+                          {["colour","timer","title","composition","video-delay"].includes(selected.kind) && <div className="input-config-note">This is an internal VisCo source. Create it first, then configure its detailed properties from the Properties panel.</div>}
+                          {["camera","ndi","ip-camera","audio-input","web-browser"].includes(selected.kind) && <div className="input-config-note">Technical settings are retained by the source and can be refined later in Properties.</div>}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            <div className="input-select-footer">
+              <div className="modal-drop">Files can also be dragged directly into Library.</div>
+              <div className="input-select-actions">
+                <button className="modal-cancel" onClick={() => setShowAddInput(false)}>CANCEL</button>
+                {!inputTypes.find((item) => item.kind === selectedInputKind)?.accept && <button className="modal-add" onClick={() => addInternalInput(selectedInputKind)}>ADD TO LIBRARY</button>}
+              </div>
+            </div>
+            <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
           </div>
         </div>
       )}
