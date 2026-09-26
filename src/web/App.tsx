@@ -72,7 +72,6 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
-  const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
   const [columnState, setColumnState] = useState<Record<number, boolean>>({});
   const [openProperty, setOpenProperty] = useState("General");
   const [layerName, setLayerName] = useState("Layer 2");
@@ -170,7 +169,16 @@ export function App() {
     const itemId = event.dataTransfer.getData("text/library-id");
     const item = libraryItems.find((entry) => entry.id === itemId);
     if (item) {
-      setLayerMedia((items) => ({ ...items, [deckId + ":" + layerId]: item.id }));
+      setDecks((current) => current.map((deck) =>
+        deck.id !== deckId
+          ? deck
+          : {
+              ...deck,
+              layers: deck.layers.map((layer) =>
+                layer.id === layerId ? { ...layer, sourceId: item.id } : layer
+              )
+            }
+      ));
     }
   };
 
@@ -320,8 +328,9 @@ export function App() {
                     {deck.layers.map((layer, index) => {
                       const isProgram = deck.kind === "visual" && program.deckId === deck.id && program.layerId === layer.id;
                       const isPreview = deck.kind === "visual" && preview.deckId === deck.id && preview.layerId === layer.id;
-                      const mediaId = layerMedia[deck.id + ":" + layer.id];
-                      const mediaName = mediaId ? libraryEngine.get(mediaId).name : undefined;
+                      const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
+                        ? libraryEngine.get(layer.sourceId).name
+                        : undefined;
                       return (
                         <article className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")} key={layer.id}>
                           <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
