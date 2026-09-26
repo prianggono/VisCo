@@ -61,12 +61,6 @@ export class DeckRuntime {
     return state;
   }
 
-  setMasterEnabled(deckId: string, enabled: boolean): DeckRuntimeState {
-    const state = { ...this.require(deckId), masterEnabled: enabled };
-    this.states.set(deckId, state);
-    return state;
-  }
-
   setAudioLevel(deckId: string, level: number): DeckRuntimeState {
     const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
     this.states.set(deckId, state);
