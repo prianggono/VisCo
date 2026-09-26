@@ -8,7 +8,7 @@ const deck: Deck = {
   id: "deck-m",
   name: "Muted Deck",
   layers: [{ id: "layer-1", name: "Layer 1" }],
-  masterEnabled: false,
+  masterLevel: 0,
   transition: { type: "fade", durationMs: 500 }
 };
 
@@ -28,7 +28,7 @@ describe("Deck M gate", () => {
 
   it("X deselects active layer without clearing Preview", () => {
     const runtime = new DeckRuntime();
-    runtime.register({ ...deck, masterEnabled: true });
+    runtime.register({ ...deck, masterLevel: 100 });
     runtime.programLayer({ ...deck, masterEnabled: true }, "layer-1");
     const state = runtime.deselectActiveLayer("deck-m");
     expect(state.activeLayerId).toBeNull();
