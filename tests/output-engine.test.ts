@@ -157,6 +157,24 @@ describe("Output Engine", () => {
     expect(output.getState("media-main").source).toEqual(deck2Layer2);
   });
 
+  it("does not let a Deck override cross a Composition boundary", () => {
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-media",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1",
+      compositionId: "media"
+    });
+    output.route("display-media", deck1Layer2);
+
+    const states = output.syncFromDeck("deck-1", deck1Layer2, "venue");
+
+    expect(states).toHaveLength(0);
+    expect(output.getState("display-media").source).toEqual(deck1Layer2);
+  });
+
   it("does not route to a disabled output", () => {
     const output = new OutputEngine();
     output.register({
