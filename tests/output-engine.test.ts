@@ -204,3 +204,40 @@ describe("Output Engine", () => {
     expect(state.source).toEqual(deck1Layer2);
   });
 });
+
+  it("keeps Stream and Record encoder settings independent while sharing Media Composition", () => {
+    const output = new OutputEngine();
+    output.register(mediaTarget({
+      media: {
+        compositionId: "media-composition",
+        resolution: [1920, 1080],
+        fps: 29.97,
+        streaming: true,
+        recording: true,
+        virtual: true,
+        stream: {
+          resolution: [1920, 1080],
+          fps: 29.97,
+          codec: "h264",
+          bitrate: "auto",
+          server: "rtmp://example",
+          key: "secret"
+        },
+        record: {
+          resolution: [3840, 2160],
+          fps: 60,
+          codec: "h264",
+          bitrate: 20000000,
+          segmentMinutes: 5,
+          targetFolder: "D:/Recordings"
+        }
+      }
+    }));
+
+    const media = output.getState("media-main").target.media;
+    expect(media?.compositionId).toBe("media-composition");
+    expect(media?.stream?.resolution).toEqual([1920, 1080]);
+    expect(media?.record?.resolution).toEqual([3840, 2160]);
+    expect(media?.record?.fps).toBe(60);
+  });
+
