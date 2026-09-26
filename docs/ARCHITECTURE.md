@@ -86,7 +86,7 @@ Before changing a feature:
 - R003: Output routing
 - R004: Source/Library model
 - R005: Composition/Group/Slice model
-- R006: Audio Master/VB isolation
+- R006: Audio In/VB/Record-Stream-Zoom routing
 - R007: Physical/Virtual Output split
 - R008: Project persistence + revision history
 - R009: Health Check
