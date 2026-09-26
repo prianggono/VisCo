@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
+import { OutputEngine } from "../engine/output-engine.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -43,8 +44,21 @@ export function App() {
   const [program, setProgram] = useState({ deckId: "deck-1", layerId: "layer-1" });
   const [preview, setPreview] = useState({ deckId: "deck-1", layerId: "layer-2" });
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "layer-2" });
-  const [media, setMedia] = useState({ fullscreen: true, stream: true, record: false, virtual: false });
+
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
+  const outputEngine = useMemo(() => {
+    const engine = new OutputEngine();
+    engine.register({ id: "fullscreen", kind: "display", enabled: true });
+    engine.register({
+      id: "media-output",
+      kind: "media",
+      enabled: true,
+      media: { compositionId: "default", resolution: [1920, 1080], fps: 29.97, streaming: true, recording: false, virtual: false }
+    });
+    return engine;
+  }, []);
+  const [, setOutputRevision] = useState(0);
+
   const deckRuntime = useMemo(() => {
     const runtime = new DeckRuntime();
     initialDecks.forEach((deck) => runtime.register(deck));
@@ -163,6 +177,21 @@ export function App() {
   const openInputDialog = () => {
     setSelectedInputKind("video");
     setShowAddInput(true);
+  };
+
+  const outputState = outputEngine.getState("media-output");
+  const mediaSettings = outputState.target.media!;
+  const fullscreenState = outputEngine.getState("fullscreen");
+
+  const toggleOutput = (targetId: string) => {
+    const state = outputEngine.getState(targetId);
+    outputEngine.setEnabled(targetId, !state.target.enabled);
+    setOutputRevision((value) => value + 1);
+  };
+
+  const toggleMediaFeature = (feature: "stream" | "record" | "virtual") => {
+    outputEngine.setMediaFeature("media-output", feature, !mediaSettings[feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual"]);
+    setOutputRevision((value) => value + 1);
   };
 
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
@@ -346,7 +375,7 @@ export function App() {
       <footer className="media-bar">
         <div className="output-group">
           <div className="output-control">
-            <button className={media.fullscreen ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, fullscreen: !media.fullscreen })}>FULLSCREEN</button>
+            <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("fullscreen")}>FULLSCREEN</button>
             <button className="output-gear" title="Fullscreen settings">⚙</button>
           </div>
           <div className="output-control">
@@ -359,7 +388,7 @@ export function App() {
           </div>
           <button className={media.virtual ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, virtual: !media.virtual })}>VIRTUAL OUT</button>
         </div>
-        <div className="resolution"><span>1920 × 1080</span><span>60 FPS</span></div>
+        <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
