@@ -35,7 +35,7 @@ export class LayerInteraction {
   }
 
   getViewState(deck: Deck): DeckLayerViewState {
-    const state = this.controller.getState(deck.id);
+    const state = this.controller.getState(deck);
 
     return {
       deckId: deck.id,
