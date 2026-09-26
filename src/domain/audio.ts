@@ -1,4 +1,6 @@
-export type AudioBus = "master" | "visco-vb";
+export type AudioBus = "audio-in" | "master" | "visco-vb" | "record" | "stream" | "zoom";
+
+export type AudioDestination = "record" | "stream" | "zoom";
 
 export interface AudioRoute {
   readonly sourceId: string;
@@ -7,22 +9,34 @@ export interface AudioRoute {
   readonly enabled: boolean;
 }
 
+export interface AudioMonitoringState {
+  readonly sourceId: string;
+  readonly bus: AudioBus;
+  readonly signalPresent: boolean;
+}
+
 /**
- * VisCo VB is intentionally isolated from Master.
- * VB -> Master must never be created by the routing engine.
- * Master -> VB is allowed only when explicitly requested.
+ * Canonical external audio path:
+ * Sound Card Input -> Audio In -> VisCo VB -> Record / Stream / Zoom.
+ *
+ * Monitoring is diagnostic only. It observes signal state and never becomes
+ * part of the audio signal path.
  */
 export function canRoute(sourceBus: AudioBus, targetBus: AudioBus): boolean {
-  if (sourceBus === "visco-vb" && targetBus === "master") return false;
-  return true;
+  if (sourceBus === "audio-in" && targetBus === "visco-vb") return true;
+  if (sourceBus === "visco-vb" && (targetBus === "record" || targetBus === "stream" || targetBus === "zoom")) {
+    return true;
+  }
+  return false;
 }
 
 export class AudioRoutingEngine {
   private readonly routes = new Map<string, AudioRoute>();
+  private readonly monitoring = new Map<string, AudioMonitoringState>();
 
   connect(sourceId: string, sourceBus: AudioBus, targetBus: AudioBus): AudioRoute {
     if (!canRoute(sourceBus, targetBus)) {
-      throw new Error("VisCo VB cannot route into Master.");
+      throw new Error(`Audio route "${sourceBus}" -> "${targetBus}" is not allowed.`);
     }
 
     const route: AudioRoute = {
@@ -50,6 +64,16 @@ export class AudioRoutingEngine {
     return next;
   }
 
+  setSignalPresent(sourceId: string, bus: AudioBus, signalPresent: boolean): AudioMonitoringState {
+    const state = { sourceId, bus, signalPresent };
+    this.monitoring.set(this.key(sourceId, bus), state);
+    return state;
+  }
+
+  getSignalState(sourceId: string, bus: AudioBus): AudioMonitoringState | null {
+    return this.monitoring.get(this.key(sourceId, bus)) ?? null;
+  }
+
   getRoutes(): readonly AudioRoute[] {
     return [...this.routes.values()];
   }
@@ -58,8 +82,16 @@ export class AudioRoutingEngine {
     return this.getRoutes().filter((route) => route.targetBus === targetBus && route.enabled);
   }
 
-  private key(sourceId: string, targetBus: AudioBus): string {
-    return `${sourceId}::${targetBus}`;
+  getDestinationsFromVb(): readonly AudioDestination[] {
+    return this.getRoutesForTarget("visco-vb")
+      .map((route) => route.targetBus)
+      .filter((target): target is AudioDestination =>
+        target === "record" || target === "stream" || target === "zoom"
+      );
+  }
+
+  private key(sourceId: string, bus: AudioBus): string {
+    return `${sourceId}::${bus}`;
   }
 }
 
