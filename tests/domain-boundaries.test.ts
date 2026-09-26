@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canRoute, defaultLicense } from "../src/domain/audio.js";
+import { canRoute } from "../src/domain/audio.js";
 import { defaultLicense as license } from "../src/domain/license.js";
 
 describe("VisCo domain boundaries", () => {
