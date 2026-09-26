@@ -1,7 +1,9 @@
-import { useState, type DragEvent } from "react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
+import { LibraryEngine } from "../engine/library-engine.js";
+import type { Source, SourceKind } from "../domain/source.js";
 
 type Layer = { id: string; name: string };
-type LibraryItem = { id: string; name: string; kind: string };
+type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
 type Deck = {
   id: string;
@@ -23,7 +25,25 @@ const initialDecks: Deck[] = [
   { id: "deck-2", name: "Deck 2", kind: "visual", transition: "Cut · 0 ms", loop: false, layers: makeLayers() }
 ];
 
-const inputTypes = ["Video", "Image", "Audio", "Capture", "Composition"];
+const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = [
+  { label: "Video", kind: "video", accept: "video/*" },
+  { label: "Image", kind: "image", accept: "image/*" },
+  { label: "Audio", kind: "audio", accept: "audio/*" },
+  { label: "Audio Input", kind: "audio-input" },
+  { label: "List", kind: "list", accept: ".m3u,.m3u8" },
+  { label: "Image Sequence / Stinger", kind: "image-sequence" },
+  { label: "PowerPoint", kind: "powerpoint", accept: ".ppt,.pptx" },
+  { label: "PDF", kind: "pdf", accept: ".pdf" },
+  { label: "Camera", kind: "camera" },
+  { label: "NDI / Desktop Capture", kind: "ndi" },
+  { label: "IP Camera", kind: "ip-camera" },
+  { label: "Colour", kind: "colour" },
+  { label: "Timer", kind: "timer" },
+  { label: "Title / Lower Third", kind: "title" },
+  { label: "Composition", kind: "composition" },
+  { label: "Video Delay", kind: "video-delay" },
+  { label: "Web Browser", kind: "web-browser" }
+];
 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
@@ -37,7 +57,10 @@ export function App() {
   );
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
+  const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [layerMedia, setLayerMedia] = useState<Record<string, string>>({});
   const [columnState, setColumnState] = useState<Record<number, boolean>>({});
   const [openProperty, setOpenProperty] = useState("General");
@@ -69,29 +92,65 @@ export function App() {
     setShowAddDeck(false);
   };
 
-  const addInput = (kind: string) => {
-    const extension = kind === "Video" ? "mp4" : kind === "Image" ? "jpg" : kind === "Audio" ? "wav" : kind.toLowerCase();
-    const item: LibraryItem = {
-      id: "input-" + Date.now(),
-      name: "New " + kind + "." + extension,
+  const inferSourceKind = (mime: string, name: string): SourceKind => {
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("audio/")) return "audio";
+    if (/\.m3u8?$/i.test(name)) return "list";
+    if (/\.pptx?$/i.test(name)) return "powerpoint";
+    if (/\.pdf$/i.test(name)) return "pdf";
+    return "video";
+  };
+
+  const registerFiles = (files: File[], kind?: SourceKind) => {
+    const sources = files.map((file, index) => {
+      const source: Source = {
+        id: "source-" + Date.now() + "-" + index,
+        name: file.name,
+        kind: kind ?? inferSourceKind(file.type, file.name),
+        uri: URL.createObjectURL(file),
+        metadata: { fileType: file.type, size: file.size }
+      };
+      libraryEngine.add(source);
+      return source;
+    });
+    if (sources.length) setLibraryItems((items) => [...items, ...sources]);
+  };
+
+  const addInternalInput = (kind: SourceKind) => {
+    const source: Source = {
+      id: "source-" + Date.now(),
+      name: kind === "colour" ? "Colour" : kind === "timer" ? "Timer" : kind,
       kind
     };
-    setLibraryItems((items) => [...items, item]);
+    libraryEngine.add(source);
+    setLibraryItems((items) => [...items, source]);
     setShowAddInput(false);
+  };
+
+  const addInput = (kind: SourceKind, accept?: string) => {
+    if (["colour", "timer", "title", "composition", "video-delay", "web-browser", "audio-input", "camera", "ndi", "ip-camera"].includes(kind)) {
+      addInternalInput(kind);
+      return;
+    }
+    setPendingInputKind(kind);
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = accept ?? "";
+      fileInputRef.current.click();
+    }
   };
 
   const handleLibraryDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
-    if (!files.length) return;
-    setLibraryItems((items) => [
-      ...items,
-      ...files.map((file, index) => ({
-        id: "file-" + Date.now() + "-" + index,
-        name: file.name,
-        kind: "File"
-      }))
-    ]);
+    registerFiles(Array.from(event.dataTransfer.files));
+  };
+
+  const handleInputFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length) registerFiles(files, pendingInputKind ?? undefined);
+    event.target.value = "";
+    setPendingInputKind(null);
+    setShowAddInput(false);
   };
 
   const handleLayerDrop = (event: DragEvent<HTMLButtonElement>, deckId: string, layerId: string) => {
