@@ -26,8 +26,12 @@ describe("Audio Output Router", () => {
 
     const state = new AudioOutputRouter(audio, output).sync();
 
-    expect(state.sourceDecks).toHaveLength(1);
-    expect(state.sourceDecks[0]?.deckId).toBe("audio-deck-1");
+    expect(state.mix.sources).toHaveLength(1);
+    expect(state.mix.sources[0]).toEqual({
+      deckId: "audio-deck-1",
+      layerId: "layer-1",
+      gain: 1
+    });
     expect(state.outputs).toEqual(["media-output"]);
   });
 
@@ -53,7 +57,41 @@ describe("Audio Output Router", () => {
 
     const state = new AudioOutputRouter(audio, output).sync();
 
-    expect(state.sourceDecks).toHaveLength(1);
+    expect(state.mix.sources).toHaveLength(1);
     expect(state.outputs).toEqual([]);
   });
 });
+
+  it("mixes multiple active Audio Decks using their individual levels", () => {
+    const audio = new AudioEngine();
+
+    audio.registerDeck("audio-deck-1");
+    audio.registerDeck("audio-deck-2");
+    audio.selectLayer("audio-deck-1", "layer-1");
+    audio.selectLayer("audio-deck-2", "layer-2");
+    audio.setLevel("audio-deck-1", 75);
+    audio.setLevel("audio-deck-2", 40);
+
+    expect(audio.getMasterMix()).toEqual({
+      sources: [
+        { deckId: "audio-deck-1", layerId: "layer-1", gain: 0.75 },
+        { deckId: "audio-deck-2", layerId: "layer-2", gain: 0.4 }
+      ]
+    });
+  });
+
+  it("excludes muted Audio Decks from the Master Audio mix", () => {
+    const audio = new AudioEngine();
+
+    audio.registerDeck("audio-deck-1");
+    audio.registerDeck("audio-deck-2");
+    audio.selectLayer("audio-deck-1", "layer-1");
+    audio.selectLayer("audio-deck-2", "layer-2");
+    audio.setEnabled("audio-deck-2", false);
+
+    expect(audio.getMasterMix()).toEqual({
+      sources: [
+        { deckId: "audio-deck-1", layerId: "layer-1", gain: 1 }
+      ]
+    });
+  });
