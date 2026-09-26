@@ -3,6 +3,7 @@ import type { Deck } from "../src/domain/deck.js";
 import { ProgramEngine } from "../src/engine/program-engine.js";
 import { TriggerEngine } from "../src/engine/trigger-engine.js";
 import { OutputEngine } from "../src/engine/output-engine.js";
+import { DeckRuntime } from "../src/engine/deck-runtime.js";
 
 const deck1: Deck = {
   id: "deck-1",
@@ -37,6 +38,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("trigger can program Deck 3 / Layer 2 and Program uses Deck 3 transition", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(deck1);
+    runtime.register(deck3);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -49,12 +54,13 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         type: "program",
         target: { deckId: "deck-3", layerId: "layer-2" }
       },
-      { decks, program }
+      { decks, controller }
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
     expect(state.layer?.id).toBe("layer-2");
     expect(state.transition).toEqual({ type: "wipe", durationMs: 300 });
+    expect(controller.getState(deck3).deck.activeLayerId).toBe("layer-2");
   });
 
   it("does not store transition on a trigger action", () => {
@@ -70,6 +76,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -99,7 +107,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         type: "program",
         target: { deckId: "deck-3", layerId: "layer-2" }
       },
-      { decks, program, output }
+      { decks, controller, output }
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
@@ -117,6 +125,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -150,7 +160,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
           { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
         ]
       },
-      { decks, program, output }
+      { decks, controller, output }
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
@@ -166,6 +176,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
 
     output.register({
       id: "display-main",
@@ -179,7 +191,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         outputId: "display-main",
         enabled: false
       },
-      { decks: new Map(), program, output }
+      { decks: new Map(), controller, output }
     );
 
     expect(output.getState("display-main").target.enabled).toBe(false);
@@ -190,6 +202,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
 
     output.register({
       id: "display-main",
@@ -207,7 +221,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         outputId: "display-main",
         enabled: true
       },
-      { decks: new Map([[deck1.id, deck1]]), program, output }
+      { decks: new Map([[deck1.id, deck1]]), controller, output }
     );
 
     expect(output.getState("display-main").active).toBe(true);
@@ -221,6 +235,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
 
     output.register({
       id: "media-main",
@@ -259,7 +275,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
           }
         ]
       },
-      { decks: new Map(), program, output }
+      { decks: new Map(), controller, output }
     );
 
     expect(output.getState("media-main").target.media).toEqual({
@@ -274,6 +290,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("allows the same command type when its targets are different", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(deck1);
+    runtime.register(deck3);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -288,7 +308,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
             { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
           ]
         },
-        { decks, program }
+        { decks, controller }
       )
     ).not.toThrow();
   });
@@ -296,6 +316,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("rejects an exact duplicate command before execution", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(deck1);
+    runtime.register(deck3);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([[deck1.id, deck1]]);
 
     expect(() =>
@@ -307,7 +331,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
             { type: "program", target: { deckId: "deck-1", layerId: "layer-2" } }
           ]
         },
-        { decks, program }
+        { decks, controller }
       )
     ).toThrow('Duplicate command "PROGRAM deck-1/layer-2"');
   });
@@ -316,6 +340,8 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
 
     output.register({
       id: "display-main",
@@ -340,7 +366,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
             }
           ]
         },
-        { decks: new Map(), program, output }
+        { decks: new Map(), controller, output }
       )
     ).toThrow("Conflicting command");
 
@@ -350,6 +376,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("rejects an invalid target before changing Program", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(deck1);
+    runtime.register(deck3);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([[deck1.id, deck1]]);
 
     program.program(deck1, "layer-1");
@@ -360,11 +390,11 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
           type: "program",
           target: { deckId: "deck-1", layerId: "layer-99" }
         },
-        { decks, program }
+        { decks, controller }
       )
     ).toThrow('Layer "layer-99" does not exist in deck "deck-1".');
 
-    expect(program.getState().source).toEqual({
+    expect(controller.getProgramState().source).toEqual({
       deckId: "deck-1",
       layerId: "layer-1"
     });
@@ -373,6 +403,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   it("supports multi-action trigger sequences", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(deck1);
+    runtime.register(deck3);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -386,7 +420,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
           { type: "program", target: { deckId: "deck-3", layerId: "layer-2" } }
         ]
       },
-      { decks, program }
+      { decks, controller }
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
