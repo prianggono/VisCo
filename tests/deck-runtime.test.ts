@@ -95,4 +95,18 @@ describe("Deck Runtime", () => {
       visualLevel: 100
     });
   });
+
+  it("maps column two to the second layer even with a custom id", () => {
+    const runtime = new DeckRuntime();
+    const customDeck: Deck = {
+      ...deck,
+      layers: [
+        { id: "intro", name: "Intro" },
+        { id: "program-main", name: "Program Main" }
+      ]
+    };
+    runtime.register(customDeck);
+
+    expect(runtime.setColumnEnabled(customDeck.id, 2, true).playback.get("program-main")?.playing).toBe(true);
+  });
 });
