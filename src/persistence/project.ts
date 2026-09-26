@@ -16,8 +16,10 @@ export interface ProjectSnapshot {
   readonly slices: readonly Slice[];
   readonly sources: readonly Source[];
   readonly library?: Library;
-  readonly outputs?: readonly OutputTarget[];
-  readonly license?: LicenseInfo;
+  /** Persisted output routing configuration; required so project restore cannot silently lose outputs. */
+  readonly outputs: readonly OutputTarget[];
+  /** Persisted license state; required so project restore preserves watermark policy. */
+  readonly license: LicenseInfo;
 }
 
 export interface RevisionSnapshot {
