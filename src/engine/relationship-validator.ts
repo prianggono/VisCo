@@ -38,7 +38,7 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     if (deck.compositionId !== undefined && !compositionIds.has(deck.compositionId)) errors.push(`Deck "${deck.id}" references missing composition "${deck.compositionId}".`);
     for (const layer of deck.layers) {
       if (!layerIds.has(layer.id)) errors.push(`Deck "${deck.id}" contains unregistered layer "${layer.id}".`);
-      if (layer.sourceId !== undefined && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
+      if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
       for (const sliceId of layer.sliceIds ?? []) if (!sliceIds.has(sliceId)) errors.push(`Layer "${layer.id}" references missing slice "${sliceId}".`);
     }
   }
