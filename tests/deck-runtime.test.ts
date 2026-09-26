@@ -82,6 +82,7 @@ describe("Deck Runtime", () => {
 
     expect(runtime.clearActiveLayer("deck-1")).toEqual({
       deckId: "deck-1",
+      previewLayerId: "layer-2",
       activeLayerId: null
     });
   });
