@@ -122,6 +122,15 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
+  const updateSelectedDocument = (patch: Partial<NonNullable<Source["document"]>>) => {
+    if (!selectedLayerModel?.sourceId) return;
+    const source = libraryEngine.get(selectedLayerModel.sourceId);
+    if (source.kind !== "powerpoint" && source.kind !== "pdf") return;
+    libraryEngine.update({ ...source, document: { ...(source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }), ...patch } });
+    setLibraryItems(libraryEngine.list());
+    setRuntimeRevision((value) => value + 1);
+  };
+
   const updateSelectedSourceList = (patch: Partial<NonNullable<Source["list"]>>) => {
     if (!selectedLayerModel?.sourceId) return;
     const source = libraryEngine.get(selectedLayerModel.sourceId);
@@ -170,6 +179,7 @@ export function App() {
   };
 
   const sourceKindIsList = (kind: SourceKind): boolean => kind === "list";
+  const sourceKindIsDocument = (kind: SourceKind): boolean => kind === "powerpoint" || kind === "pdf";
 
   const inferSourceKind = (mime: string, name: string): SourceKind => {
     if (mime.startsWith("video/")) return "video";
@@ -191,6 +201,9 @@ export function App() {
         metadata: { fileType: file.type, size: file.size },
         ...(sourceKindIsList(kind ?? inferSourceKind(file.type, file.name)) ? {
           list: { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }
+        } : {}),
+        ...(sourceKindIsDocument(kind ?? inferSourceKind(file.type, file.name)) ? {
+          document: { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }
         } : {})
       };
       libraryEngine.add(source);
@@ -438,6 +451,12 @@ export function App() {
               {openProperty === item && (
                 <div className="property-content">
                   {item === "General" && <><label>Name<input value={selectedLayerModel?.name ?? ""} onChange={(event) => updateSelectedLayer({ name: event.target.value })} /></label><label>Type<div className="property-value">{selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId) ? libraryEngine.get(selectedLayerModel.sourceId).kind : "Media Layer"}</div></label></>}
+                  {item === "Document" && (() => {
+                    const source = selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId) ? libraryEngine.get(selectedLayerModel.sourceId) : undefined;
+                    if (!source || (source.kind !== "powerpoint" && source.kind !== "pdf")) return <div className="property-empty">Select a PowerPoint or PDF source.</div>;
+                    const config = source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false };
+                    return <><div className="property-buttons"><button onClick={() => updateSelectedDocument({ currentPage: Math.max(1, config.currentPage - 1) })}>Previous</button><button onClick={() => updateSelectedDocument({ currentPage: config.currentPage + 1 })}>Next</button><button onClick={() => updateSelectedDocument({ autoNext: !config.autoNext })}>{config.autoNext ? "✓ Auto Next" : "Auto Next"}</button></div><label>Duration (ms)<input type="number" min="0" value={config.durationMs} onChange={(event) => updateSelectedDocument({ durationMs: Number(event.target.value) })} /></label><div className="property-buttons"><button onClick={() => updateSelectedDocument({ autoFirst: !config.autoFirst })}>{config.autoFirst ? "✓ Auto First" : "Auto First"}</button><button onClick={() => updateSelectedDocument({ loop: !config.loop })}>{config.loop ? "✓ Loop" : "Loop"}</button></div><label>Page<input type="number" min="1" value={config.currentPage} onChange={(event) => updateSelectedDocument({ currentPage: Number(event.target.value) })} /></label></>;
+                  })()}
                   {item === "List" && (() => {
                     const source = selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId)
                       ? libraryEngine.get(selectedLayerModel.sourceId)
