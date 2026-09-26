@@ -28,16 +28,13 @@ export class DeckProgramController {
       this.outputEngine.syncFromDeck(deck.id, programState.source);
     }
 
-    return {
-      deck: deckState,
-      program: programState
-    };
+    return { deck: deckState, program: programState };
   }
 
   getState(deckId: string): DeckProgramControllerState {
     return {
       deck: this.deckRuntime.getState(deckId),
-      program: this.programEngine.getState(deck.compositionId ?? "default")
+      program: this.programEngine.getState("default")
     };
   }
 }
