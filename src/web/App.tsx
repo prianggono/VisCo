@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type DragEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { LibraryEngine } from "../engine/library-engine.js";
 import type { Source, SourceKind } from "../domain/source.js";
 
@@ -145,7 +145,7 @@ export function App() {
     registerFiles(Array.from(event.dataTransfer.files));
   };
 
-  const handleInputFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length) registerFiles(files, pendingInputKind ?? undefined);
     event.target.value = "";
@@ -158,7 +158,7 @@ export function App() {
     const itemId = event.dataTransfer.getData("text/library-id");
     const item = libraryItems.find((entry) => entry.id === itemId);
     if (item) {
-      setLayerMedia((items) => ({ ...items, [deckId + ":" + layerId]: item.name }));
+      setLayerMedia((items) => ({ ...items, [deckId + ":" + layerId]: item.id }));
     }
   };
 
@@ -286,7 +286,8 @@ export function App() {
                     {deck.layers.map((layer, index) => {
                       const isProgram = deck.kind === "visual" && program.deckId === deck.id && program.layerId === layer.id;
                       const isPreview = deck.kind === "visual" && preview.deckId === deck.id && preview.layerId === layer.id;
-                      const mediaName = layerMedia[deck.id + ":" + layer.id];
+                      const mediaId = layerMedia[deck.id + ":" + layer.id];
+                      const mediaName = mediaId ? libraryEngine.get(mediaId).name : undefined;
                       return (
                         <article className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")} key={layer.id}>
                           <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
@@ -378,8 +379,12 @@ export function App() {
             <div className="modal-head"><div><strong>ADD INPUT</strong><span>Select the type of source to add to the Library</span></div><button onClick={() => setShowAddInput(false)}>×</button></div>
             <div className="input-choice-grid">
               {inputTypes.map((item) => (
-                <button className="input-choice" key={item} onClick={() => addInput(item)}><strong>{item}</strong><small>{item === "Video" ? "Video files and clips" : item === "Image" ? "Still images and graphics" : item === "Audio" ? "Music and audio files" : item === "Capture" ? "Camera, HDMI, SDI and capture devices" : "Generated and composed sources"}</small></button>
+                <button className="input-choice" key={item.kind} onClick={() => addInput(item.kind, item.accept)}>
+                  <strong>{item.label}</strong>
+                  <small>{item.accept ? "Add source files to Library" : "Configure source in Properties"}</small>
+                </button>
               ))}
+              <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
             </div>
             <div className="modal-drop">Or drag files directly into Library</div>
           </div>
