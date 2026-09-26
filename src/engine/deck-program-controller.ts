@@ -19,7 +19,7 @@ export class DeckProgramController {
     return this.deckRuntime.previewLayer(deck, layerId);
   }
 
-  program(deck: Deck, layerId: string): DeckProgramControllerState {
+  program(deck: Deck, layerId: string, options: { readonly syncOutputs?: boolean } = {}): DeckProgramControllerState {
     if ((deck as Deck & { kind?: "visual" | "audio" }).kind === "audio") {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
@@ -29,12 +29,16 @@ export class DeckProgramController {
     const runtimeDeck: Deck = { ...deck, masterLevel: deckState.masterLevel };
     const programState = this.programEngine.program(runtimeDeck, layerId);
 
-    if (this.outputEngine && programState.source) {
+    if (options.syncOutputs !== false && this.outputEngine && programState.source) {
       this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
       this.outputEngine.syncFromDeck(deck.id, programState.source);
     }
 
     return { deck: deckState, program: programState };
+  }
+
+  getProgramState(compositionId = "default"): ProgramState {
+    return this.programEngine.getState(compositionId);
   }
 
   getState(deck: Deck): DeckProgramControllerState;
