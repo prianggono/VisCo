@@ -2,6 +2,8 @@ import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "rea
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
 import { OutputEngine } from "../engine/output-engine.js";
+import { ProgramEngine } from "../engine/program-engine.js";
+import { DeckProgramController } from "../engine/deck-program-controller.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -41,8 +43,6 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
-  const [program, setProgram] = useState({ deckId: "deck-1", layerId: "layer-1" });
-  const [preview, setPreview] = useState({ deckId: "deck-1", layerId: "layer-2" });
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "layer-2" });
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
@@ -65,6 +65,8 @@ export function App() {
     return runtime;
   }, []);
   const [, setRuntimeRevision] = useState(0);
+  const programEngine = useMemo(() => new ProgramEngine(), []);
+  const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
@@ -77,15 +79,32 @@ export function App() {
   const [layerName, setLayerName] = useState("Layer 2");
 
   const selectPreview = (deckId: string, layerId: string) => {
-    setPreview({ deckId, layerId });
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck) return;
+    deckProgramController.preview(deck, layerId);
+    setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
   };
 
   const programLayer = (deckId: string, layerId: string) => {
-    if (!deckRuntime.getState(deckId).masterEnabled) return;
-    setProgram({ deckId, layerId });
-    setPreview({ deckId, layerId });
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck || !deckRuntime.getState(deckId).masterEnabled) return;
+    deckProgramController.program(deck, layerId);
+    setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
+  };
+
+  const getPreviewRef = () => {
+    for (const deck of decks) {
+      const layerId = deckRuntime.getState(deck.id).previewLayerId;
+      if (layerId) return { deckId: deck.id, layerId };
+    }
+    return { deckId: "", layerId: "" };
+  };
+
+  const getProgramRef = () => {
+    const state = programEngine.getState("default").source;
+    return state ?? { deckId: "", layerId: "" };
   };
 
   const addDeck = (kind: DeckKind) => {
@@ -259,7 +278,7 @@ export function App() {
         <section className="center">
           <div className="monitors">
             <div className="monitor">
-              <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{preview.deckId} / {preview.layerId}</span></div>
+              <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{getPreviewRef().deckId} / {getPreviewRef().layerId}</span></div>
               <div className="preview-canvas"><span>PREVIEW</span></div>
             </div>
             <div className="monitor program-monitor">
@@ -326,8 +345,8 @@ export function App() {
 
                   <div className="layer-strip">
                     {deck.layers.map((layer, index) => {
-                      const isProgram = deck.kind === "visual" && program.deckId === deck.id && program.layerId === layer.id;
-                      const isPreview = deck.kind === "visual" && preview.deckId === deck.id && preview.layerId === layer.id;
+                      const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
+                      const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
                       const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
                         ? libraryEngine.get(layer.sourceId).name
                         : undefined;
