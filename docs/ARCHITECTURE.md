@@ -13,7 +13,7 @@ This document is the canonical map for VisCo. Every future revision must change 
 | Layer instance | domain/layer.ts | A Layer references a Source and may reference multiple Slices. |
 | Group | domain/group.ts | Collection/organization of Layers. |
 | Slice / Mapping | domain/slice.ts | Slice is a canvas/output region; Layer↔Slice is many-to-many. |
-| Audio routing | domain/audio.ts | Master and VisCo VB are separate buses. VB -> Master is forbidden. Master -> VB is allowed only if explicitly routed by the future routing policy. |
+| Audio routing | domain/audio.ts | Audio In -> VisCo VB -> Record/Stream/Zoom is the canonical external path. Monitoring is diagnostic only and is not part of the signal path. Master is a separate internal audio bus. |
 | Output | domain/output.ts | Physical Output and Virtual Out are distinct paths. |
 | Trigger | engine/trigger-engine.ts | Multi-action execution and validation. |
 | Program | engine/program-engine.ts | Program state and Deck transition execution. |
@@ -38,13 +38,18 @@ Stream and Record may have independent encoder settings while sharing the same M
 Master:
 VisCo Audio -> Master -> Sound Card OUT -> Mixer
 
-VisCo VB:
-External Audio / Mixer OUT -> Sound Card IN -> VisCo VB -> Zoom Mic / Stream / Record
+External audio:
+Sound Card IN -> Audio In -> VisCo VB -> Zoom / Stream / Record
+
+Monitoring:
+Signal state is observed at the input/VB/destination points for diagnostics only; monitoring never becomes an audio routing destination.
+
+Internal audio:
+VisCo Audio Deck -> Master remains a separate internal audio mix.
 
 Forbidden:
+Master -> VisCo VB
 VisCo VB -> Master
-
-Master -> VB is technically possible as a selectable routing source, but it must never become an automatic feedback loop.
 
 ## Interaction rules
 
