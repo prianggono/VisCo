@@ -186,6 +186,37 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     expect(output.getState("display-main").active).toBe(false);
   });
 
+  it("re-syncs the current Program when a default output is re-enabled by Trigger", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true
+    });
+
+    program.program(deck1, "layer-1");
+    output.syncFromProgram({ deckId: "deck-1", layerId: "layer-1" });
+    output.setEnabled("display-main", false);
+
+    trigger.execute(
+      {
+        type: "set-output-enabled",
+        outputId: "display-main",
+        enabled: true
+      },
+      { decks: new Map([[deck1.id, deck1]]), program, output }
+    );
+
+    expect(output.getState("display-main").active).toBe(true);
+    expect(output.getState("display-main").source).toEqual({
+      deckId: "deck-1",
+      layerId: "layer-1"
+    });
+  });
+
   it("supports Stream/Record/Virtual controls as Trigger actions", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
