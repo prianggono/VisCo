@@ -1,5 +1,6 @@
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
-import { ProgramEngine, type ProgramState } from "./program-engine.js";
+import { DeckProgramController } from "./deck-program-controller.js";
+import type { ProgramState } from "./program-engine.js";
 import { OutputEngine } from "./output-engine.js";
 import { assertValidTriggerAction } from "./trigger-validator.js";
 
@@ -11,13 +12,14 @@ export type TriggerAction =
 
 export interface TriggerContext {
   readonly decks: ReadonlyMap<string, Deck>;
-  readonly program: ProgramEngine;
+  readonly controller: DeckProgramController;
   readonly output?: OutputEngine;
 }
 
 /**
  * Trigger is the orchestration layer. It validates the complete action first,
- * then executes it. Program/Transition ownership remains in Program/Deck.
+ * then executes it. DeckRuntime + ProgramEngine ownership is centralized in
+ * DeckProgramController; Trigger never programs ProgramEngine directly.
  */
 export class TriggerEngine {
   execute(action: TriggerAction, context: TriggerContext): ProgramState {
@@ -38,7 +40,7 @@ export class TriggerEngine {
     actions: readonly TriggerAction[],
     context: TriggerContext
   ): ProgramState {
-    let state = context.program.getState();
+    let state = context.controller.getProgramState();
 
     for (const action of actions) {
       state = this.executeAction(action, context, state);
@@ -56,7 +58,7 @@ export class TriggerEngine {
       case "program": {
         const deck = context.decks.get(action.target.deckId);
         if (!deck) throw new Error(`Deck "${action.target.deckId}" does not exist.`);
-        return context.program.program(deck, action.target.layerId);
+        return context.controller.program(deck, action.target.layerId, { syncOutputs: false }).program;
       }
 
       case "sequence":
@@ -65,12 +67,12 @@ export class TriggerEngine {
       case "set-output-enabled":
         if (!context.output) throw new Error("Output engine is required for output trigger actions.");
         context.output.setEnabled(action.outputId, action.enabled);
-        return fallback ?? context.program.getState();
+        return fallback ?? context.controller.getProgramState();
 
       case "set-media-feature":
         if (!context.output) throw new Error("Output engine is required for output trigger actions.");
         context.output.setMediaFeature(action.outputId, action.feature, action.enabled);
-        return fallback ?? context.program.getState();
+        return fallback ?? context.controller.getProgramState();
     }
   }
 
