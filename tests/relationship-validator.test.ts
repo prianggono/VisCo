@@ -13,6 +13,7 @@ describe("relationship validation", () => {
       decks: [{ id: "deck-1", name: "Deck 1", layers: [layer], compositionId: "comp-1", transition: { type: "fade", durationMs: 500 } }],
       groups: [{ id: "group-1", name: "Group 1", layerIds: ["layer-1"], collapsed: false }],
       layers: [layer],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
       slices: [{ id: "slice-1", name: "Left", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerIds: ["layer-1"], locked: false }]
     });
 
@@ -28,6 +29,7 @@ describe("relationship validation", () => {
       decks: [{ id: "deck-1", name: "Deck 1", layers: [layer], compositionId: "missing-comp", transition: { type: "cut", durationMs: 0 } }],
       groups: [{ id: "group-1", name: "Group 1", layerIds: ["missing-layer"], collapsed: false }],
       layers: [layer],
+      sources: [],
       slices: [{ id: "slice-1", name: "Left", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerIds: ["missing-layer"], locked: false }]
     });
 
