@@ -70,6 +70,16 @@ export interface AudioDeckState {
   readonly layerId: string | null;
 }
 
+export interface MasterAudioSource {
+  readonly deckId: string;
+  readonly layerId: string;
+  readonly gain: number;
+}
+
+export interface MasterAudioMix {
+  readonly sources: readonly MasterAudioSource[];
+}
+
 export class AudioEngine {
   private readonly decks = new Map<string, AudioDeckState>();
 
@@ -107,6 +117,20 @@ export class AudioEngine {
 
   getActiveLayers(): readonly AudioDeckState[] {
     return [...this.decks.values()].filter((state) => state.enabled && state.layerId !== null);
+  }
+
+  getMasterMix(): MasterAudioMix {
+    const sources = this.getActiveLayers().flatMap((state) =>
+      state.layerId === null
+        ? []
+        : [{
+            deckId: state.deckId,
+            layerId: state.layerId,
+            gain: state.level / 100
+          }]
+    );
+
+    return { sources };
   }
 
   private require(deckId: string): AudioDeckState {
