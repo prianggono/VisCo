@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Deck } from "../src/domain/deck.js";
 import { DeckRuntime } from "../src/engine/deck-runtime.js";
 import { ProgramEngine } from "../src/engine/program-engine.js";
-import { AudioEngine } from "../src/domain/audio.js";
+import { AudioEngine, AudioRoutingEngine } from "../src/domain/audio.js";
 
 const deck: Deck = {
   id: "deck-m",
@@ -41,6 +41,26 @@ describe("Deck M gate", () => {
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(1);
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBeNull();
     expect(runtime.advanceList("deck-m", "layer-1", 2, true).index).toBe(0);
+  });
+
+  it("keeps VB isolated from Master while allowing explicit Master to VB routing", () => {
+    const routing = new AudioRoutingEngine();
+
+    expect(() => routing.connect("external-vb", "visco-vb", "master")).toThrow(
+      "VisCo VB cannot route into Master."
+    );
+
+    const route = routing.connect("master-send", "master", "visco-vb");
+    expect(route.enabled).toBe(true);
+    expect(route.sourceBus).toBe("master");
+    expect(route.targetBus).toBe("visco-vb");
+    expect(routing.getRoutesForTarget("visco-vb")).toHaveLength(1);
+
+    routing.setEnabled("master-send", "visco-vb", false);
+    expect(routing.getRoutesForTarget("visco-vb")).toHaveLength(0);
+
+    routing.disconnect("master-send", "visco-vb");
+    expect(routing.getRoutes()).toHaveLength(0);
   });
 
   it("keeps Audio Deck out of visual Program and controls its audio state separately", () => {
