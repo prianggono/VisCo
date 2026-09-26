@@ -5,10 +5,9 @@ export interface Transition {
   readonly durationMs: number;
 }
 
-export interface Layer {
-  readonly id: string;
-  readonly name: string;
-}
+import type { Layer } from "./layer.js";
+
+export { type Layer } from "./layer.js";
 
 export interface Deck {
   readonly id: string;
