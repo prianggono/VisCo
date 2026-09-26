@@ -24,7 +24,7 @@ export class DeckProgramController {
     const programState = this.programEngine.program(deck, layerId);
 
     if (this.outputEngine && programState.source) {
-      this.outputEngine.syncFromProgram(programState.source);
+      this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
       this.outputEngine.syncFromDeck(deck.id, programState.source);
     }
 
@@ -37,7 +37,7 @@ export class DeckProgramController {
   getState(deckId: string): DeckProgramControllerState {
     return {
       deck: this.deckRuntime.getState(deckId),
-      program: this.programEngine.getState()
+      program: this.programEngine.getState(deck.compositionId ?? "default")
     };
   }
 }
