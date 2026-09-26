@@ -20,6 +20,9 @@ export class DeckProgramController {
   }
 
   program(deck: Deck, layerId: string): DeckProgramControllerState {
+    if ((deck as Deck & { kind?: "visual" | "audio" }).kind === "audio") {
+      throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
+    }
     const deckState = this.deckRuntime.programLayer(deck, layerId);
     const programState = this.programEngine.program(deck, layerId);
 
