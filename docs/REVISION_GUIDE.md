@@ -61,11 +61,17 @@ VisCo has no package tiers in this design.
 
 ## 6. Audio safety
 
-The routing engine must reject:
+The routing engine must reject both reverse/internal routes:
 
 `VisCo VB -> Master`
 
-`Master -> VisCo VB` is permitted only as an explicit operator route; it must not be automatically created by the system.
+`Master -> VisCo VB`
+
+The canonical external path is:
+
+`Audio In -> VisCo VB -> Record / Stream / Zoom`
+
+Monitoring is diagnostic only and is never inserted into the signal path.
 
 ## 7. Output safety
 
