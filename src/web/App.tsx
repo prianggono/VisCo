@@ -54,7 +54,7 @@ export function App() {
       id: "media-output",
       kind: "media",
       enabled: true,
-      media: { compositionId: "default", resolution: [1920, 1080], fps: 60, streaming: true, recording: false, virtual: false }
+      media: { compositionId: "default", resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false }
     });
     return engine;
   }, []);
