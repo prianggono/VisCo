@@ -5,6 +5,9 @@ export interface DeckRuntimeState {
   readonly deckId: string;
   readonly previewLayerId: string | null;
   readonly activeLayerId: string | null;
+  readonly masterEnabled: boolean;
+  readonly audioLevel: number;
+  readonly visualLevel: number;
 }
 
 export class DeckRuntime {
@@ -18,10 +21,31 @@ export class DeckRuntime {
     const state: DeckRuntimeState = {
       deckId: deck.id,
       previewLayerId: null,
-      activeLayerId: null
+      activeLayerId: null,
+      masterEnabled: deck.masterEnabled ?? true,
+      audioLevel: deck.audioLevel ?? 100,
+      visualLevel: deck.visualLevel ?? 100
     };
 
     this.states.set(deck.id, state);
+    return state;
+  }
+
+  setMasterEnabled(deckId: string, enabled: boolean): DeckRuntimeState {
+    const state = { ...this.require(deckId), masterEnabled: enabled };
+    this.states.set(deckId, state);
+    return state;
+  }
+
+  setAudioLevel(deckId: string, level: number): DeckRuntimeState {
+    const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
+    this.states.set(deckId, state);
+    return state;
+  }
+
+  setVisualLevel(deckId: string, level: number): DeckRuntimeState {
+    const state = { ...this.require(deckId), visualLevel: Math.max(0, Math.min(100, level)) };
+    this.states.set(deckId, state);
     return state;
   }
 
@@ -50,7 +74,7 @@ export class DeckRuntime {
 
   programLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
-    if (deck.masterEnabled === false) {
+    if (!this.require(deck.id).masterEnabled) {
       throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
     }
     this.require(deck.id);
