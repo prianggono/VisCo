@@ -15,6 +15,7 @@ export interface DeckRuntimeState {
   readonly visualLevel: number;
   readonly playback: ReadonlyMap<string, LayerPlaybackState>;
   readonly listCursors: ReadonlyMap<string, number>;
+  readonly columns: ReadonlyMap<number, boolean>;
 }
 
 export class DeckRuntime {
@@ -38,10 +39,21 @@ export class DeckRuntime {
         loop: layer.playback?.loop ?? false,
         speed: layer.playback?.speed ?? 100
       }])),
-      listCursors: new Map()
+      listCursors: new Map(),
+      columns: new Map()
     };
 
     this.states.set(deck.id, state);
+    return state;
+  }
+
+  setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
+    if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
+    const current = this.require(deckId);
+    const columns = new Map(current.columns);
+    columns.set(column, enabled);
+    const state = { ...current, columns };
+    this.states.set(deckId, state);
     return state;
   }
 
