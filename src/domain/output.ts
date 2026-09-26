@@ -54,6 +54,7 @@ export interface OutputTarget {
   readonly id: string;
   readonly kind: OutputKind;
   readonly enabled: boolean;
+  readonly compositionId?: string;
   readonly deckId?: string;
   readonly media?: MediaOutputSettings;
 }
