@@ -52,11 +52,10 @@ export class DeckRuntime {
     const current = this.require(deckId);
     const columns = new Map(current.columns);
     columns.set(column, enabled);
-    const layer = this.require(deckId).playback;
-    const layerId = `layer-${column}`;
-    if (!layer.has(layerId)) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
+    const layer = Array.from(current.playback.values())[column - 1];
+    if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
     const playback = new Map(current.playback);
-    playback.set(layerId, { ...playback.get(layerId)!, playing: enabled });
+    playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: enabled });
     const state = { ...current, columns, playback };
     this.states.set(deckId, state);
     return state;
