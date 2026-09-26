@@ -203,8 +203,7 @@ describe("Output Engine", () => {
     expect(state.active).toBe(false);
     expect(state.source).toEqual(deck1Layer2);
   });
-});
-
+});\n\n  
   it("keeps Stream and Record encoder settings independent while sharing Media Composition", () => {
     const output = new OutputEngine();
     output.register(mediaTarget({
