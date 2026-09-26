@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { LibraryEngine } from "../engine/library-engine.js";
+import { DeckRuntime } from "../engine/deck-runtime.js";
 import type { Source, SourceKind } from "../domain/source.js";
 
 type Layer = { id: string; name: string };
@@ -52,9 +53,12 @@ export function App() {
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "layer-2" });
   const [media, setMedia] = useState({ fullscreen: true, stream: true, record: false, virtual: false });
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
-  const [faders, setFaders] = useState<Record<string, { master: number; audio: number; opacity: number }>>(
-    Object.fromEntries(initialDecks.map((deck) => [deck.id, { master: 100, audio: 100, opacity: 100 }]))
-  );
+  const deckRuntime = useMemo(() => {
+    const runtime = new DeckRuntime();
+    initialDecks.forEach((deck) => runtime.register(deck));
+    return runtime;
+  }, []);
+  const [, setRuntimeRevision] = useState(0);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
@@ -73,6 +77,7 @@ export function App() {
   };
 
   const programLayer = (deckId: string, layerId: string) => {
+    if (!deckRuntime.getState(deckId).masterEnabled) return;
     setProgram({ deckId, layerId });
     setPreview({ deckId, layerId });
     setSelectedLayer({ deckId, layerId });
@@ -89,7 +94,7 @@ export function App() {
       layers: makeLayers()
     };
     setDecks((items) => [...items, deck]);
-    setFaders((items) => ({ ...items, [deck.id]: { master: 100, audio: 100, opacity: 100 } }));
+    deckRuntime.register(deck);
     setShowAddDeck(false);
   };
 
@@ -169,7 +174,10 @@ export function App() {
   };
 
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
-    setFaders((items) => ({ ...items, [deckId]: { ...items[deckId], [key]: value } }));
+    if (key === "master") deckRuntime.setMasterEnabled(deckId, value > 0);
+    if (key === "audio") deckRuntime.setAudioLevel(deckId, value);
+    if (key === "opacity") deckRuntime.setVisualLevel(deckId, value);
+    setRuntimeRevision((value) => value + 1);
   };
 
   return (
@@ -257,7 +265,8 @@ export function App() {
             </div>
 
             {decks.map((deck) => {
-              const values = faders[deck.id];
+              const runtimeState = deckRuntime.getState(deck.id);
+              const values = { master: runtimeState.masterEnabled ? 100 : 0, audio: runtimeState.audioLevel, opacity: runtimeState.visualLevel };
               return (
                 <section className={"deck-row " + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
