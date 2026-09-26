@@ -96,6 +96,17 @@ describe("Deck Runtime", () => {
     });
   });
 
+  it("turns a column ON and OFF for the corresponding Layer", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+
+    expect(runtime.setColumnEnabled(deck.id, 2, true).columns.get(2)).toBe(true);
+    expect(runtime.getState(deck.id).playback.get("layer-2")?.playing).toBe(true);
+
+    expect(runtime.setColumnEnabled(deck.id, 2, false).columns.get(2)).toBe(false);
+    expect(runtime.getState(deck.id).playback.get("layer-2")?.playing).toBe(false);
+  });
+
   it("maps column two to the second layer even with a custom id", () => {
     const runtime = new DeckRuntime();
     const customDeck: Deck = {
