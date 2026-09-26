@@ -10,7 +10,7 @@ export interface DeckRuntimeState {
   readonly deckId: string;
   readonly previewLayerId: string | null;
   readonly activeLayerId: string | null;
-  readonly masterEnabled: boolean;
+  readonly masterLevel: number;
   readonly audioLevel: number;
   readonly visualLevel: number;
   readonly playback: ReadonlyMap<string, LayerPlaybackState>;
@@ -30,7 +30,7 @@ export class DeckRuntime {
       deckId: deck.id,
       previewLayerId: null,
       activeLayerId: null,
-      masterEnabled: deck.masterEnabled ?? true,
+      masterLevel: deck.masterLevel ?? 100,
       audioLevel: deck.audioLevel ?? 100,
       visualLevel: deck.visualLevel ?? 100,
       playback: new Map(deck.layers.map((layer) => [layer.id, {
@@ -133,7 +133,7 @@ export class DeckRuntime {
 
   programLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
-    if (!this.require(deck.id).masterEnabled) {
+    if (this.require(deck.id).masterLevel <= 0) {
       throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
     }
     this.require(deck.id);
