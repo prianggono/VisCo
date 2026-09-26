@@ -52,31 +52,33 @@ describe("Deck M gate", () => {
 
   it("advances List cursor and loops only when enabled", () => {
     const runtime = new DeckRuntime();
-    runtime.register({ ...deck, masterEnabled: true });
+    runtime.register({ ...deck, masterLevel: 100 });
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(0);
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(1);
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBeNull();
     expect(runtime.advanceList("deck-m", "layer-1", 2, true).index).toBe(0);
   });
 
-  it("keeps VB isolated from Master while allowing explicit Master to VB routing", () => {
+  it("enforces Audio In -> VB -> Record/Stream/Zoom and keeps monitoring diagnostic", () => {
     const routing = new AudioRoutingEngine();
 
-    expect(() => routing.connect("external-vb", "visco-vb", "master")).toThrow(
-      "VisCo VB cannot route into Master."
-    );
+    const input = routing.connect("sound-card-1", "audio-in", "visco-vb");
+    expect(input.enabled).toBe(true);
 
-    const route = routing.connect("master-send", "master", "visco-vb");
-    expect(route.enabled).toBe(true);
-    expect(route.sourceBus).toBe("master");
-    expect(route.targetBus).toBe("visco-vb");
-    expect(routing.getRoutesForTarget("visco-vb")).toHaveLength(1);
+    for (const destination of ["record", "stream", "zoom"] as const) {
+      const route = routing.connect(`vb-${destination}`, "visco-vb", destination);
+      expect(route.enabled).toBe(true);
+      expect(route.sourceBus).toBe("visco-vb");
+      expect(route.targetBus).toBe(destination);
+    }
 
-    routing.setEnabled("master-send", "visco-vb", false);
-    expect(routing.getRoutesForTarget("visco-vb")).toHaveLength(0);
+    expect(routing.getDestinationsFromVb()).toEqual(["record", "stream", "zoom"]);
+    expect(() => routing.connect("master-send", "master", "visco-vb")).toThrow();
+    expect(() => routing.connect("bad", "visco-vb", "master")).toThrow();
 
-    routing.disconnect("master-send", "visco-vb");
-    expect(routing.getRoutes()).toHaveLength(0);
+    const monitoring = routing.setSignalPresent("sound-card-1", "audio-in", true);
+    expect(monitoring.signalPresent).toBe(true);
+    expect(routing.getSignalState("sound-card-1", "audio-in")?.signalPresent).toBe(true);
   });
 
   it("keeps Audio Deck out of visual Program and controls its audio state separately", () => {
