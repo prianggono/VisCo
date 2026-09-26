@@ -1,5 +1,10 @@
 import type { Deck, DeckLayerRef, Layer } from "../domain/deck.js";
+import type { LayerPlayback } from "../domain/layer.js";
 import { getDeckLayer } from "../domain/deck.js";
+
+export interface LayerPlaybackState extends LayerPlayback {
+  readonly layerId: string;
+}
 
 export interface DeckRuntimeState {
   readonly deckId: string;
@@ -8,6 +13,7 @@ export interface DeckRuntimeState {
   readonly masterEnabled: boolean;
   readonly audioLevel: number;
   readonly visualLevel: number;
+  readonly playback: ReadonlyMap<string, LayerPlaybackState>;
 }
 
 export class DeckRuntime {
@@ -24,7 +30,13 @@ export class DeckRuntime {
       activeLayerId: null,
       masterEnabled: deck.masterEnabled ?? true,
       audioLevel: deck.audioLevel ?? 100,
-      visualLevel: deck.visualLevel ?? 100
+      visualLevel: deck.visualLevel ?? 100,
+      playback: new Map(deck.layers.map((layer) => [layer.id, {
+        layerId: layer.id,
+        playing: layer.playback?.playing ?? false,
+        loop: layer.playback?.loop ?? false,
+        speed: layer.playback?.speed ?? 100
+      }]))
     };
 
     this.states.set(deck.id, state);
@@ -39,6 +51,21 @@ export class DeckRuntime {
 
   setAudioLevel(deckId: string, level: number): DeckRuntimeState {
     const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
+    this.states.set(deckId, state);
+    return state;
+  }
+
+  setLayerPlayback(deckId: string, layerId: string, patch: Partial<LayerPlayback>): DeckRuntimeState {
+    const current = this.require(deckId);
+    if (!current.playback.has(layerId)) throw new Error(`Layer "${layerId}" is not registered in deck "${deckId}".`);
+    const next = {
+      ...current.playback.get(layerId)!,
+      ...patch,
+      speed: Math.max(0, Math.min(200, patch.speed ?? current.playback.get(layerId)!.speed))
+    };
+    const playback = new Map(current.playback);
+    playback.set(layerId, next);
+    const state = { ...current, playback };
     this.states.set(deckId, state);
     return state;
   }
