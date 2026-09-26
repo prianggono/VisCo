@@ -1,20 +1,22 @@
-import type { AudioEngine, MasterAudioMix } from "../domain/audio.js";
+import type { AudioEngine, AudioRoutingEngine, AudioDestination, MasterAudioMix } from "../domain/audio.js";
 import type { OutputEngine, OutputState } from "./output-engine.js";
 
 export interface AudioOutputState {
   readonly mix: MasterAudioMix;
   readonly outputs: readonly string[];
+  readonly vbDestinations: readonly AudioDestination[];
 }
 
 /**
- * Connects the Master Audio mix to the enabled Media Output features.
- * Visual routing remains owned by OutputEngine; this bridge only describes
- * which active Audio Decks feed the shared media pipeline.
+ * Describes the canonical audio path:
+ * Audio In -> VisCo VB -> Record / Stream / Zoom.
+ * Monitoring is diagnostic and is not part of this signal path.
  */
 export class AudioOutputRouter {
   constructor(
     private readonly audioEngine: AudioEngine,
-    private readonly outputEngine: OutputEngine
+    private readonly outputEngine: OutputEngine,
+    private readonly routingEngine?: AudioRoutingEngine
   ) {}
 
   sync(): AudioOutputState {
@@ -25,7 +27,9 @@ export class AudioOutputRouter {
       .filter((state) => state.target.media?.streaming || state.target.media?.recording || state.target.media?.virtual)
       .map((state) => state.target.id);
 
-    return { mix, outputs };
+    const vbDestinations = this.routingEngine?.getDestinationsFromVb() ?? [];
+
+    return { mix, outputs, vbDestinations };
   }
 
   getMediaOutputs(): readonly OutputState[] {
