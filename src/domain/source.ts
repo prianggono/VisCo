@@ -26,6 +26,15 @@ export interface ListItem {
   readonly interlaced?: boolean;
 }
 
+export interface DocumentSourceConfig {
+  readonly currentPage: number;
+  readonly totalPages?: number;
+  readonly autoNext: boolean;
+  readonly durationMs: number;
+  readonly autoFirst: boolean;
+  readonly loop: boolean;
+}
+
 export interface ListConfig {
   readonly itemIds: readonly string[];
   readonly shuffle: boolean;
@@ -43,6 +52,7 @@ export interface Source {
   readonly uri?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;
   readonly list?: ListConfig;
+  readonly document?: DocumentSourceConfig;
 }
 
 export interface Library {
