@@ -33,4 +33,12 @@ describe("Deck M gate", () => {
     expect(state.activeLayerId).toBeNull();
     expect(state.previewLayerId).toBe("layer-1");
   });
+  it("advances List cursor and loops only when enabled", () => {
+    const runtime = new DeckRuntime();
+    runtime.register({ ...deck, masterEnabled: true });
+    expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(0);
+    expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(1);
+    expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBeNull();
+    expect(runtime.advanceList("deck-m", "layer-1", 2, true).index).toBe(0);
+  });
 });
