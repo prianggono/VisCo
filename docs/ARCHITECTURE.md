@@ -9,7 +9,7 @@ This document is the canonical map for VisCo. Every future revision must change 
 |---|---|---|
 | Source / Library | domain/source.ts | A Source is reusable input/media/internal source. Library stores Source references. |
 | Composition / Canvas | domain/composition.ts | Canvas and composition-level configuration. |
-| Deck | domain/deck.ts | Deck owns Layers, M/A/V, Transition, Loop and Deck output targeting. |
+| Deck | domain/deck.ts | Deck owns Layers, M/A/V, Transition, Loop and Deck output targeting. M OFF excludes the Deck from Program. |
 | Layer instance | domain/layer.ts | A Layer references a Source and may reference multiple Slices. |
 | Group | domain/group.ts | Collection/organization of Layers. |
 | Slice / Mapping | domain/slice.ts | Slice is a canvas/output region; Layer↔Slice is many-to-many. |
@@ -31,7 +31,7 @@ Composition -> Decks -> Physical Output (LED/TV/display)
 Media:
 Composition -> Decks -> Virtual Out -> Stream / Record / Zoom
 
-Stream and Record may have independent encoder settings while sharing the same Media Composition.
+Stream and Record may have independent encoder settings while sharing the same Media Composition. Output targets are composition-scoped; a Deck may provide the explicit override.
 
 ## Audio model
 
@@ -54,6 +54,9 @@ Master -> VB is technically possible as a selectable routing source, but it must
 - Transition belongs to Deck.
 - M/A/V belong to Deck.
 - Output target is selected by Deck, never by Layer.
+- Program state is Composition-scoped; Venue and Media may run independently.
+- M/A/V are Deck-level controls; M OFF prevents Program while Preview remains possible.
+- X deselects the active Deck layer without clearing Preview.
 - Source is reusable; Layer is the instance.
 - Composition is Canvas, not a media bundle.
 - Group is a collection of Layers.
