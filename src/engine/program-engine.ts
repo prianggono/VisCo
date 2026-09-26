@@ -26,6 +26,9 @@ export class ProgramEngine {
 
   program(deck: Deck, layerId: string, compositionId = deck.compositionId ?? "default"): ProgramState {
     const layer = getDeckLayer(deck, { deckId: deck.id, layerId });
+    if (deck.masterEnabled === false) {
+      throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
+    }
     const state: ProgramState = {
       compositionId,
       source: { deckId: deck.id, layerId: layer.id },
