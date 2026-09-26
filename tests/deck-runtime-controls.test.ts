@@ -29,14 +29,14 @@ describe("Deck M gate", () => {
   it("X deselects active layer without clearing Preview", () => {
     const runtime = new DeckRuntime();
     runtime.register({ ...deck, masterLevel: 100 });
-    runtime.programLayer({ ...deck, masterEnabled: true }, "layer-1");
+    runtime.programLayer({ ...deck, masterLevel: 100 }, "layer-1");
     const state = runtime.deselectActiveLayer("deck-m");
     expect(state.activeLayerId).toBeNull();
     expect(state.previewLayerId).toBe("layer-1");
   });
   it("Column toggle controls the matching layer playback", () => {
     const runtime = new DeckRuntime();
-    runtime.register({ ...deck, masterEnabled: true, layers: [
+    runtime.register({ ...deck, masterLevel: 100, layers: [
       { id: "layer-1", name: "Layer 1" },
       { id: "layer-2", name: "Layer 2" }
     ] });
