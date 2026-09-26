@@ -31,7 +31,7 @@ export class DeckProgramController {
 
     if (options.syncOutputs !== false && this.outputEngine && programState.source) {
       this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
-      this.outputEngine.syncFromDeck(deck.id, programState.source);
+      this.outputEngine.syncFromDeck(deck.id, programState.source, programState.compositionId);
     }
 
     return { deck: deckState, program: programState };
