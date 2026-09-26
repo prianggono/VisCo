@@ -13,6 +13,8 @@ export interface Deck {
   readonly id: string;
   readonly name: string;
   readonly layers: readonly Layer[];
+  /** Composition context; omitted by legacy decks and treated as "default". */
+  readonly compositionId?: string;
   readonly transition: Transition;
 }
 
