@@ -34,6 +34,22 @@ describe("Deck M gate", () => {
     expect(state.activeLayerId).toBeNull();
     expect(state.previewLayerId).toBe("layer-1");
   });
+  it("Column toggle controls the matching layer playback", () => {
+    const runtime = new DeckRuntime();
+    runtime.register({ ...deck, masterEnabled: true, layers: [
+      { id: "layer-1", name: "Layer 1" },
+      { id: "layer-2", name: "Layer 2" }
+    ] });
+
+    runtime.setColumnEnabled("deck-m", 2, true);
+    expect(runtime.getState("deck-m").columns.get(2)).toBe(true);
+    expect(runtime.getState("deck-m").playback.get("layer-2")?.playing).toBe(true);
+
+    runtime.setColumnEnabled("deck-m", 2, false);
+    expect(runtime.getState("deck-m").columns.get(2)).toBe(false);
+    expect(runtime.getState("deck-m").playback.get("layer-2")?.playing).toBe(false);
+  });
+
   it("advances List cursor and loops only when enabled", () => {
     const runtime = new DeckRuntime();
     runtime.register({ ...deck, masterEnabled: true });
