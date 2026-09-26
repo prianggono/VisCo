@@ -88,12 +88,18 @@ export class OutputEngine {
       .map(state => this.route(state.target.id, source));
   }
 
-  syncFromDeck(deckId: string, currentLayer: DeckLayerRef): readonly OutputState[] {
+  /** A Deck override is scoped to the Deck and its Composition. */
+  syncFromDeck(deckId: string, currentLayer: DeckLayerRef, compositionId = "default"): readonly OutputState[] {
     if (currentLayer.deckId !== deckId) {
       throw new Error(`Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`);
     }
     return [...this.states.values()]
-      .filter(state => state.active && state.target.enabled && state.target.deckId === deckId)
+      .filter(state =>
+        state.active &&
+        state.target.enabled &&
+        state.target.deckId === deckId &&
+        (state.target.compositionId === undefined || state.target.compositionId === compositionId)
+      )
       .map(state => this.route(state.target.id, currentLayer));
   }
 
