@@ -38,7 +38,6 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
   { label: "Title / Lower Third", kind: "title" },
   { label: "Composition", kind: "composition" },
   { label: "Video Delay", kind: "video-delay" },
-  { label: "Web Browser", kind: "web-browser" }
 ];
 
 export function App() {
@@ -567,10 +566,6 @@ export function App() {
                 {inputTypes.filter((item) => ["colour","timer","title","composition","video-delay"].includes(item.kind)).map((item) => (
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
-                <div className="input-group-title">EMBEDDED</div>
-                {[] .map((item) => (
-                  <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
-                ))}
               </div>
               <div className="input-config">
                 {(() => {
@@ -591,9 +586,8 @@ export function App() {
                           {selected.kind === "ndi" && <><label>Source<select defaultValue=""><option value="">Detect NDI sources on LAN</option></select></label><label>Capture<select defaultValue="desktop"><option value="desktop">Desktop / Window</option></select></label></>}
                           {selected.kind === "ip-camera" && <><label>Protocol<select defaultValue="rtsp"><option value="rtsp">RTSP</option><option value="onvif">ONVIF</option></select></label><label>Address<input placeholder="rtsp://..." /></label><label>Latency<select defaultValue="low"><option value="low">Low Latency</option></select></label></>}
                           {selected.kind === "audio-input" && <><label>Device<select defaultValue=""><option value="">Detect audio devices</option></select></label><label>Channels<select defaultValue="stereo"><option value="mono">Mono</option><option value="stereo">Stereo</option></select></label></>}
-                          {selected.kind === "web-browser" && <><label>URL<input placeholder="https://..." /></label><label>Resolution<select defaultValue="auto"><option value="auto">Auto</option></select></label></>}
                           {["colour","timer","title","composition","video-delay"].includes(selected.kind) && <div className="input-config-note">This is an internal VisCo source. Create it first, then configure its detailed properties from the Properties panel.</div>}
-                          {["camera","ndi","ip-camera","audio-input","web-browser"].includes(selected.kind) && <div className="input-config-note">Technical settings are retained by the source and can be refined later in Properties.</div>}
+                          {["camera","ndi","ip-camera","audio-input"].includes(selected.kind) && <div className="input-config-note">Technical settings are retained by the source and can be refined later in Properties.</div>}
                         </div>
                       )}
                     </>
