@@ -370,3 +370,21 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     );
   });
 });
+  it("keeps Program state independent between Venue and Media compositions", () => {
+    const program = new ProgramEngine();
+    const venueDeck: Deck = { ...deck1, id: "venue-deck", compositionId: "venue" };
+    const mediaDeck: Deck = { ...deck3, id: "media-deck", compositionId: "media" };
+
+    program.program(venueDeck, "layer-1");
+    program.program(mediaDeck, "layer-2");
+
+    expect(program.getState("venue").source).toEqual({
+      deckId: "venue-deck",
+      layerId: "layer-1"
+    });
+    expect(program.getState("media").source).toEqual({
+      deckId: "media-deck",
+      layerId: "layer-2"
+    });
+  });
+
