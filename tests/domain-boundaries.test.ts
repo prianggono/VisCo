@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canRoute } from "../src/domain/audio.js";
-import { defaultLicense as license } from "../src/domain/license.js";
+import { defaultLicense } from "../src/domain/license.js";
 
 describe("VisCo domain boundaries", () => {
   it("blocks VisCo VB -> Master", () => {
@@ -9,7 +9,7 @@ describe("VisCo domain boundaries", () => {
   });
 
   it("uses watermark instead of package gating when unlicensed", () => {
-    expect(license("unlicensed")).toEqual({ state: "unlicensed", watermarkEnabled: true });
+    expect(defaultLicense("unlicensed")).toEqual({ state: "unlicensed", watermarkEnabled: true });
     expect(defaultLicense("licensed")).toEqual({ state: "licensed", watermarkEnabled: false });
   });
 });
