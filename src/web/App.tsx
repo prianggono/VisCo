@@ -284,7 +284,15 @@ export function App() {
 
   const toggleOutput = (targetId: string) => {
     const state = outputEngine.getState(targetId);
-    outputEngine.setEnabled(targetId, !state.target.enabled);
+    const enabled = !state.target.enabled;
+    outputEngine.setEnabled(targetId, enabled);
+    if (enabled) {
+      const program = programEngine.getState("default");
+      if (program.source) {
+        outputEngine.syncFromProgram(program.source, program.compositionId);
+        outputEngine.syncFromDeck(program.source.deckId, program.source);
+      }
+    }
     setOutputRevision((value) => value + 1);
   };
 
@@ -394,7 +402,7 @@ export function App() {
                             deckRuntime.setColumnEnabled(deck.id, column, enabled);
                             if (deck.kind === "audio") {
                               audioEngine.selectLayer(deck.id, enabled ? deck.layers[column - 1].id : null);
-                              audioEngine.setEnabled(deck.id, enabled);
+                              audioEngine.setEnabled(deck.id, enabled && deckRuntime.getState(deck.id).masterLevel > 0);
                             }
                           }
                         });
