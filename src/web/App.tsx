@@ -464,7 +464,7 @@ export function App() {
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
-                                audioEngine.setEnabled(deck.id, deckRuntime.getState(deck.id).masterEnabled);
+                                audioEngine.setEnabled(deck.id, deckRuntime.getState(deck.id).masterLevel > 0);
                                 audioOutputRouter.sync();
                                 setRuntimeRevision((value) => value + 1);
                               }
