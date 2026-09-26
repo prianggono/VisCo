@@ -379,14 +379,14 @@ export function App() {
             <button className="output-gear" title="Fullscreen settings">⚙</button>
           </div>
           <div className="output-control">
-            <button className={media.stream ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, stream: !media.stream })}>STREAM</button>
+            <button className={mediaSettings.streaming ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("stream")}>STREAM</button>
             <button className="output-gear" title="Stream settings">⚙</button>
           </div>
           <div className="output-control">
-            <button className={media.record ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, record: !media.record })}>RECORD</button>
+            <button className={mediaSettings.recording ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("record")}>RECORD</button>
             <button className="output-gear" title="Record settings">⚙</button>
           </div>
-          <button className={media.virtual ? "output-button enabled" : "output-button"} onClick={() => setMedia({ ...media, virtual: !media.virtual })}>VIRTUAL OUT</button>
+          <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
         <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span></div>
       </footer>
