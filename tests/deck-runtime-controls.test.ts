@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Deck } from "../src/domain/deck.js";
 import { DeckRuntime } from "../src/engine/deck-runtime.js";
 import { ProgramEngine } from "../src/engine/program-engine.js";
+import { AudioEngine } from "../src/domain/audio.js";
 
 const deck: Deck = {
   id: "deck-m",
@@ -40,5 +41,14 @@ describe("Deck M gate", () => {
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBe(1);
     expect(runtime.advanceList("deck-m", "layer-1", 2, false).index).toBeNull();
     expect(runtime.advanceList("deck-m", "layer-1", 2, true).index).toBe(0);
+  });
+
+  it("keeps Audio Deck out of visual Program and controls its audio state separately", () => {
+    const audio = new AudioEngine();
+    const state = audio.registerDeck("audio-1");
+    expect(state.layerId).toBeNull();
+    expect(audio.selectLayer("audio-1", "layer-1").layerId).toBe("layer-1");
+    expect(audio.setLevel("audio-1", 140).level).toBe(100);
+    expect(audio.setEnabled("audio-1", false).enabled).toBe(false);
   });
 });
