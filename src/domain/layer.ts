@@ -9,12 +9,19 @@ export interface LayerTransform {
   readonly opacity: number;
 }
 
+export interface LayerPlayback {
+  readonly playing: boolean;
+  readonly loop: boolean;
+  readonly speed: number;
+}
+
 export interface Layer {
   readonly id: string;
   readonly name: string;
   readonly sourceId?: Source["id"] | null;
   readonly sliceIds?: readonly string[];
   readonly transform?: LayerTransform;
+  readonly playback?: LayerPlayback;
   readonly blendMode?: string;
   readonly order?: number;
 }
