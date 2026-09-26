@@ -3,7 +3,7 @@ import type { Deck } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import type { Layer } from "../domain/layer.js";
 import type { Slice } from "../domain/slice.js";
-import type { Source } from "../domain/source.js";
+import type { Source, Library } from "../domain/source.js";
 import type { OutputTarget } from "../domain/output.js";
 import type { LicenseInfo } from "../domain/license.js";
 
@@ -15,6 +15,7 @@ export interface ProjectSnapshot {
   readonly layers: readonly Layer[];
   readonly slices: readonly Slice[];
   readonly sources: readonly Source[];
+  readonly library?: Library;
   readonly outputs?: readonly OutputTarget[];
   readonly license?: LicenseInfo;
 }
