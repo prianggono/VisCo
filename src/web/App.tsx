@@ -54,7 +54,7 @@ export function App() {
       id: "media-output",
       kind: "media",
       enabled: true,
-      media: { compositionId: "default", resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false }
+      media: { compositionId: "default", resolution: [1920, 1080], fps: 60, streaming: true, recording: false, virtual: false }
     });
     return engine;
   }, []);
@@ -93,7 +93,7 @@ export function App() {
 
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
-    if (!deck || !deckRuntime.getState(deckId).masterEnabled) return;
+    if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
     deckProgramController.program(deck, layerId);
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
@@ -296,7 +296,7 @@ export function App() {
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
     const deck = decks.find((item) => item.id === deckId);
     if (key === "master") {
-      deckRuntime.setMasterEnabled(deckId, value > 0);
+      deckRuntime.setMasterLevel(deckId, value);
       if (deck?.kind === "audio") audioEngine.setEnabled(deckId, value > 0);
     }
     if (key === "audio") {
@@ -413,7 +413,7 @@ export function App() {
 
             {decks.map((deck) => {
               const runtimeState = deckRuntime.getState(deck.id);
-              const values = { master: runtimeState.masterEnabled ? 100 : 0, audio: runtimeState.audioLevel, opacity: runtimeState.visualLevel };
+              const values = { master: runtimeState.masterLevel, audio: runtimeState.audioLevel, opacity: runtimeState.visualLevel };
               return (
                 <section className={"deck-row " + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
