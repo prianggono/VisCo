@@ -12,9 +12,9 @@ export interface LayerTransform {
 export interface Layer {
   readonly id: string;
   readonly name: string;
-  readonly sourceId: Source["id"] | null;
-  readonly sliceIds: readonly string[];
-  readonly transform: LayerTransform;
-  readonly blendMode: string;
-  readonly order: number;
+  readonly sourceId?: Source["id"] | null;
+  readonly sliceIds?: readonly string[];
+  readonly transform?: LayerTransform;
+  readonly blendMode?: string;
+  readonly order?: number;
 }
