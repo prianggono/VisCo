@@ -223,7 +223,7 @@ export function App() {
   };
 
   const addInput = (kind: SourceKind, accept?: string) => {
-    if (["colour", "timer", "title", "composition", "video-delay", "web-browser", "audio-input", "camera", "ndi", "ip-camera"].includes(kind)) {
+    if (["colour", "timer", "title", "composition", "video-delay", "audio-input", "camera", "ndi", "ip-camera"].includes(kind)) {
       addInternalInput(kind);
       return;
     }
@@ -300,7 +300,7 @@ export function App() {
           <div><strong>VisCo</strong><span>Visual Control & Live Production System</span></div>
         </div>
         <nav className="topnav">
-          <button>File</button><button>Edit</button><button>View</button><button>Output</button><button>Settings</button>
+          <button>File</button><button>Edit</button><button>View</button><button>Settings</button>
         </nav>
         <div className="status"><span className="status-dot" /> SYSTEM READY</div>
       </header>
@@ -568,7 +568,7 @@ export function App() {
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
                 <div className="input-group-title">EMBEDDED</div>
-                {inputTypes.filter((item) => item.kind === "web-browser").map((item) => (
+                {[] .map((item) => (
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
               </div>
