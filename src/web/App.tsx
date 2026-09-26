@@ -5,6 +5,7 @@ import { OutputEngine } from "../engine/output-engine.js";
 import { ProgramEngine } from "../engine/program-engine.js";
 import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
+import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -70,6 +71,7 @@ export function App() {
     initialDecks.filter((deck) => deck.kind === "audio").forEach((deck) => engine.registerDeck(deck.id));
     return engine;
   }, []);
+  const audioOutputRouter = useMemo(() => new AudioOutputRouter(audioEngine, outputEngine), [audioEngine, outputEngine]);
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const [showAddDeck, setShowAddDeck] = useState(false);
@@ -302,6 +304,7 @@ export function App() {
       if (deck?.kind === "audio") audioEngine.setLevel(deckId, value);
     }
     if (key === "opacity") deckRuntime.setVisualLevel(deckId, value);
+    if (deck?.kind === "audio") audioOutputRouter.sync();
     setRuntimeRevision((value) => value + 1);
   };
 
@@ -461,6 +464,7 @@ export function App() {
                               } else {
                                 audioEngine.selectLayer(deck.id, layer.id);
                                 audioEngine.setEnabled(deck.id, deckRuntime.getState(deck.id).masterEnabled);
+                                audioOutputRouter.sync();
                                 setRuntimeRevision((value) => value + 1);
                               }
                             }}
