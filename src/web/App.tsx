@@ -1,19 +1,11 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
+import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
-
-type Layer = { id: string; name: string };
 type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
-type Deck = {
-  id: string;
-  name: string;
-  kind: DeckKind;
-  transition: string;
-  loop: boolean;
-  layers: Layer[];
-};
+type Deck = DomainDeck & { kind: DeckKind };
 
 const makeLayers = (): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
@@ -22,8 +14,8 @@ const makeLayers = (): Layer[] =>
   }));
 
 const initialDecks: Deck[] = [
-  { id: "deck-1", name: "Deck 1", kind: "visual", transition: "Fade · 500 ms", loop: true, layers: makeLayers() },
-  { id: "deck-2", name: "Deck 2", kind: "visual", transition: "Cut · 0 ms", loop: false, layers: makeLayers() }
+  { id: "deck-1", name: "Deck 1", kind: "visual", transition: { type: "fade", durationMs: 500 }, loop: true, layers: makeLayers() },
+  { id: "deck-2", name: "Deck 2", kind: "visual", transition: { type: "cut", durationMs: 0 }, loop: false, layers: makeLayers() }
 ];
 
 const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = [
@@ -89,7 +81,7 @@ export function App() {
       id: "deck-" + Date.now(),
       name: kind === "audio" ? "Audio Deck " + number : "Deck " + number,
       kind,
-      transition: "Fade · 500 ms",
+      transition: { type: "fade", durationMs: 500 } as Transition,
       loop: false,
       layers: makeLayers()
     };
