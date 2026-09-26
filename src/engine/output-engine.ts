@@ -40,6 +40,16 @@ export class OutputEngine {
     return state;
   }
 
+  setCompositionTarget(targetId: string, compositionId: string | undefined): OutputTarget {
+    const target = this.requireTarget(targetId);
+    const updated: OutputTarget = compositionId === undefined
+      ? (() => { const { compositionId: _compositionId, ...rest } = target; return rest; })()
+      : { ...target, compositionId };
+    this.targets.set(targetId, updated);
+    this.states.set(targetId, { ...this.requireState(targetId), target: updated });
+    return updated;
+  }
+
   setDeckTarget(targetId: string, deckId: string | undefined): OutputTarget {
     const target = this.requireTarget(targetId);
     const updated: OutputTarget = deckId === undefined
@@ -72,9 +82,9 @@ export class OutputEngine {
   }
 
   /** Program is the default source. Deck-routed outputs are not overridden. */
-  syncFromProgram(source: DeckLayerRef): readonly OutputState[] {
+  syncFromProgram(source: DeckLayerRef, compositionId = "default"): readonly OutputState[] {
     return [...this.states.values()]
-      .filter(state => state.active && state.target.enabled && state.target.deckId === undefined)
+      .filter(state => state.active && state.target.enabled && state.target.deckId === undefined && (state.target.compositionId === undefined || state.target.compositionId === compositionId))
       .map(state => this.route(state.target.id, source));
   }
 
