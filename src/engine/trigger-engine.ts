@@ -21,7 +21,7 @@ export class TriggerEngine {
     const state = this.executeAction(action, context);
 
     if (context.output && action.type === "sequence" && state.source) {
-      context.output.syncFromProgram(state.source);
+      context.output.syncFromProgram(state.source, state.compositionId);
       context.output.syncFromDeck(state.source.deckId, state.source);
     }
 
@@ -36,7 +36,7 @@ export class TriggerEngine {
 
         const state = context.program.program(deck, action.target.layerId);
         if (context.output) {
-          context.output.syncFromProgram(action.target);
+          context.output.syncFromProgram(action.target, state.compositionId);
           context.output.syncFromDeck(deck.id, action.target);
         }
         return state;
