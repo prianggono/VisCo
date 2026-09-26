@@ -26,7 +26,7 @@ export class DeckProgramController {
     const deckState = this.deckRuntime.programLayer(deck, layerId);
     // Runtime M is authoritative for the live Deck. Pass that state to Program
     // so the UI fader and Program gate cannot disagree.
-    const runtimeDeck: Deck = { ...deck, masterEnabled: deckState.masterEnabled };
+    const runtimeDeck: Deck = { ...deck, masterLevel: deckState.masterLevel };
     const programState = this.programEngine.program(runtimeDeck, layerId);
 
     if (this.outputEngine && programState.source) {
