@@ -62,6 +62,18 @@ describe("LayerInteraction", () => {
     expect(view.activeLayerId).toBe("layer-2");
   });
 
+
+  it("uses runtime M state when entering Program", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+    runtime.setMasterEnabled(deck.id, false);
+    const controller = new DeckProgramController(runtime, new ProgramEngine());
+
+    expect(() => controller.program(deck, "layer-1")).toThrow(
+      'Deck "deck-1" is muted by M and cannot enter Program.'
+    );
+  });
+
   it("marks only the current Preview and Program layers", () => {
     const interaction = createInteraction();
 
