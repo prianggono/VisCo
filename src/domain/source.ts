@@ -16,8 +16,7 @@ export type SourceKind =
   | "timer"
   | "title"
   | "composition"
-  | "video-delay"
-  | "web-browser";
+  | "video-delay";
 
 export interface ListItem {
   readonly id: string;
