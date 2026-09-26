@@ -462,6 +462,7 @@ export function App() {
                               if (deck.kind === "visual") {
                                 programLayer(deck.id, layer.id);
                               } else {
+                                deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
                                 audioEngine.setEnabled(deck.id, deckRuntime.getState(deck.id).masterEnabled);
                                 audioOutputRouter.sync();
