@@ -44,7 +44,7 @@ export class TriggerEngine {
       case "sequence": {
         let state = context.program.getState();
         for (const nestedAction of action.actions) {
-          state = this.executeSequenceAction(nestedAction, context);
+          state = this.executeSequenceAction(nestedAction, context, state);
         }
         return state;
       }
@@ -59,7 +59,7 @@ export class TriggerEngine {
     }
   }
 
-  private executeSequenceAction(action: TriggerAction, context: TriggerContext): ProgramState {
+  private executeSequenceAction(action: TriggerAction, context: TriggerContext, fallback: ProgramState): ProgramState {
     switch (action.type) {
       case "program": {
         const deck = context.decks.get(action.target.deckId);
@@ -68,15 +68,15 @@ export class TriggerEngine {
       }
       case "sequence": {
         let state = context.program.getState();
-        for (const nestedAction of action.actions) state = this.executeSequenceAction(nestedAction, context);
+        for (const nestedAction of action.actions) state = this.executeSequenceAction(nestedAction, context, state);
         return state;
       }
       case "set-output-enabled":
         context.output?.setEnabled(action.outputId, action.enabled);
-        return context.program.getState();
+        return fallback;
       case "set-media-feature":
         context.output?.setMediaFeature(action.outputId, action.feature, action.enabled);
-        return context.program.getState();
+        return fallback;
     }
   }
 }
