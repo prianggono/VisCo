@@ -4,6 +4,7 @@ import { DeckRuntime } from "../engine/deck-runtime.js";
 import { OutputEngine } from "../engine/output-engine.js";
 import { ProgramEngine } from "../engine/program-engine.js";
 import { DeckProgramController } from "../engine/deck-program-controller.js";
+import { AudioEngine } from "../domain/audio.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -64,6 +65,11 @@ export function App() {
     return runtime;
   }, []);
   const [, setRuntimeRevision] = useState(0);
+  const audioEngine = useMemo(() => {
+    const engine = new AudioEngine();
+    initialDecks.filter((deck) => deck.kind === "audio").forEach((deck) => engine.registerDeck(deck.id));
+    return engine;
+  }, []);
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const [showAddDeck, setShowAddDeck] = useState(false);
@@ -173,6 +179,7 @@ export function App() {
     };
     setDecks((items) => [...items, deck]);
     deckRuntime.register(deck);
+    if (kind === "audio") audioEngine.registerDeck(deck.id);
     setShowAddDeck(false);
   };
 
@@ -285,8 +292,15 @@ export function App() {
   };
 
   const updateFader = (deckId: string, key: "master" | "audio" | "opacity", value: number) => {
-    if (key === "master") deckRuntime.setMasterEnabled(deckId, value > 0);
-    if (key === "audio") deckRuntime.setAudioLevel(deckId, value);
+    const deck = decks.find((item) => item.id === deckId);
+    if (key === "master") {
+      deckRuntime.setMasterEnabled(deckId, value > 0);
+      if (deck?.kind === "audio") audioEngine.setEnabled(deckId, value > 0);
+    }
+    if (key === "audio") {
+      deckRuntime.setAudioLevel(deckId, value);
+      if (deck?.kind === "audio") audioEngine.setLevel(deckId, value);
+    }
     if (key === "opacity") deckRuntime.setVisualLevel(deckId, value);
     setRuntimeRevision((value) => value + 1);
   };
@@ -375,6 +389,10 @@ export function App() {
                         decks.forEach((deck) => {
                           if (deck.layers[column - 1]) {
                             deckRuntime.setColumnEnabled(deck.id, column, enabled);
+                            if (deck.kind === "audio") {
+                              audioEngine.selectLayer(deck.id, enabled ? deck.layers[column - 1].id : null);
+                              audioEngine.setEnabled(deck.id, enabled);
+                            }
                           }
                         });
                         setRuntimeRevision((value) => value + 1);
@@ -437,7 +455,15 @@ export function App() {
                             className="layer-box"
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
-                            onClick={() => deck.kind === "visual" && programLayer(deck.id, layer.id)}
+                            onClick={() => {
+                              if (deck.kind === "visual") {
+                                programLayer(deck.id, layer.id);
+                              } else {
+                                audioEngine.selectLayer(deck.id, layer.id);
+                                audioEngine.setEnabled(deck.id, deckRuntime.getState(deck.id).masterEnabled);
+                                setRuntimeRevision((value) => value + 1);
+                              }
+                            }}
                           >
                             <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
                             <div className="layer-tools"><span>◌</span><span className={isProgram ? "eye on" : "eye"}>◉</span></div>
