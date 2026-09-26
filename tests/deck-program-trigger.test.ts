@@ -369,7 +369,6 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       'Layer "layer-99" does not exist in deck "deck-1".'
     );
   });
-});
   it("keeps Program state independent between Venue and Media compositions", () => {
     const program = new ProgramEngine();
     const venueDeck: Deck = { ...deck1, id: "venue-deck", compositionId: "venue" };
@@ -387,4 +386,4 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       layerId: "layer-2"
     });
   });
-
+});
