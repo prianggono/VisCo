@@ -65,7 +65,7 @@ describe("LayerInteraction", () => {
   it("uses runtime M state when entering Program", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
-    runtime.setMasterEnabled(deck.id, false);
+    runtime.setMasterLevel(deck.id, 0);
     const controller = new DeckProgramController(runtime, new ProgramEngine());
 
     expect(() => controller.program(deck, "layer-1")).toThrow(
