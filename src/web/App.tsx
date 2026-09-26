@@ -122,6 +122,15 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
+  const updateSelectedSourceList = (patch: Partial<NonNullable<Source["list"]>>) => {
+    if (!selectedLayerModel?.sourceId) return;
+    const source = libraryEngine.get(selectedLayerModel.sourceId);
+    if (source.kind !== "list") return;
+    libraryEngine.update({ ...source, list: { ...(source.list ?? { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }), ...patch } });
+    setLibraryItems(libraryEngine.list());
+    setRuntimeRevision((value) => value + 1);
+  };
+
   const updateSelectedPlayback = (patch: Partial<NonNullable<Layer["playback"]>>) => {
     if (!selectedDeck || !selectedLayerModel) return;
     const current = deckRuntime.getState(selectedDeck.id).playback.get(selectedLayerModel.id);
@@ -160,6 +169,8 @@ export function App() {
     setShowAddDeck(false);
   };
 
+  const sourceKindIsList = (kind: SourceKind): boolean => kind === "list";
+
   const inferSourceKind = (mime: string, name: string): SourceKind => {
     if (mime.startsWith("video/")) return "video";
     if (mime.startsWith("image/")) return "image";
@@ -177,7 +188,10 @@ export function App() {
         name: file.name,
         kind: kind ?? inferSourceKind(file.type, file.name),
         uri: URL.createObjectURL(file),
-        metadata: { fileType: file.type, size: file.size }
+        metadata: { fileType: file.type, size: file.size },
+        ...(sourceKindIsList(kind ?? inferSourceKind(file.type, file.name)) ? {
+          list: { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }
+        } : {})
       };
       libraryEngine.add(source);
       return source;
@@ -423,7 +437,15 @@ export function App() {
               </button>
               {openProperty === item && (
                 <div className="property-content">
-                  {item === "General" && <><label>Name<input value={selectedLayerModel?.name ?? ""} onChange={(event) => updateSelectedLayer({ name: event.target.value })} /></label><label>Type<div className="property-value">Media Layer</div></label></>}
+                  {item === "General" && <><label>Name<input value={selectedLayerModel?.name ?? ""} onChange={(event) => updateSelectedLayer({ name: event.target.value })} /></label><label>Type<div className="property-value">{selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId) ? libraryEngine.get(selectedLayerModel.sourceId).kind : "Media Layer"}</div></label></>}
+                  {item === "List" && (() => {
+                    const source = selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId)
+                      ? libraryEngine.get(selectedLayerModel.sourceId)
+                      : undefined;
+                    if (!source || source.kind !== "list") return <div className="property-empty">Select a List source to edit playlist settings.</div>;
+                    const config = source.list ?? { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false };
+                    return <><div className="property-value">Items: {config.itemIds.length}</div><div className="property-buttons"><button onClick={() => updateSelectedSourceList({ shuffle: !config.shuffle })}>{config.shuffle ? "✓ Shuffle" : "Shuffle"}</button><button onClick={() => updateSelectedSourceList({ autoNext: !config.autoNext })}>{config.autoNext ? "✓ Auto Next" : "Auto Next"}</button><button onClick={() => updateSelectedSourceList({ autoFirst: !config.autoFirst })}>{config.autoFirst ? "✓ Auto First" : "Auto First"}</button><button onClick={() => updateSelectedSourceList({ loop: !config.loop })}>{config.loop ? "✓ Loop" : "Loop"}</button></div><div className="property-buttons"><button onClick={() => updateSelectedSourceList({ playOut: !config.playOut })}>{config.playOut ? "✓ Play Out" : "Play Out"}</button><button onClick={() => updateSelectedSourceList({ interlaced: !config.interlaced })}>{config.interlaced ? "✓ Interlaced" : "Interlaced"}</button></div></>;
+                  })()}
                   {item === "Playback" && (() => {
                     const playback = selectedDeck && selectedLayerModel
                       ? deckRuntime.getState(selectedDeck.id).playback.get(selectedLayerModel.id)
