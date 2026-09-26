@@ -62,7 +62,6 @@ describe("LayerInteraction", () => {
     expect(view.activeLayerId).toBe("layer-2");
   });
 
-
   it("uses runtime M state when entering Program", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
@@ -87,5 +86,22 @@ describe("LayerInteraction", () => {
       ["layer-2", false, false],
       ["layer-3", true, false]
     ]);
+  });
+
+  it("rejects Audio Deck from visual Program", () => {
+    const runtime = new DeckRuntime();
+    const audioDeck = {
+      ...deck,
+      id: "audio-deck-1",
+      name: "Audio Deck 1",
+      kind: "audio" as const
+    };
+    runtime.register(audioDeck);
+    const controller = new DeckProgramController(runtime, new ProgramEngine());
+
+    expect(() => controller.program(audioDeck, "layer-1")).toThrow(
+      'Audio deck "audio-deck-1" cannot enter visual Program.'
+    );
+    expect(controller.getState(audioDeck).program.source).toBeNull();
   });
 });
