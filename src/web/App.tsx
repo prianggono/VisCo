@@ -364,24 +364,32 @@ export function App() {
 
             <div className="column-header">
               <div className="column-spacer" />
-              {Array.from({ length: 8 }, (_, index) => (
-                <button
-                  key={index}
-                  className={decks.some((deck) => deckRuntime.getState(deck.id).columns.get(index + 1)) ? "column-toggle active" : "column-toggle"}
-                  onClick={() => {
-                    const column = index + 1;
-                    const enabled = !decks.some((deck) => deckRuntime.getState(deck.id).columns.get(column));
-                    decks.forEach((deck) => {
-                      if (deck.layers[column - 1]) deckRuntime.setColumnEnabled(deck.id, column, enabled);
-                      if (deck.layers[column - 1]) deckRuntime.setLayerPlayback(deck.id, deck.layers[column - 1].id, { playing: enabled });
-                    });
-                    setRuntimeRevision((value) => value + 1);
-                  }}
-                  title={"Toggle column " + (index + 1)}
-                >
-                  L{index + 1}
-                </button>
-              ))}
+              {Array.from({ length: 8 }, (_, index) => {
+                const column = index + 1;
+                const active = decks.some((deck) => deckRuntime.getState(deck.id).columns.get(column));
+                return (
+                  <div className="column-cell" key={column}>
+                    <button
+                      className={active ? "column-toggle active" : "column-toggle"}
+                      onClick={() => {
+                        const enabled = !active;
+                        decks.forEach((deck) => {
+                          if (deck.layers[column - 1]) {
+                            deckRuntime.setColumnEnabled(deck.id, column, enabled);
+                            deckRuntime.setLayerPlayback(deck.id, deck.layers[column - 1].id, { playing: enabled });
+                          }
+                        });
+                        setRuntimeRevision((value) => value + 1);
+                      }}
+                      title={"Toggle Column " + column}
+                      aria-label={"Toggle Column " + column}
+                    >
+                      {active ? "■" : "□"}
+                    </button>
+                    <span>Column {column}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {decks.map((deck) => {
