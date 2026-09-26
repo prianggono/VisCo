@@ -15,6 +15,10 @@ export interface Deck {
   readonly layers: readonly Layer[];
   /** Composition context; omitted by legacy decks and treated as "default". */
   readonly compositionId?: string;
+  readonly masterEnabled?: boolean;
+  readonly audioLevel?: number;
+  readonly visualLevel?: number;
+  readonly loop?: boolean;
   readonly transition: Transition;
 }
 
