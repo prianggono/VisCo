@@ -375,7 +375,6 @@ export function App() {
                         decks.forEach((deck) => {
                           if (deck.layers[column - 1]) {
                             deckRuntime.setColumnEnabled(deck.id, column, enabled);
-                            deckRuntime.setLayerPlayback(deck.id, deck.layers[column - 1].id, { playing: enabled });
                           }
                         });
                         setRuntimeRevision((value) => value + 1);
