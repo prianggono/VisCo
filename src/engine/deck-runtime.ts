@@ -14,6 +14,7 @@ export interface DeckRuntimeState {
   readonly audioLevel: number;
   readonly visualLevel: number;
   readonly playback: ReadonlyMap<string, LayerPlaybackState>;
+  readonly listCursors: ReadonlyMap<string, number>;
 }
 
 export class DeckRuntime {
@@ -36,7 +37,8 @@ export class DeckRuntime {
         playing: layer.playback?.playing ?? false,
         loop: layer.playback?.loop ?? false,
         speed: layer.playback?.speed ?? 100
-      }]))
+      }])),
+      listCursors: new Map()
     };
 
     this.states.set(deck.id, state);
@@ -53,6 +55,20 @@ export class DeckRuntime {
     const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
     this.states.set(deckId, state);
     return state;
+  }
+
+  advanceList(deckId: string, layerId: string, itemCount: number, loop: boolean): { state: DeckRuntimeState; index: number | null } {
+    const current = this.require(deckId);
+    if (itemCount <= 0) return { state: current, index: null };
+    const previous = current.listCursors.get(layerId) ?? -1;
+    const next = previous + 1;
+    if (next >= itemCount && !loop) return { state: current, index: null };
+    const index = next >= itemCount ? 0 : next;
+    const listCursors = new Map(current.listCursors);
+    listCursors.set(layerId, index);
+    const state = { ...current, listCursors };
+    this.states.set(deckId, state);
+    return { state, index };
   }
 
   setLayerPlayback(deckId: string, layerId: string, patch: Partial<LayerPlayback>): DeckRuntimeState {
