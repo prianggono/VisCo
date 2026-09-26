@@ -30,7 +30,7 @@ export class TriggerEngine {
     }
 
     const state = this.executeAction(action, context);
-    if (action.type === "program") this.syncOutputs(state, context);
+    this.syncOutputs(state, context);
     return state;
   }
 
