@@ -20,9 +20,15 @@ describe("Deck Runtime", () => {
       deckId: "deck-1",
       previewLayerId: null,
       activeLayerId: null,
-      masterEnabled: true,
+      masterLevel: 100,
       audioLevel: 100,
-      visualLevel: 100
+      visualLevel: 100,
+      playback: new Map([
+        ["layer-1", { layerId: "layer-1", playing: false, loop: false, speed: 100 }],
+        ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
+      ]),
+      listCursors: new Map(),
+      columns: new Map()
     });
     expect(runtime.getActiveLayer(deck)).toBeNull();
     expect(runtime.getActiveSource(deck)).toBeNull();
@@ -53,9 +59,15 @@ describe("Deck Runtime", () => {
       deckId: "deck-1",
       previewLayerId: "layer-2",
       activeLayerId: "layer-2",
-      masterEnabled: true,
+      masterLevel: 100,
       audioLevel: 100,
-      visualLevel: 100
+      visualLevel: 100,
+      playback: new Map([
+        ["layer-1", { layerId: "layer-1", playing: false, loop: false, speed: 100 }],
+        ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
+      ]),
+      listCursors: new Map(),
+      columns: new Map()
     });
     expect(runtime.getActiveLayer(deck)?.id).toBe("layer-2");
     expect(runtime.getActiveSource(deck)).toEqual({
@@ -90,9 +102,15 @@ describe("Deck Runtime", () => {
       deckId: "deck-1",
       previewLayerId: "layer-2",
       activeLayerId: null,
-      masterEnabled: true,
+      masterLevel: 100,
       audioLevel: 100,
-      visualLevel: 100
+      visualLevel: 100,
+      playback: new Map([
+        ["layer-1", { layerId: "layer-1", playing: false, loop: false, speed: 100 }],
+        ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
+      ]),
+      listCursors: new Map(),
+      columns: new Map()
     });
   });
 
