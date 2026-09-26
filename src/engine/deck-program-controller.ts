@@ -31,10 +31,14 @@ export class DeckProgramController {
     return { deck: deckState, program: programState };
   }
 
-  getState(deckId: string): DeckProgramControllerState {
+  getState(deck: Deck): DeckProgramControllerState;
+  getState(deckId: string): DeckProgramControllerState;
+  getState(deckOrId: Deck | string): DeckProgramControllerState {
+    const deckId = typeof deckOrId === "string" ? deckOrId : deckOrId.id;
+    const compositionId = typeof deckOrId === "string" ? "default" : deckOrId.compositionId ?? "default";
     return {
       deck: this.deckRuntime.getState(deckId),
-      program: this.programEngine.getState("default")
+      program: this.programEngine.getState(compositionId)
     };
   }
 }
