@@ -60,7 +60,6 @@ describe("Audio Output Router", () => {
     expect(state.mix.sources).toHaveLength(1);
     expect(state.outputs).toEqual([]);
   });
-});
 
   it("mixes multiple active Audio Decks using their individual levels", () => {
     const audio = new AudioEngine();
@@ -95,3 +94,4 @@ describe("Audio Output Router", () => {
       ]
     });
   });
+});
