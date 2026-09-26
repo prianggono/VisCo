@@ -76,7 +76,6 @@ export function App() {
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
   const [columnState, setColumnState] = useState<Record<number, boolean>>({});
   const [openProperty, setOpenProperty] = useState("General");
-  const [layerName, setLayerName] = useState("Layer 2");
 
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
@@ -105,6 +104,37 @@ export function App() {
   const getProgramRef = () => {
     const state = programEngine.getState("default").source;
     return state ?? { deckId: "", layerId: "" };
+  };
+
+  const selectedDeck = decks.find((deck) => deck.id === selectedLayer.deckId);
+  const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
+  const updateSelectedLayer = (patch: Partial<Layer>) => {
+    setDecks((current) => current.map((deck) =>
+      deck.id !== selectedLayer.deckId
+        ? deck
+        : {
+            ...deck,
+            layers: deck.layers.map((layer) =>
+              layer.id === selectedLayer.layerId ? { ...layer, ...patch } : layer
+            )
+          }
+    ));
+    setRuntimeRevision((value) => value + 1);
+  };
+
+  const updateSelectedTransform = (patch: Partial<NonNullable<Layer["transform"]>>) => {
+    if (!selectedLayerModel) return;
+    const transform = {
+      x: 0,
+      y: 0,
+      scaleX: 100,
+      scaleY: 100,
+      rotation: 0,
+      opacity: 100,
+      ...selectedLayerModel.transform,
+      ...patch
+    };
+    updateSelectedLayer({ transform });
   };
 
   const addDeck = (kind: DeckKind) => {
@@ -385,10 +415,18 @@ export function App() {
               </button>
               {openProperty === item && (
                 <div className="property-content">
-                  {item === "General" && <><label>Name<input value={layerName} onChange={(event) => setLayerName(event.target.value)} /></label><label>Type<div className="property-value">Media Layer</div></label></>}
+                  {item === "General" && <><label>Name<input value={selectedLayerModel?.name ?? ""} onChange={(event) => updateSelectedLayer({ name: event.target.value })} /></label><label>Type<div className="property-value">Media Layer</div></label></>}
                   {item === "Playback" && <><div className="property-buttons"><button>▶ Play</button><button>Ⅱ Pause</button><button>↻ Loop</button></div><label>Speed<input type="range" min="0" max="200" defaultValue="100" /></label></>}
-                  {item === "Transform" && <div className="property-grid">{["X","Y","Scale X","Scale Y","Rotation"].map((field) => <label key={field}>{field}<input type="number" defaultValue={field.includes("Scale") ? 100 : 0} /></label>)}</div>}
-                  {item === "Layering" && <div className="property-grid">{["Order","Opacity","Blend"].map((field) => <label key={field}>{field}<input defaultValue={field === "Blend" ? "Normal" : "100"} /></label>)}</div>}
+                  {item === "Transform" && <div className="property-grid">
+                    {[
+                      ["X", "x", 0], ["Y", "y", 0], ["Scale X", "scaleX", 100], ["Scale Y", "scaleY", 100], ["Rotation", "rotation", 0]
+                    ].map(([label, key, fallback]) => <label key={String(key)}>{label}<input type="number" value={Number(selectedLayerModel?.transform?.[key as keyof NonNullable<Layer["transform"]>] ?? fallback)} onChange={(event) => updateSelectedTransform({ [key]: Number(event.target.value) })} /></label>)}
+                  </div>}
+                  {item === "Layering" && <div className="property-grid">
+                    <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
+                    <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
+                    <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
+                  </div>}
                   {item === "Audio" && <><label>Volume<input type="range" min="0" max="100" defaultValue="100" /></label><label>Pan<input type="range" min="-100" max="100" defaultValue="0" /></label></>}
                   {item === "Trigger" && <div className="property-empty">No triggers assigned to this layer.</div>}
                   {item === "Slice" && <div className="property-buttons"><button>Add Slice</button><button>Reset Slice</button></div>}
