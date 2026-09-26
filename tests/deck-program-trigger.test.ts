@@ -63,6 +63,29 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     expect(controller.getState(deck3).deck.activeLayerId).toBe("layer-2");
   });
 
+  it("routes Trigger PROGRAM through DeckRuntime M gating", () => {
+    const mutedDeck: Deck = { ...deck1, masterLevel: 0 };
+    const program = new ProgramEngine();
+    const runtime = new DeckRuntime();
+    runtime.register(mutedDeck);
+    const controller = new DeckProgramController(runtime, program);
+    const trigger = new TriggerEngine();
+    const decks = new Map([[mutedDeck.id, mutedDeck]]);
+
+    expect(() =>
+      trigger.execute(
+        {
+          type: "program",
+          target: { deckId: mutedDeck.id, layerId: "layer-1" }
+        },
+        { decks, controller }
+      )
+    ).toThrow('Deck "deck-1" is muted by M and cannot enter Program.');
+
+    expect(controller.getProgramState().source).toBeNull();
+    expect(controller.getState(mutedDeck).deck.activeLayerId).toBeNull();
+  });
+
   it("does not store transition on a trigger action", () => {
     const action = {
       type: "program" as const,
