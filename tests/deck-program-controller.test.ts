@@ -46,6 +46,21 @@ describe("Deck click -> Preview / Program -> Output", () => {
     });
   });
 
+  it("reads Program state from the Deck composition", () => {
+    const venueDeck: Deck = { ...deck, id: "venue-deck", compositionId: "venue" };
+    const runtime = new DeckRuntime();
+    runtime.register(venueDeck);
+    const program = new ProgramEngine();
+    program.program(venueDeck, "layer-1", "venue");
+    const controller = new DeckProgramController(runtime, program);
+
+    expect(controller.getState(venueDeck).program.source).toEqual({
+      deckId: "venue-deck",
+      layerId: "layer-1"
+    });
+    expect(controller.getState(venueDeck).program.compositionId).toBe("venue");
+  });
+
   it("clicking a Layer box programs immediately and syncs outputs", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
