@@ -16,7 +16,7 @@ export interface RelationshipGraph {
   readonly groups: readonly Group[];
   readonly layers: readonly Layer[];
   readonly slices: readonly Slice[];
-  readonly sources: readonly Source[];
+  readonly sources?: readonly Source[];
 }
 
 export function validateRelationships(graph: RelationshipGraph): RelationshipValidationResult {
@@ -26,7 +26,7 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   const groupIds = new Set(graph.groups.map((item) => item.id));
   const layerIds = new Set(graph.layers.map((item) => item.id));
   const sliceIds = new Set(graph.slices.map((item) => item.id));
-  const sourceIds = new Set(graph.sources.map((item) => item.id));
+  const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
 
   for (const composition of graph.compositions) {
     for (const deckId of composition.deckIds) if (!deckIds.has(deckId)) errors.push(`Composition "${composition.id}" references missing deck "${deckId}".`);
