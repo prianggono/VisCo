@@ -50,6 +50,9 @@ export class DeckRuntime {
 
   programLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
+    if (deck.masterEnabled === false) {
+      throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
+    }
     this.require(deck.id);
 
     const state: DeckRuntimeState = {
@@ -60,6 +63,10 @@ export class DeckRuntime {
 
     this.states.set(deck.id, state);
     return state;
+  }
+
+  deselectActiveLayer(deckId: string): DeckRuntimeState {
+    return this.clearActiveLayer(deckId);
   }
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
