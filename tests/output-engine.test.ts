@@ -203,7 +203,9 @@ describe("Output Engine", () => {
     expect(state.active).toBe(false);
     expect(state.source).toEqual(deck1Layer2);
   });
-});\n\n  
+
+
+n  
   it("keeps Stream and Record encoder settings independent while sharing Media Composition", () => {
     const output = new OutputEngine();
     output.register(mediaTarget({
@@ -239,4 +241,4 @@ describe("Output Engine", () => {
     expect(media?.record?.resolution).toEqual([3840, 2160]);
     expect(media?.record?.fps).toBe(60);
   });
-
+});
