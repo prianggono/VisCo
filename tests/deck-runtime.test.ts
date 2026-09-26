@@ -19,7 +19,10 @@ describe("Deck Runtime", () => {
     expect(runtime.register(deck)).toEqual({
       deckId: "deck-1",
       previewLayerId: null,
-      activeLayerId: null
+      activeLayerId: null,
+      masterEnabled: true,
+      audioLevel: 100,
+      visualLevel: 100
     });
     expect(runtime.getActiveLayer(deck)).toBeNull();
     expect(runtime.getActiveSource(deck)).toBeNull();
@@ -49,7 +52,10 @@ describe("Deck Runtime", () => {
     expect(state).toEqual({
       deckId: "deck-1",
       previewLayerId: "layer-2",
-      activeLayerId: "layer-2"
+      activeLayerId: "layer-2",
+      masterEnabled: true,
+      audioLevel: 100,
+      visualLevel: 100
     });
     expect(runtime.getActiveLayer(deck)?.id).toBe("layer-2");
     expect(runtime.getActiveSource(deck)).toEqual({
@@ -83,7 +89,10 @@ describe("Deck Runtime", () => {
     expect(runtime.clearActiveLayer("deck-1")).toEqual({
       deckId: "deck-1",
       previewLayerId: "layer-2",
-      activeLayerId: null
+      activeLayerId: null,
+      masterEnabled: true,
+      audioLevel: 100,
+      visualLevel: 100
     });
   });
 });
