@@ -7,7 +7,7 @@ import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
-import { compositeLayer } from "../engine/compositor.js";
+import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -380,7 +380,7 @@ export function App() {
               <div className="program-canvas">
                 {(() => {
                   const program = programEngine.getState("default");
-                  return program.layer ? <span style={compositeLayer(program.layer).style}>PROGRAM</span> : <span>PROGRAM</span>;
+                  return program.layer ? <span style={compositeProgram(program)?.style}>PROGRAM</span> : <span>PROGRAM</span>;
                 })()}
               </div>
             </div>
