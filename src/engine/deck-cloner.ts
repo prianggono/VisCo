@@ -10,6 +10,7 @@ export interface CloneIdFactory {
 export interface CloneGroupOptions {
   readonly id: string;
   readonly name?: string;
+  readonly deckId?: string;
 }
 
 export interface CloneDeckOptions {
@@ -32,6 +33,7 @@ export function cloneGroup(group: Group, options: CloneGroupOptions): Group {
     ...group,
     id: options.id,
     name: options.name ?? group.name,
+    deckId: options.deckId ?? group.deckId,
     layerIds: [...group.layerIds]
   };
 }
@@ -58,7 +60,8 @@ export function cloneDeck(
 
   const clonedGroups = sourceGroups.map((group) =>
     cloneGroup(group, {
-      id: options.idFactory.nextGroupId(group, targetDeckId)
+      id: options.idFactory.nextGroupId(group, targetDeckId),
+      deckId: targetDeckId
     })
   );
 
