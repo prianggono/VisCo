@@ -55,6 +55,7 @@ describe("Composition renderer", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.layerId).toBe("layer-2");
+    expect(result[0]?.ref).toEqual({ deckId: "deck-1", layerId: "layer-2" });
     expect(result[0]?.sliceId).toBe("slice-1");
     expect(result[0]?.sliceStyle).toEqual({
       x: 100,
