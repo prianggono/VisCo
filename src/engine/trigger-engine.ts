@@ -17,8 +17,8 @@ export interface TriggerContext {
   readonly decks: ReadonlyMap<string, Deck>;
   readonly controller: DeckProgramController;
   /** Composition/Slice data is required for canonical visual output routing. */
-  readonly composition: Composition;
-  readonly slices: readonly Slice[];
+  readonly composition?: Composition;
+  readonly slices?: readonly Slice[];
   readonly output?: OutputEngine;
 }
 
@@ -86,13 +86,18 @@ export class TriggerEngine {
     if (!context.output || !state.source) return;
 
     // Composition render plan is the canonical visual output path.
-    const renderPlan = renderCompositionProgram(
-      context.composition,
-      context.slices,
-      state
-    );
-    context.output.syncFromComposition(renderPlan, state.compositionId);
-
+    if (context.composition && context.slices) {
+      const renderPlan = renderCompositionProgram(
+        context.composition,
+        context.slices,
+        state
+      );
+      context.output.syncFromComposition(renderPlan, state.compositionId);
+    } else {
+      // No Composition context: do not fall back to legacy global source
+      // routing. Composition is the canonical visual output path.
+      return;
+    }
     // Deck-scoped outputs remain explicit overrides and use the first
     // Program Layer only for the legacy Deck routing contract.
     context.output.syncFromDeck(
