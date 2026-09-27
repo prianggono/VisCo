@@ -7,6 +7,7 @@ describe("Project persistence contract", () => {
     const snapshot: ProjectSnapshot = {
       version: 1,
       compositions: [],
+      channels: [],
       decks: [],
       groups: [],
       layers: [],
@@ -16,6 +17,7 @@ describe("Project persistence contract", () => {
       license: defaultLicense("unlicensed")
     };
 
+    expect(snapshot.channels).toEqual([]);
     expect(snapshot.outputs).toEqual([]);
     expect(snapshot.license).toEqual({
       state: "unlicensed",
