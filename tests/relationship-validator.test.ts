@@ -6,6 +6,8 @@ const layer = { id: "layer-1", name: "Layer 1", sourceId: "src-1", sliceIds: ["s
 describe("relationship validation", () => {
   it("accepts reusable sources and many-to-many layer/slice references", () => {
     const result = validateRelationships({
+      channels: [{ id: "offline", name: "Offline", type: "offline", deckIds: ["deck-1"], enabled: true }],
+      channels: [{ id: "offline", name: "Offline", type: "offline", deckIds: ["missing-deck"], enabled: true }],
       compositions: [{
         id: "comp-1", name: "Venue", format: { width: 1920, height: 1080, fps: 29.97, bitDepth: 8 },
         deckIds: ["deck-1"], groupIds: ["group-1"], sliceIds: ["slice-1"], locked: false
@@ -34,6 +36,6 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(7);
+    expect(result.errors).toHaveLength(8);
   });
 });
