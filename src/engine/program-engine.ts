@@ -1,11 +1,38 @@
 import type { Deck, DeckLayerRef, Layer, Transition } from "../domain/deck.js";
 import { getDeckLayer } from "../domain/deck.js";
 
+export interface ProgramLayerState {
+  readonly source: DeckLayerRef;
+  readonly layer: Layer;
+}
+
 export interface ProgramState {
   readonly compositionId: string;
+  /** Canonical multi-Layer Program state, ordered by active formasi order. */
+  readonly layers: readonly ProgramLayerState[];
+  /** Backward-compatible first Layer accessor. */
   readonly source: DeckLayerRef | null;
+  /** Backward-compatible first Layer accessor. */
   readonly layer: Layer | null;
   readonly transition: Transition | null;
+}
+
+function createState(
+  compositionId: string,
+  layers: readonly ProgramLayerState[],
+  transition: Transition | null
+): ProgramState {
+  return {
+    compositionId,
+    layers,
+    get source() {
+      return layers[0]?.source ?? null;
+    },
+    get layer() {
+      return layers[0]?.layer ?? null;
+    },
+    transition
+  };
 }
 
 /**
@@ -16,25 +43,35 @@ export class ProgramEngine {
   private readonly states = new Map<string, ProgramState>();
 
   getState(compositionId = "default"): ProgramState {
-    return this.states.get(compositionId) ?? {
-      compositionId,
-      source: null,
-      layer: null,
-      transition: null
-    };
+    return this.states.get(compositionId) ?? createState(compositionId, [], null);
   }
 
   program(deck: Deck, layerId: string, compositionId = "default"): ProgramState {
-    const layer = getDeckLayer(deck, { deckId: deck.id, layerId });
+    return this.programLayers(deck, [layerId], compositionId);
+  }
+
+  programLayers(deck: Deck, layerIds: readonly string[], compositionId = "default"): ProgramState {
     if ((deck.masterLevel ?? 100) <= 0) {
       throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
     }
-    const state: ProgramState = {
-      compositionId,
-      source: { deckId: deck.id, layerId: layer.id },
-      layer,
-      transition: deck.transition
-    };
+    if (layerIds.length === 0) {
+      throw new Error(`Deck "${deck.id}" requires at least one Layer to enter Program.`);
+    }
+
+    const seen = new Set<string>();
+    const layers = layerIds.map((layerId) => {
+      if (seen.has(layerId)) {
+        throw new Error(`Layer "${layerId}" is duplicated in Program formasi.`);
+      }
+      seen.add(layerId);
+      const layer = getDeckLayer(deck, { deckId: deck.id, layerId });
+      return {
+        source: { deckId: deck.id, layerId: layer.id },
+        layer
+      };
+    });
+
+    const state = createState(compositionId, layers, deck.transition);
     this.states.set(compositionId, state);
     return state;
   }
