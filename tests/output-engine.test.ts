@@ -258,4 +258,34 @@ describe("Output Engine", () => {
     expect(media?.record?.resolution).toEqual([3840, 2160]);
     expect(media?.record?.fps).toBe(60);
   });
+
+  it("routes a Composition render plan without replacing Layer ownership", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    const renderPlan = [{
+      sliceId: "slice-1",
+      layerId: "layer-1",
+      layerStyle: {
+        transform: "translate(-50%, -50%) translate(10px, 20px) rotate(0deg) scale(1, 1)",
+        opacity: 1,
+        transformOrigin: "center center" as const,
+        zIndex: 1,
+        mixBlendMode: "normal" as const
+      },
+      sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+    }];
+
+    const states = output.syncFromComposition(renderPlan, "composition-1");
+
+    expect(states).toHaveLength(1);
+    expect(output.getState("display-main").renderPlan).toEqual(renderPlan);
+    expect(output.getState("display-main").source).toBeNull();
+  });
+
 });
