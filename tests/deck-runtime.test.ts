@@ -28,8 +28,7 @@ describe("Deck Runtime", () => {
         ["layer-1", { layerId: "layer-1", playing: false, loop: false, speed: 100 }],
         ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
       ]),
-      listCursors: new Map(),
-      columns: new Map()
+      listCursors: new Map()
     });
     expect(runtime.getActiveLayer(deck)).toBeNull();
     expect(runtime.getActiveSource(deck)).toBeNull();
@@ -156,10 +155,11 @@ describe("Deck Runtime", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
 
-    expect(runtime.setColumnEnabled(deck.id, 2, true).columns.get(2)).toBe(true);
-    expect(runtime.getState(deck.id).playback.get("layer-2")?.playing).toBe(true);
+    expect(runtime.setColumnEnabled(deck.id, 2, true).playback.get("layer-2")?.playing).toBe(true);
+    expect(runtime.getColumnEnabled(deck.id, 2)).toBe(true);
 
-    expect(runtime.setColumnEnabled(deck.id, 2, false).columns.get(2)).toBe(false);
+    expect(runtime.setColumnEnabled(deck.id, 2, false).playback.get("layer-2")?.playing).toBe(false);
+    expect(runtime.getColumnEnabled(deck.id, 2)).toBe(false);
     expect(runtime.getState(deck.id).playback.get("layer-2")?.playing).toBe(false);
   });
 
