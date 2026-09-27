@@ -8,6 +8,7 @@ import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
@@ -168,6 +169,35 @@ export function App() {
     if (!selectedLayerModel) return;
     const transform = setLayerScale(selectedLayerModel.transform, axis, value);
     updateSelectedLayer({ transform });
+  };
+
+  const cloneDeckForEditing = (sourceDeckId: string) => {
+    const source = decks.find((deck) => deck.id === sourceDeckId);
+    if (!source) return;
+
+    const baseId = source.id + "-copy";
+    let index = 1;
+    let cloneId = baseId + "-" + index;
+    while (decks.some((deck) => deck.id === cloneId)) {
+      index += 1;
+      cloneId = baseId + "-" + index;
+    }
+
+    const result = cloneDeck(source, [], {
+      id: cloneId,
+      name: source.name + " Copy",
+      idFactory: {
+        nextDeckId: () => cloneId,
+        nextGroupId: (group, targetDeckId) => targetDeckId + "-" + group.id + "-copy"
+      }
+    });
+
+    const clonedDeck = { ...result.deck, kind: source.kind } as Deck;
+    setDecks((items) => [...items, clonedDeck]);
+    deckRuntime.register(clonedDeck);
+    if (clonedDeck.kind === "audio") audioEngine.registerDeck(clonedDeck.id);
+    setSelectedLayer({ deckId: clonedDeck.id, layerId: clonedDeck.layers[0]?.id ?? "" });
+    setRuntimeRevision((value) => value + 1);
   };
 
   const addDeck = (kind: DeckKind) => {
@@ -492,6 +522,11 @@ export function App() {
                       ))}
                     </div>
                     <div className="deck-actions">
+                      <button
+                        className="deck-action"
+                        title="Clone Deck"
+                        onClick={() => cloneDeckForEditing(deck.id)}
+                      >⧉</button>
                       <button className="deck-action" title="Deck settings">⚙</button>
                     </div>
                   </div>
