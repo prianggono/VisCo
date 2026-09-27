@@ -8,6 +8,7 @@ import {
 } from "../src/engine/layer-transform.js";
 import { getLayerRenderStyle } from "../src/engine/layer-renderer.js";
 import { compositeLayer } from "../src/engine/compositor.js";
+import { DeckRuntime } from "../src/engine/deck-runtime.js";
 
 const base: LayerTransform = resolveLayerTransform();
 
@@ -48,8 +49,7 @@ describe("Layer Transform", () => {
     expect(result.scaleY).toBe(100);
   });
 
-  it("clamps DeckRuntime master level and keeps ownership in runtime", async () => {
-    const { DeckRuntime } = await import("../src/engine/deck-runtime.js");
+  it("clamps DeckRuntime master level and keeps ownership in runtime", () => {
     const deck = {
       id: "deck-runtime-test",
       name: "Runtime Test",
