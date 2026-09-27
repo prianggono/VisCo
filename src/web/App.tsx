@@ -101,7 +101,7 @@ export function App() {
   }, []);
   const audioOutputRouter = useMemo(() => new AudioOutputRouter(audioEngine, outputEngine), [audioEngine, outputEngine]);
   const programEngine = useMemo(() => new ProgramEngine(), []);
-  const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
+  const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine), [deckRuntime, programEngine, outputEngine]);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
@@ -122,7 +122,7 @@ export function App() {
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    deckProgramController.program(deck, layerId, { syncOutputs: false });
+    deckProgramController.program(deck, layerId);
     deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
 
     const program = programEngine.getState("default");
