@@ -8,6 +8,7 @@ import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { MediaLayerView } from "./MediaLayerView.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -97,6 +98,7 @@ export function App() {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
     deckProgramController.program(deck, layerId);
+    deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
   };
@@ -371,7 +373,23 @@ export function App() {
                   const ref = getPreviewRef();
                   const deck = decks.find((item) => item.id === ref.deckId);
                   const layer = deck?.layers.find((item) => item.id === ref.layerId);
-                  return layer ? <span style={compositeLayer(layer).style}>PREVIEW</span> : <span>PREVIEW</span>;
+                  const source = layer?.sourceId && libraryEngine.has(layer.sourceId)
+                    ? libraryEngine.get(layer.sourceId)
+                    : undefined;
+                  const playback = deck && layer
+                    ? deckRuntime.getState(deck.id).playback.get(layer.id)
+                    : undefined;
+                  return layer ? (
+                    <MediaLayerView
+                      layer={layer}
+                      source={source}
+                      style={compositeLayer(layer).style}
+                      playing={playback?.playing}
+                      loop={playback?.loop}
+                      speed={playback?.speed}
+                      label="PREVIEW"
+                    />
+                  ) : <span>PREVIEW</span>;
                 })()}
               </div>
             </div>
@@ -380,7 +398,24 @@ export function App() {
               <div className="program-canvas">
                 {(() => {
                   const program = programEngine.getState("default");
-                  return program.layer ? <span style={compositeProgram(program)?.style}>PROGRAM</span> : <span>PROGRAM</span>;
+                  const layer = program.layer;
+                  const source = layer?.sourceId && libraryEngine.has(layer.sourceId)
+                    ? libraryEngine.get(layer.sourceId)
+                    : undefined;
+                  const playback = layer && program.source
+                    ? deckRuntime.getState(program.source.deckId).playback.get(layer.id)
+                    : undefined;
+                  return layer ? (
+                    <MediaLayerView
+                      layer={layer}
+                      source={source}
+                      style={compositeProgram(program)?.style ?? compositeLayer(layer).style}
+                      playing={playback?.playing}
+                      loop={playback?.loop}
+                      speed={playback?.speed}
+                      label="PROGRAM"
+                    />
+                  ) : <span>PROGRAM</span>;
                 })()}
               </div>
             </div>
