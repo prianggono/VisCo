@@ -8,8 +8,8 @@ export interface CompositedLayer {
 }
 
 /**
- * Composition stage for a single Layer. It consumes the Layer directly and
- * never stores a second Transform state.
+ * Composition stage for one Layer. It consumes the Layer directly and never
+ * stores a second Transform state.
  */
 export function compositeLayer(layer: Layer): CompositedLayer {
   return {
@@ -19,9 +19,17 @@ export function compositeLayer(layer: Layer): CompositedLayer {
 }
 
 /**
- * Program composition entry point. Program remains the source of truth for
- * the active Layer; the compositor only derives render data from it.
+ * Program composition entry point.
+ * Program.layers is the canonical multi-Layer runtime state.
  */
-export function compositeProgram(program: ProgramState): CompositedLayer | null {
-  return program.layer ? compositeLayer(program.layer) : null;
+export function compositeProgram(program: ProgramState): readonly CompositedLayer[] {
+  return program.layers.map(({ layer }) => compositeLayer(layer));
+}
+
+/**
+ * Explicit single-Layer compatibility helper for consumers that only need
+ * the first Program Layer.
+ */
+export function compositeProgramFirst(program: ProgramState): CompositedLayer | null {
+  return program.layers[0] ? compositeLayer(program.layers[0].layer) : null;
 }
