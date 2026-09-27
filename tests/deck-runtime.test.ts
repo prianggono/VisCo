@@ -19,6 +19,7 @@ describe("Deck Runtime", () => {
     expect(runtime.register(deck)).toEqual({
       deckId: "deck-1",
       previewLayerId: null,
+      activeLayerIds: [],
       activeLayerId: null,
       masterLevel: 100,
       audioLevel: 100,
@@ -58,6 +59,7 @@ describe("Deck Runtime", () => {
     expect(state).toEqual({
       deckId: "deck-1",
       previewLayerId: "layer-2",
+      activeLayerIds: ["layer-2"],
       activeLayerId: "layer-2",
       masterLevel: 100,
       audioLevel: 100,
@@ -74,6 +76,30 @@ describe("Deck Runtime", () => {
       deckId: "deck-1",
       layerId: "layer-2"
     });
+  });
+
+  it("programs multiple Layers as one active formasi", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+
+    const state = runtime.programLayers(deck, ["layer-1", "layer-2"]);
+
+    expect(state.activeLayerIds).toEqual(["layer-1", "layer-2"]);
+    expect(state.activeLayerId).toBe("layer-1");
+    expect(runtime.getActiveLayers(deck).map((layer) => layer.id)).toEqual(["layer-1", "layer-2"]);
+    expect(runtime.getActiveSources(deck)).toEqual([
+      { deckId: "deck-1", layerId: "layer-1" },
+      { deckId: "deck-1", layerId: "layer-2" }
+    ]);
+  });
+
+  it("rejects duplicate Layers in one Program formasi", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+
+    expect(() => runtime.programLayers(deck, ["layer-1", "layer-1"])).toThrow(
+      'Layer "layer-1" is duplicated in Program formasi.'
+    );
   });
 
   it("rejects a Layer that does not belong to the Deck", () => {
@@ -101,6 +127,7 @@ describe("Deck Runtime", () => {
     expect(runtime.clearActiveLayer("deck-1")).toEqual({
       deckId: "deck-1",
       previewLayerId: "layer-2",
+      activeLayerIds: [],
       activeLayerId: null,
       masterLevel: 100,
       audioLevel: 100,
