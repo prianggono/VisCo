@@ -7,6 +7,7 @@ import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
+import { getLayerRenderStyle } from "../engine/layer-renderer.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -365,11 +366,23 @@ export function App() {
           <div className="monitors">
             <div className="monitor">
               <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{getPreviewRef().deckId} / {getPreviewRef().layerId}</span></div>
-              <div className="preview-canvas"><span>PREVIEW</span></div>
+              <div className="preview-canvas">
+                {(() => {
+                  const ref = getPreviewRef();
+                  const deck = decks.find((item) => item.id === ref.deckId);
+                  const layer = deck?.layers.find((item) => item.id === ref.layerId);
+                  return layer ? <span style={getLayerRenderStyle(layer)}>PREVIEW</span> : <span>PREVIEW</span>;
+                })()}
+              </div>
             </div>
             <div className="monitor program-monitor">
               <div className="monitor-head"><span>PROGRAM</span><span className="on-air">ON AIR</span></div>
-              <div className="program-canvas"><span>PROGRAM</span></div>
+              <div className="program-canvas">
+                {(() => {
+                  const program = programEngine.getState("default");
+                  return program.layer ? <span style={getLayerRenderStyle(program.layer)}>PROGRAM</span> : <span>PROGRAM</span>;
+                })()}
+              </div>
             </div>
           </div>
 
