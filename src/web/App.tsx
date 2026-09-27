@@ -7,7 +7,7 @@ import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
-import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { compositeLayer, compositeProgramFirst } from "../engine/compositor.js";
 import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
@@ -439,7 +439,7 @@ export function App() {
                     <MediaLayerView
                       layer={layer}
                       source={source}
-                      style={compositeProgram(program)?.style ?? compositeLayer(layer).style}
+                      style={compositeProgramFirst(program)?.style ?? compositeLayer(layer).style}
                       playing={playback?.playing}
                       loop={playback?.loop}
                       speed={playback?.speed}
