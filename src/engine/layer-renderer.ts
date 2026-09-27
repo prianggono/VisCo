@@ -27,7 +27,7 @@ const resolveBlendMode = (blendMode?: string): LayerBlendMode => {
 export function getLayerRenderStyle(layer: Layer): LayerRenderStyle {
   const transform = getLayerRenderTransform(layer);
   return {
-    transform: "translate(" + transform.x + "px, " + transform.y + "px) rotate(" + transform.rotation + "deg) scale(" + transform.scaleX + ", " + transform.scaleY + ")",
+    transform: "translate(-50%, -50%) translate(" + transform.x + "px, " + transform.y + "px) rotate(" + transform.rotation + "deg) scale(" + transform.scaleX + ", " + transform.scaleY + ")",
     opacity: transform.opacity,
     transformOrigin: "center center",
     zIndex: layer.order ?? 0,
