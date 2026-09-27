@@ -26,6 +26,12 @@ export function resolveCompositionProgram(
   slices: readonly Slice[],
   program: ProgramState
 ): readonly ResolvedCompositionSlice[] {
+  if (program.compositionId !== composition.id) {
+    throw new Error(
+      `Program composition "${program.compositionId}" does not match Composition "${composition.id}".`
+    );
+  }
+
   const sliceById = new Map(slices.map((slice) => [slice.id, slice]));
   const activeByRef = new Map(
     program.layers.map(({ source, layer }) => [
