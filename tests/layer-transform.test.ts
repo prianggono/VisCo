@@ -48,6 +48,21 @@ describe("Layer Transform", () => {
     expect(result.scaleY).toBe(100);
   });
 
+  it("clamps DeckRuntime master level and keeps ownership in runtime", async () => {
+    const { DeckRuntime } = await import("../src/engine/deck-runtime.js");
+    const deck = {
+      id: "deck-runtime-test",
+      name: "Runtime Test",
+      transition: { type: "cut", durationMs: 0 },
+      layers: [{ id: "layer-1", name: "Layer 1" }]
+    };
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+    expect(runtime.setMasterLevel(deck.id, 40).masterLevel).toBe(40);
+    expect(runtime.setMasterLevel(deck.id, 140).masterLevel).toBe(100);
+    expect(runtime.setMasterLevel(deck.id, -10).masterLevel).toBe(0);
+  });
+
   it("converts percentage scale to renderer factors", () => {
     const result = getLayerScaleFactors({ ...base, scaleX: 150, scaleY: 75 });
     expect(result).toEqual({ x: 1.5, y: 0.75 });
