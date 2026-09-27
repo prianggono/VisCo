@@ -65,7 +65,7 @@ const project: ProjectSnapshot = {
   outputs: [
     { id: "led-main", kind: "display", enabled: true, compositionId: "composition-live", deckId: "deck-live" }
   ],
-  license: { tier: "free", status: "active" }
+  license: { state: "unlicensed", watermarkEnabled: true }
 };
 
 const ids = {
