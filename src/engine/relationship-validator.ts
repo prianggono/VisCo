@@ -23,7 +23,6 @@ export interface RelationshipGraph {
 
 export function validateRelationships(graph: RelationshipGraph): RelationshipValidationResult {
   const errors: string[] = [];
-  const compositionIds = new Set(graph.compositions.map((item) => item.id));
   const deckIds = new Set(graph.decks.map((item) => item.id));
   const groupIds = new Set(graph.groups.map((item) => item.id));
   const layerIds = new Set(graph.layers.map((item) => item.id));
@@ -44,7 +43,6 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   }
 
   for (const deck of graph.decks) {
-    if (deck.compositionId !== undefined && !compositionIds.has(deck.compositionId)) errors.push(`Deck "${deck.id}" references missing composition "${deck.compositionId}".`);
     for (const layer of deck.layers) {
       if (!layerIds.has(layer.id)) errors.push(`Deck "${deck.id}" contains unregistered layer "${layer.id}".`);
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
