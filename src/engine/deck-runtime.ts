@@ -9,6 +9,9 @@ export interface LayerPlaybackState extends LayerPlayback {
 export interface DeckRuntimeState {
   readonly deckId: string;
   readonly previewLayerId: string | null;
+  /** Canonical runtime Program membership. Order is the active formasi order. */
+  readonly activeLayerIds: readonly string[];
+  /** Backward-compatible derived accessor for single-Layer consumers. */
   readonly activeLayerId: string | null;
   readonly masterLevel: number;
   readonly audioLevel: number;
@@ -16,6 +19,15 @@ export interface DeckRuntimeState {
   readonly playback: ReadonlyMap<string, LayerPlaybackState>;
   readonly listCursors: ReadonlyMap<string, number>;
   readonly columns: ReadonlyMap<number, boolean>;
+}
+
+function withActiveLayerCompatibility(state: Omit<DeckRuntimeState, "activeLayerId">): DeckRuntimeState {
+  return {
+    ...state,
+    get activeLayerId() {
+      return state.activeLayerIds[0] ?? null;
+    }
+  };
 }
 
 export class DeckRuntime {
@@ -26,10 +38,10 @@ export class DeckRuntime {
       throw new Error(`Deck "${deck.id}" is already registered.`);
     }
 
-    const state: DeckRuntimeState = {
+    const state = withActiveLayerCompatibility({
       deckId: deck.id,
       previewLayerId: null,
-      activeLayerId: null,
+      activeLayerIds: [],
       masterLevel: deck.masterLevel ?? 100,
       audioLevel: deck.audioLevel ?? 100,
       visualLevel: deck.visualLevel ?? 100,
@@ -41,7 +53,7 @@ export class DeckRuntime {
       }])),
       listCursors: new Map(),
       columns: new Map()
-    };
+    });
 
     this.states.set(deck.id, state);
     return state;
@@ -56,22 +68,21 @@ export class DeckRuntime {
     if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
     const playback = new Map(current.playback);
     playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: enabled });
-    const state = { ...current, columns, playback };
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, columns, playback });
     this.states.set(deckId, state);
     return state;
   }
 
   setMasterLevel(deckId: string, level: number): DeckRuntimeState {
-    const state = {
-      ...this.require(deckId),
-      masterLevel: Math.max(0, Math.min(100, level))
-    };
+    const current = this.require(deckId);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, masterLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
 
   setAudioLevel(deckId: string, level: number): DeckRuntimeState {
-    const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
+    const current = this.require(deckId);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, audioLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
@@ -85,7 +96,7 @@ export class DeckRuntime {
     const index = next >= itemCount ? 0 : next;
     const listCursors = new Map(current.listCursors);
     listCursors.set(layerId, index);
-    const state = { ...current, listCursors };
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, listCursors });
     this.states.set(deckId, state);
     return { state, index };
   }
@@ -100,53 +111,61 @@ export class DeckRuntime {
     };
     const playback = new Map(current.playback);
     playback.set(layerId, next);
-    const state = { ...current, playback };
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, playback });
     this.states.set(deckId, state);
     return state;
   }
 
   setVisualLevel(deckId: string, level: number): DeckRuntimeState {
-    const state = { ...this.require(deckId), visualLevel: Math.max(0, Math.min(100, level)) };
+    const current = this.require(deckId);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, visualLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
 
   previewLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
-    this.require(deck.id);
-
-    const state: DeckRuntimeState = {
-      ...this.require(deck.id),
-      previewLayerId: layerId
-    };
-
+    const current = this.require(deck.id);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, previewLayerId: layerId });
     this.states.set(deck.id, state);
     return state;
   }
 
   clearPreview(deckId: string): DeckRuntimeState {
-    const state: DeckRuntimeState = {
-      ...this.require(deckId),
-      previewLayerId: null
-    };
-
+    const current = this.require(deckId);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, previewLayerId: null });
     this.states.set(deckId, state);
     return state;
   }
 
   programLayer(deck: Deck, layerId: string): DeckRuntimeState {
-    getDeckLayer(deck, { deckId: deck.id, layerId });
-    if (this.require(deck.id).masterLevel <= 0) {
+    return this.programLayers(deck, [layerId]);
+  }
+
+  programLayers(deck: Deck, layerIds: readonly string[]): DeckRuntimeState {
+    const current = this.require(deck.id);
+    if (current.masterLevel <= 0) {
       throw new Error(`Deck "${deck.id}" is muted by M and cannot enter Program.`);
     }
-    this.require(deck.id);
+    if (layerIds.length === 0) {
+      throw new Error(`Deck "${deck.id}" requires at least one Layer to enter Program.`);
+    }
 
-    const state: DeckRuntimeState = {
-      ...this.require(deck.id),
-      activeLayerId: layerId,
-      previewLayerId: layerId
-    };
+    const seen = new Set<string>();
+    for (const layerId of layerIds) {
+      if (seen.has(layerId)) {
+        throw new Error(`Layer "${layerId}" is duplicated in Program formasi.`);
+      }
+      seen.add(layerId);
+      getDeckLayer(deck, { deckId: deck.id, layerId });
+    }
 
+    const state = withActiveLayerCompatibility({
+      ...current,
+      activeLayerId: undefined as never,
+      activeLayerIds: [...layerIds],
+      previewLayerId: layerIds[0]
+    });
     this.states.set(deck.id, state);
     return state;
   }
@@ -156,11 +175,8 @@ export class DeckRuntime {
   }
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
-    const state: DeckRuntimeState = {
-      ...this.require(deckId),
-      activeLayerId: null
-    };
-
+    const current = this.require(deckId);
+    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, activeLayerIds: [] });
     this.states.set(deckId, state);
     return state;
   }
@@ -178,9 +194,13 @@ export class DeckRuntime {
 
   getActiveLayer(deck: Deck): Layer | null {
     const state = this.require(deck.id);
-    return state.activeLayerId === null
-      ? null
-      : getDeckLayer(deck, { deckId: deck.id, layerId: state.activeLayerId });
+    const layerId = state.activeLayerIds[0];
+    return layerId === undefined ? null : getDeckLayer(deck, { deckId: deck.id, layerId });
+  }
+
+  getActiveLayers(deck: Deck): readonly Layer[] {
+    const state = this.require(deck.id);
+    return state.activeLayerIds.map((layerId) => getDeckLayer(deck, { deckId: deck.id, layerId }));
   }
 
   getPreviewSource(deck: Deck): DeckLayerRef | null {
@@ -191,6 +211,10 @@ export class DeckRuntime {
   getActiveSource(deck: Deck): DeckLayerRef | null {
     const layer = this.getActiveLayer(deck);
     return layer ? { deckId: deck.id, layerId: layer.id } : null;
+  }
+
+  getActiveSources(deck: Deck): readonly DeckLayerRef[] {
+    return this.getActiveLayers(deck).map((layer) => ({ deckId: deck.id, layerId: layer.id }));
   }
 
   private require(deckId: string): DeckRuntimeState {
