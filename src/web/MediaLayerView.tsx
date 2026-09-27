@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { Layer } from "../domain/layer.js";
 import type { Source } from "../domain/source.js";
 import type { LayerRenderStyle } from "../engine/layer-renderer.js";
@@ -12,16 +12,6 @@ interface MediaLayerViewProps {
   speed?: number;
   label: string;
 }
-
-const frameStyle: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  width: "100%",
-  height: "100%",
-  display: "block",
-  objectFit: "contain",
-  background: "transparent"
-};
 
 export function MediaLayerView({
   layer,
@@ -45,7 +35,7 @@ export function MediaLayerView({
     }
   }, [playing, speed, source?.uri]);
 
-  const mediaStyle: React.CSSProperties = {
+  const mediaStyle: CSSProperties = {
     ...style,
     position: "absolute",
     left: "50%",
