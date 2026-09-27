@@ -99,6 +99,24 @@ describe("relationship validation", () => {
     expect(result).toEqual({ valid: true, errors: [] });
   });
 
+  it("rejects duplicate entity IDs and duplicate Layer IDs within a Deck", () => {
+    const result = validateRelationships({
+      compositions: [],
+      decks: [{
+        id: "deck-1",
+        name: "Deck 1",
+        layers: [layer, { ...layer, name: "Layer 1 duplicate" }],
+        transition: { type: "cut", durationMs: 0 }
+      }],
+      groups: [],
+      slices: [],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }]
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Deck "deck-1" contains duplicate Layer ID "layer-1".');
+  });
+
   it("rejects a Group owned by one Deck but referenced by another", () => {
     const result = validateRelationships({
       compositions: [],
