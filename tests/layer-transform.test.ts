@@ -69,6 +69,7 @@ describe("Layer Transform", () => {
     };
 
     const style = getLayerRenderStyle(layer);
+    expect(style.transform).toContain("translate(-50%, -50%)");
     expect(style.transform).toContain("translate(20px, 30px)");
     expect(style.transform).toContain("rotate(15deg)");
     expect(style.transform).toContain("scale(1.25, 0.8)");
