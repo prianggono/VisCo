@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectSnapshot } from "../src/persistence/project.js";
 import { attachDeckToComposition } from "../src/engine/composition-deck-attachment.js";
+import { detachDeckFromComposition } from "../src/engine/composition-deck-detachment.js";
 
 const project: ProjectSnapshot = {
   version: 1,
@@ -124,6 +125,26 @@ describe("Attach Deck to Composition", () => {
     ).toThrow('Deck "missing-deck" does not exist in the project.');
   });
 
+  it("rejects attachment to a locked Composition", () => {
+    const lockedProject: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, locked: true }
+          : composition
+      )
+    };
+
+    expect(() =>
+      attachDeckToComposition(lockedProject, {
+        compositionId: "composition-live",
+        deckId: "deck-b"
+      })
+    ).toThrow(
+      'Composition "composition-live" is locked and cannot be changed.'
+    );
+  });
+
   it("rejects an invalid insertion index", () => {
     expect(() =>
       attachDeckToComposition(project, {
@@ -133,6 +154,97 @@ describe("Attach Deck to Composition", () => {
       })
     ).toThrow(
       'Deck attachment index 99 is out of range for Composition "composition-live".'
+    );
+  });
+
+  it("detaches an attached Deck without changing unrelated project state", () => {
+    const attached = attachDeckToComposition(project, {
+      compositionId: "composition-live",
+      deckId: "deck-b"
+    });
+
+    const result = detachDeckFromComposition(attached.project, {
+      compositionId: "composition-live",
+      deckId: "deck-b"
+    });
+
+    expect(result.composition.deckIds).toEqual(["deck-a"]);
+    expect(result.project.channels).toEqual(project.channels);
+    expect(result.project.outputs).toEqual(project.outputs);
+    expect(result.project.slices).toEqual(project.slices);
+  });
+
+  it("rejects detaching from a locked Composition", () => {
+    const lockedProject: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, locked: true }
+          : composition
+      )
+    };
+
+    expect(() =>
+      detachDeckFromComposition(lockedProject, {
+        compositionId: "composition-live",
+        deckId: "deck-a"
+      })
+    ).toThrow(
+      'Composition "composition-live" is locked and cannot be changed.'
+    );
+  });
+
+  it("rejects detaching a Deck that is not attached", () => {
+    expect(() =>
+      detachDeckFromComposition(project, {
+        compositionId: "composition-live",
+        deckId: "deck-b"
+      })
+    ).toThrow(
+      'Deck "deck-b" is not attached to Composition "composition-live".'
+    );
+  });
+
+  it("rejects detaching a Deck still referenced by a Slice", () => {
+    expect(() =>
+      detachDeckFromComposition(project, {
+        compositionId: "composition-live",
+        deckId: "deck-a"
+      })
+    ).toThrow(
+      'Deck "deck-a" cannot be detached because Slice "slice-live" still references it.'
+    );
+  });
+
+  it("rejects detaching a Deck still targeted by an Output", () => {
+    const noSliceProject: ProjectSnapshot = {
+      ...project,
+      slices: [],
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, sliceIds: [] }
+          : composition
+      )
+    };
+
+    expect(() =>
+      detachDeckFromComposition(noSliceProject, {
+        compositionId: "composition-live",
+        deckId: "deck-a"
+      })
+    ).toThrow(
+      'Deck "deck-a" cannot be detached because Output "output-live" still targets it in Composition "composition-live".'
+    );
+  });
+
+  it("rejects detaching from a missing Composition", () => {
+    expect(() =>
+      detachDeckFromComposition(project, {
+        compositionId: "missing-composition",
+        deckId: "deck-a"
+      })
+    ).toThrow(
+      'Composition "missing-composition" does not exist in the project.'
     );
   });
 });
