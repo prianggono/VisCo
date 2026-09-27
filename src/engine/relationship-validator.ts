@@ -82,10 +82,29 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     }
   }
 
+  const compositionsBySliceId = new Map<string, Composition[]>();
+  for (const composition of graph.compositions) {
+    for (const sliceId of composition.sliceIds) {
+      const owners = compositionsBySliceId.get(sliceId) ?? [];
+      owners.push(composition);
+      compositionsBySliceId.set(sliceId, owners);
+    }
+  }
+
   for (const slice of graph.slices) {
     for (const ref of slice.layerRefs) {
       if (!hasDeckLayerRef(decksById, ref)) {
         errors.push(`Slice "${slice.id}" references missing layer "${ref.layerId}" in deck "${ref.deckId}".`);
+        continue;
+      }
+
+      const owners = compositionsBySliceId.get(slice.id) ?? [];
+      for (const composition of owners) {
+        if (!composition.deckIds.includes(ref.deckId)) {
+          errors.push(
+            `Slice "${slice.id}" maps deck "${ref.deckId}", but that deck is not attached to Composition "${composition.id}".`
+          );
+        }
       }
     }
   }
