@@ -1,15 +1,15 @@
 import type { DeckLayerRef } from "../domain/deck.js";
-import type {
-  MediaOutputKind,
-  OutputTarget,
-  MediaOutputSettings
-} from "../domain/output.js";
+import type { MediaOutputKind, OutputTarget, MediaOutputSettings } from "../domain/output.js";
+import type { RenderedCompositionLayer } from "./composition-renderer.js";
 
 export type { MediaOutputKind, OutputTarget, MediaOutputSettings } from "../domain/output.js";
 
 export interface OutputState {
   readonly target: OutputTarget;
+  /** Compatibility routing reference for Deck/Layer-scoped outputs. */
   readonly source: DeckLayerRef | null;
+  /** Composition render result consumed by physical/media output pipelines. */
+  readonly renderPlan: readonly RenderedCompositionLayer[] | null;
   readonly active: boolean;
 }
 
@@ -18,17 +18,11 @@ export class OutputEngine {
   private readonly states = new Map<string, OutputState>();
 
   register(target: OutputTarget): void {
-    if (this.targets.has(target.id)) {
-      throw new Error(`Output "${target.id}" is already registered.`);
-    }
-    if (target.kind === "media" && !target.media) {
-      throw new Error(`Media output "${target.id}" requires media settings.`);
-    }
-    if (target.kind === "display" && target.media) {
-      throw new Error(`Display output "${target.id}" cannot have media settings.`);
-    }
+    if (this.targets.has(target.id)) throw new Error(`Output "${target.id}" is already registered.`);
+    if (target.kind === "media" && !target.media) throw new Error(`Media output "${target.id}" requires media settings.`);
+    if (target.kind === "display" && target.media) throw new Error(`Display output "${target.id}" cannot have media settings.`);
     this.targets.set(target.id, target);
-    this.states.set(target.id, { target, source: null, active: target.enabled });
+    this.states.set(target.id, { target, source: null, renderPlan: null, active: target.enabled });
   }
 
   setEnabled(targetId: string, enabled: boolean): OutputState {
@@ -62,9 +56,7 @@ export class OutputEngine {
 
   setMediaFeature(targetId: string, feature: MediaOutputKind, enabled: boolean): OutputTarget {
     const target = this.requireTarget(targetId);
-    if (target.kind !== "media" || !target.media) {
-      throw new Error(`Output "${target.id}" is not a media output.`);
-    }
+    if (target.kind !== "media" || !target.media) throw new Error(`Output "${target.id}" is not a media output.`);
     const key = feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual";
     const media: MediaOutputSettings = { ...target.media, [key]: enabled };
     const updated: OutputTarget = { ...target, media };
@@ -76,16 +68,36 @@ export class OutputEngine {
   route(targetId: string, source: DeckLayerRef): OutputState {
     const target = this.requireTarget(targetId);
     if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
-    const state = { target, source, active: true };
+    const state = { ...this.requireState(targetId), target, source, active: true };
     this.states.set(targetId, state);
     return state;
   }
 
-  /** Program is the default source. Deck-routed outputs are not overridden. */
+  /** Legacy Program source routing. Deck-routed outputs are not overridden. */
   syncFromProgram(source: DeckLayerRef, compositionId = "default"): readonly OutputState[] {
     return [...this.states.values()]
-      .filter(state => state.active && state.target.enabled && state.target.deckId === undefined && (state.target.compositionId === undefined || state.target.compositionId === compositionId))
+      .filter(state => state.active && state.target.enabled && state.target.deckId === undefined &&
+        (state.target.compositionId === undefined || state.target.compositionId === compositionId))
       .map(state => this.route(state.target.id, source));
+  }
+
+  /**
+   * Composition is the canonical visual result for physical/media outputs.
+   * Layer and Slice ownership remain in their domain objects; Output only
+   * receives the current render plan.
+   */
+  syncFromComposition(
+    renderPlan: readonly RenderedCompositionLayer[],
+    compositionId = "default"
+  ): readonly OutputState[] {
+    return [...this.states.values()]
+      .filter(state => state.active && state.target.enabled && state.target.deckId === undefined &&
+        (state.target.compositionId === undefined || state.target.compositionId === compositionId))
+      .map(state => {
+        const updated = { ...state, renderPlan, active: true };
+        this.states.set(state.target.id, updated);
+        return updated;
+      });
   }
 
   /** A Deck override is scoped to the Deck and its Composition. */
@@ -94,12 +106,8 @@ export class OutputEngine {
       throw new Error(`Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`);
     }
     return [...this.states.values()]
-      .filter(state =>
-        state.active &&
-        state.target.enabled &&
-        state.target.deckId === deckId &&
-        (state.target.compositionId === undefined || state.target.compositionId === compositionId)
-      )
+      .filter(state => state.active && state.target.enabled && state.target.deckId === deckId &&
+        (state.target.compositionId === undefined || state.target.compositionId === compositionId))
       .map(state => this.route(state.target.id, currentLayer));
   }
 
@@ -117,6 +125,7 @@ export class OutputEngine {
     if (!target) throw new Error(`Output "${targetId}" does not exist.`);
     return target;
   }
+
   private requireState(targetId: string): OutputState {
     const state = this.states.get(targetId);
     if (!state) throw new Error(`Output "${targetId}" does not exist.`);
