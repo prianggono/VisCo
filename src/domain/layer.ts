@@ -5,6 +5,8 @@ export interface LayerTransform {
   readonly y: number;
   readonly scaleX: number;
   readonly scaleY: number;
+  /** When true, changing one scale axis updates the other proportionally. */
+  readonly scaleLinked?: boolean;
   readonly rotation: number;
   readonly opacity: number;
 }
