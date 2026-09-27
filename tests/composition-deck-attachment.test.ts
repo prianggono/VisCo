@@ -4,6 +4,8 @@ import { attachDeckToComposition } from "../src/engine/composition-deck-attachme
 import { detachDeckFromComposition } from "../src/engine/composition-deck-detachment.js";
 import { attachDeckToChannel } from "../src/engine/channel-deck-attachment.js";
 import { detachDeckFromChannel } from "../src/engine/channel-deck-detachment.js";
+import { attachSliceToComposition } from "../src/engine/composition-slice-attachment.js";
+import { detachSliceFromComposition } from "../src/engine/composition-slice-detachment.js";
 
 const project: ProjectSnapshot = {
   version: 1,
@@ -316,6 +318,130 @@ describe("Attach Deck to Composition", () => {
       })
     ).toThrow(
       'Deck attachment index 99 is out of range for Channel "channel-offline".'
+    );
+  });
+
+  it("attaches and detaches a Slice without changing its mapping", () => {
+    const projectWithoutSliceMembership: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, sliceIds: [] }
+          : composition
+      )
+    };
+
+    const attached = attachSliceToComposition(projectWithoutSliceMembership, {
+      compositionId: "composition-live",
+      sliceId: "slice-live"
+    });
+
+    expect(attached.composition.sliceIds).toEqual(["slice-live"]);
+    expect(attached.project.slices).toEqual(project.slices);
+
+    const detached = detachSliceFromComposition(attached.project, {
+      compositionId: "composition-live",
+      sliceId: "slice-live"
+    });
+
+    expect(detached.composition.sliceIds).toEqual([]);
+    expect(detached.project.slices).toEqual(project.slices);
+  });
+
+  it("supports explicit Slice insertion order", () => {
+    const projectWithoutSliceMembership: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, sliceIds: [] }
+          : composition
+      )
+    };
+
+    const result = attachSliceToComposition(projectWithoutSliceMembership, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      index: 0
+    });
+
+    expect(result.composition.sliceIds).toEqual(["slice-live"]);
+  });
+
+  it("rejects duplicate Slice attachment", () => {
+    expect(() =>
+      attachSliceToComposition(project, {
+        compositionId: "composition-live",
+        sliceId: "slice-live"
+      })
+    ).toThrow(
+      'Slice "slice-live" is already attached to Composition "composition-live".'
+    );
+  });
+
+  it("rejects missing Slice or Composition", () => {
+    expect(() =>
+      attachSliceToComposition(project, {
+        compositionId: "missing-composition",
+        sliceId: "slice-live"
+      })
+    ).toThrow(
+      'Composition "missing-composition" does not exist in the project.'
+    );
+
+    expect(() =>
+      attachSliceToComposition(project, {
+        compositionId: "composition-live",
+        sliceId: "missing-slice"
+      })
+    ).toThrow('Slice "missing-slice" does not exist in the project.');
+  });
+
+  it("rejects Slice membership changes on a locked Composition", () => {
+    const lockedProject: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, locked: true }
+          : composition
+      )
+    };
+
+    expect(() =>
+      attachSliceToComposition(lockedProject, {
+        compositionId: "composition-live",
+        sliceId: "slice-live"
+      })
+    ).toThrow(
+      'Composition "composition-live" is locked and cannot be changed.'
+    );
+
+    expect(() =>
+      detachSliceFromComposition(lockedProject, {
+        compositionId: "composition-live",
+        sliceId: "slice-live"
+      })
+    ).toThrow(
+      'Composition "composition-live" is locked and cannot be changed.'
+    );
+  });
+
+  it("rejects detaching an unassigned Slice", () => {
+    const projectWithoutSliceMembership: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, sliceIds: [] }
+          : composition
+      )
+    };
+
+    expect(() =>
+      detachSliceFromComposition(projectWithoutSliceMembership, {
+        compositionId: "composition-live",
+        sliceId: "slice-live"
+      })
+    ).toThrow(
+      'Slice "slice-live" is not attached to Composition "composition-live".'
     );
   });
 
