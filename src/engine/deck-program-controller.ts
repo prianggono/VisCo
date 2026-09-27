@@ -1,11 +1,18 @@
 import type { Deck } from "../domain/deck.js";
+import type { Group } from "../domain/group.js";
 import { DeckRuntime, type DeckRuntimeState } from "./deck-runtime.js";
+import { resolveGroupLayers } from "./group-resolver.js";
 import { OutputEngine } from "./output-engine.js";
 import { ProgramEngine, type ProgramState } from "./program-engine.js";
 
 export interface DeckProgramControllerState {
   readonly deck: DeckRuntimeState;
   readonly program: ProgramState;
+}
+
+export interface DeckProgramOptions {
+  readonly syncOutputs?: boolean;
+  readonly compositionId?: string;
 }
 
 export class DeckProgramController {
@@ -19,15 +26,44 @@ export class DeckProgramController {
     return this.deckRuntime.previewLayer(deck, layerId);
   }
 
-  program(deck: Deck, layerId: string, options: { readonly syncOutputs?: boolean; readonly compositionId?: string } = {}): DeckProgramControllerState {
+  program(deck: Deck, layerId: string, options: DeckProgramOptions = {}): DeckProgramControllerState {
+    return this.programLayers(deck, [layerId], options);
+  }
+
+  /**
+   * Programs the ordered Layer formasi defined by a Deck-owned Group.
+   *
+   * Group owns membership/order only. Transition remains owned by Deck.
+   * OutputEngine is still single-source, so compatibility output sync uses
+   * the first Program Layer until multi-Layer Output routing is implemented.
+   */
+  programGroup(deck: Deck, group: Group, options: DeckProgramOptions = {}): DeckProgramControllerState {
+    const resolved = resolveGroupLayers(deck, group);
+    return this.programLayers(
+      deck,
+      resolved.map(({ ref }) => ref.layerId),
+      options
+    );
+  }
+
+  private programLayers(
+    deck: Deck,
+    layerIds: readonly string[],
+    options: DeckProgramOptions
+  ): DeckProgramControllerState {
     if ((deck as Deck & { kind?: "visual" | "audio" }).kind === "audio") {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
-    const deckState = this.deckRuntime.programLayer(deck, layerId);
+
+    const deckState = this.deckRuntime.programLayers(deck, layerIds);
     // Runtime M is authoritative for the live Deck. Pass that state to Program
     // so the UI fader and Program gate cannot disagree.
     const runtimeDeck: Deck = { ...deck, masterLevel: deckState.masterLevel };
-    const programState = this.programEngine.program(runtimeDeck, layerId, options.compositionId ?? "default");
+    const programState = this.programEngine.programLayers(
+      runtimeDeck,
+      layerIds,
+      options.compositionId ?? "default"
+    );
 
     if (options.syncOutputs !== false && this.outputEngine && programState.source) {
       this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
