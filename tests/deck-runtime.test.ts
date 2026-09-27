@@ -68,7 +68,6 @@ describe("Deck Runtime", () => {
         ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
       ]),
       listCursors: new Map(),
-      columns: new Map()
     });
     expect(runtime.getActiveLayer(deck)?.id).toBe("layer-2");
     expect(runtime.getActiveSource(deck)).toEqual({
@@ -147,7 +146,6 @@ describe("Deck Runtime", () => {
         ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
       ]),
       listCursors: new Map(),
-      columns: new Map()
     });
   });
 
