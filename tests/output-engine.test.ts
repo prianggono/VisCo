@@ -270,6 +270,7 @@ describe("Output Engine", () => {
 
     const renderPlan = [{
       sliceId: "slice-1",
+      ref: { deckId: "deck-1", layerId: "layer-1" },
       layerId: "layer-1",
       layerStyle: {
         transform: "translate(-50%, -50%) translate(10px, 20px) rotate(0deg) scale(1, 1)",
