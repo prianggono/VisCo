@@ -6,6 +6,8 @@ import { attachDeckToChannel } from "../src/engine/channel-deck-attachment.js";
 import { detachDeckFromChannel } from "../src/engine/channel-deck-detachment.js";
 import { attachSliceToComposition } from "../src/engine/composition-slice-attachment.js";
 import { detachSliceFromComposition } from "../src/engine/composition-slice-detachment.js";
+import { mapLayerToSlice } from "../src/engine/slice-layer-mapping.js";
+import { unmapLayerFromSlice } from "../src/engine/slice-layer-unmapping.js";
 
 const project: ProjectSnapshot = {
   version: 1,
@@ -46,7 +48,9 @@ const project: ProjectSnapshot = {
     {
       id: "deck-b",
       name: "B",
-      layers: [],
+      layers: [
+        { id: "layer-1", name: "B Layer 1", sourceId: "source-video" }
+      ],
       transition: { type: "fade", durationMs: 500 }
     }
   ],
@@ -442,6 +446,166 @@ describe("Attach Deck to Composition", () => {
       })
     ).toThrow(
       'Slice "slice-live" is not attached to Composition "composition-live".'
+    );
+  });
+
+  it("maps and unmaps a Deck-scoped Layer reference", () => {
+    const projectWithoutMapping: ProjectSnapshot = {
+      ...project,
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: []
+      }))
+    };
+
+    const mapped = mapLayerToSlice(projectWithoutMapping, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      ref: { deckId: "deck-a", layerId: "layer-1" }
+    });
+
+    expect(mapped.slice.layerRefs).toEqual([
+      { deckId: "deck-a", layerId: "layer-1" }
+    ]);
+
+    const unmapped = unmapLayerFromSlice(mapped.project, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      ref: { deckId: "deck-a", layerId: "layer-1" }
+    });
+
+    expect(unmapped.slice.layerRefs).toEqual([]);
+  });
+
+  it("keeps identical local Layer IDs distinct by Deck", () => {
+    const projectWithBothDecks: ProjectSnapshot = {
+      ...project,
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, deckIds: ["deck-a", "deck-b"] }
+          : composition
+      ),
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: []
+      }))
+    };
+
+    const mappedA = mapLayerToSlice(projectWithBothDecks, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      ref: { deckId: "deck-a", layerId: "layer-1" }
+    });
+
+    const mappedB = mapLayerToSlice(mappedA.project, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      ref: { deckId: "deck-b", layerId: "layer-1" }
+    });
+
+    expect(mappedB.slice.layerRefs).toEqual([
+      { deckId: "deck-a", layerId: "layer-1" },
+      { deckId: "deck-b", layerId: "layer-1" }
+    ]);
+  });
+
+  it("rejects mapping a Layer from a Deck not attached to the Composition", () => {
+    const projectWithoutDeckB = {
+      ...project,
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: []
+      }))
+    };
+
+    expect(() =>
+      mapLayerToSlice(projectWithoutDeckB, {
+        compositionId: "composition-live",
+        sliceId: "slice-live",
+        ref: { deckId: "deck-b", layerId: "layer-1" }
+      })
+    ).toThrow(
+      'Deck "deck-b" is not attached to Composition "composition-live".'
+    );
+  });
+
+  it("rejects duplicate Layer mapping", () => {
+    const projectWithoutMapping = {
+      ...project,
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: []
+      }))
+    };
+
+    const mapped = mapLayerToSlice(projectWithoutMapping, {
+      compositionId: "composition-live",
+      sliceId: "slice-live",
+      ref: { deckId: "deck-a", layerId: "layer-1" }
+    });
+
+    expect(() =>
+      mapLayerToSlice(mapped.project, {
+        compositionId: "composition-live",
+        sliceId: "slice-live",
+        ref: { deckId: "deck-a", layerId: "layer-1" }
+      })
+    ).toThrow(
+      'Layer "layer-1" in Deck "deck-a" is already mapped to Slice "slice-live".'
+    );
+  });
+
+  it("rejects mapping to locked Composition or Slice", () => {
+    const lockedCompositionProject = {
+      ...project,
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: []
+      })),
+      compositions: project.compositions.map((composition) =>
+        composition.id === "composition-live"
+          ? { ...composition, locked: true }
+          : composition
+      )
+    };
+
+    expect(() =>
+      mapLayerToSlice(lockedCompositionProject, {
+        compositionId: "composition-live",
+        sliceId: "slice-live",
+        ref: { deckId: "deck-a", layerId: "layer-1" }
+      })
+    ).toThrow(
+      'Composition "composition-live" is locked and cannot be changed.'
+    );
+
+    const lockedSliceProject = {
+      ...project,
+      slices: project.slices.map((slice) => ({
+        ...slice,
+        layerRefs: [],
+        locked: true
+      }))
+    };
+
+    expect(() =>
+      mapLayerToSlice(lockedSliceProject, {
+        compositionId: "composition-live",
+        sliceId: "slice-live",
+        ref: { deckId: "deck-a", layerId: "layer-1" }
+      })
+    ).toThrow('Slice "slice-live" is locked and cannot be changed.');
+  });
+
+  it("rejects unmapping an absent Layer reference", () => {
+    expect(() =>
+      unmapLayerFromSlice(project, {
+        compositionId: "composition-live",
+        sliceId: "slice-live",
+        ref: { deckId: "deck-a", layerId: "missing-layer" }
+      })
+    ).toThrow(
+      'Layer "missing-layer" in Deck "deck-a" is not mapped to Slice "slice-live".'
     );
   });
 
