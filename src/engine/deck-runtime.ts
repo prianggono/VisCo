@@ -76,14 +76,14 @@ export class DeckRuntime {
 
   setMasterLevel(deckId: string, level: number): DeckRuntimeState {
     const current = this.require(deckId);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, masterLevel: Math.max(0, Math.min(100, level)) });
+    const state = withActiveLayerCompatibility({ ...current, masterLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
 
   setAudioLevel(deckId: string, level: number): DeckRuntimeState {
     const current = this.require(deckId);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, audioLevel: Math.max(0, Math.min(100, level)) });
+    const state = withActiveLayerCompatibility({ ...current, audioLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
@@ -97,7 +97,7 @@ export class DeckRuntime {
     const index = next >= itemCount ? 0 : next;
     const listCursors = new Map(current.listCursors);
     listCursors.set(layerId, index);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, listCursors });
+    const state = withActiveLayerCompatibility({ ...current, listCursors });
     this.states.set(deckId, state);
     return { state, index };
   }
@@ -112,14 +112,14 @@ export class DeckRuntime {
     };
     const playback = new Map(current.playback);
     playback.set(layerId, next);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, playback });
+    const state = withActiveLayerCompatibility({ ...current, playback });
     this.states.set(deckId, state);
     return state;
   }
 
   setVisualLevel(deckId: string, level: number): DeckRuntimeState {
     const current = this.require(deckId);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, visualLevel: Math.max(0, Math.min(100, level)) });
+    const state = withActiveLayerCompatibility({ ...current, visualLevel: Math.max(0, Math.min(100, level)) });
     this.states.set(deckId, state);
     return state;
   }
@@ -127,14 +127,14 @@ export class DeckRuntime {
   previewLayer(deck: Deck, layerId: string): DeckRuntimeState {
     getDeckLayer(deck, { deckId: deck.id, layerId });
     const current = this.require(deck.id);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, previewLayerId: layerId });
+    const state = withActiveLayerCompatibility({ ...current, previewLayerId: layerId });
     this.states.set(deck.id, state);
     return state;
   }
 
   clearPreview(deckId: string): DeckRuntimeState {
     const current = this.require(deckId);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, previewLayerId: null });
+    const state = withActiveLayerCompatibility({ ...current, previewLayerId: null });
     this.states.set(deckId, state);
     return state;
   }
@@ -177,7 +177,7 @@ export class DeckRuntime {
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
     const current = this.require(deckId);
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, activeLayerIds: [] });
+    const state = withActiveLayerCompatibility({ ...current, activeLayerIds: [] });
     this.states.set(deckId, state);
     return state;
   }
