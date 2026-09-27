@@ -1,4 +1,5 @@
 import type { Composition } from "../domain/composition.js";
+import type { Channel } from "../domain/channel.js";
 import type { Deck } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import type { Layer } from "../domain/layer.js";
@@ -12,6 +13,7 @@ export interface RelationshipValidationResult {
 
 export interface RelationshipGraph {
   readonly compositions: readonly Composition[];
+  readonly channels?: readonly Channel[];
   readonly decks: readonly Deck[];
   readonly groups: readonly Group[];
   readonly layers: readonly Layer[];
@@ -22,11 +24,19 @@ export interface RelationshipGraph {
 export function validateRelationships(graph: RelationshipGraph): RelationshipValidationResult {
   const errors: string[] = [];
   const compositionIds = new Set(graph.compositions.map((item) => item.id));
+  const channelIds = new Set((graph.channels ?? []).map((item) => item.id));
   const deckIds = new Set(graph.decks.map((item) => item.id));
   const groupIds = new Set(graph.groups.map((item) => item.id));
   const layerIds = new Set(graph.layers.map((item) => item.id));
   const sliceIds = new Set(graph.slices.map((item) => item.id));
   const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
+
+
+  for (const channel of graph.channels ?? []) {
+    for (const deckId of channel.deckIds) {
+      if (!deckIds.has(deckId)) errors.push(`Channel "${channel.id}" references missing deck "${deckId}".`);
+    }
+  }
 
   for (const composition of graph.compositions) {
     for (const deckId of composition.deckIds) if (!deckIds.has(deckId)) errors.push(`Composition "${composition.id}" references missing deck "${deckId}".`);
