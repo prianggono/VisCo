@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateRelationships } from "../src/engine/relationship-validator.js";
 
-const layer = { id: "layer-1", name: "Layer 1", sourceId: "src-1", sliceIds: ["slice-1"] };
+const layer = { id: "layer-1", name: "Layer 1", sourceId: "src-1" };
 
 describe("relationship validation", () => {
   it("accepts reusable sources and Deck-scoped layer references", () => {
@@ -43,7 +43,7 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(6);
+    expect(result.errors).toHaveLength(5);
   });
 
   it("rejects a Slice mapping a Deck that is not attached to its Composition", () => {
