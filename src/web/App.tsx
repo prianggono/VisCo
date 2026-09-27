@@ -508,7 +508,7 @@ export function App() {
               <div className="column-spacer" />
               {Array.from({ length: 8 }, (_, index) => {
                 const column = index + 1;
-                const active = decks.some((deck) => deckRuntime.getState(deck.id).columns.get(column));
+                const active = decks.some((deck) => deckRuntime.getColumnEnabled(deck.id, column));
                 return (
                   <div className="column-cell" key={column}>
                     <button
