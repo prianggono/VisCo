@@ -3,7 +3,6 @@ import type { Deck } from "../src/domain/deck.js";
 import type { Group } from "../src/domain/group.js";
 import { DeckRuntime } from "../src/engine/deck-runtime.js";
 import { DeckProgramController } from "../src/engine/deck-program-controller.js";
-import { OutputEngine } from "../src/engine/output-engine.js";
 import { ProgramEngine } from "../src/engine/program-engine.js";
 
 const deck: Deck = {
@@ -18,11 +17,9 @@ const deck: Deck = {
 };
 
 describe("Deck click -> Preview / Program -> Output", () => {
-  it("clicking a Layer name previews without changing Program or Output", () => {
+  it("clicking a Layer name previews without changing Program", () => {
     const program = new ProgramEngine();
     program.program(deck, "layer-1");
-
-    const output = new Map([["display-main", { source: { deckId: "deck-1", layerId: "layer-1" } }]]);
 
     const runtime = new DeckRuntime();
     runtime.register(deck);
@@ -33,10 +30,6 @@ describe("Deck click -> Preview / Program -> Output", () => {
     expect(state.previewLayerId).toBe("layer-2");
     expect(state.activeLayerId).toBeNull();
     expect(program.getState().source).toEqual({
-      deckId: "deck-1",
-      layerId: "layer-1"
-    });
-    expect(output.get("display-main")?.source).toEqual({
       deckId: "deck-1",
       layerId: "layer-1"
     });
@@ -57,7 +50,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     expect(controller.getState(venueDeck).program.compositionId).toBe("venue");
   });
 
-  it("clicking a Layer box programs immediately and syncs outputs", () => {
+  it("clicking a Layer box programs immediately", () => {
     const runtime = new DeckRuntime();
     runtime.register(deck);
 
@@ -94,7 +87,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const program = new ProgramEngine();
     const controller = new DeckProgramController(runtime, program);
 
-    const state = controller.programGroup(deck, group, );
+    const state = controller.programGroup(deck, group);
 
     expect(state.deck.activeLayerIds).toEqual([
       "layer-3",
@@ -127,7 +120,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const controller = new DeckProgramController(runtime, program);
 
     expect(() =>
-      controller.programGroup(deck, group, { syncOutputs: false })
+      controller.programGroup(deck, group)
     ).toThrow('belongs to deck "deck-2", not "deck-1"');
   });
 
