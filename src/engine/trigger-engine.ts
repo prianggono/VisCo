@@ -1,4 +1,7 @@
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
+import type { Composition } from "../domain/composition.js";
+import type { Slice } from "../domain/slice.js";
+import { renderCompositionProgram } from "./composition-renderer.js";
 import { DeckProgramController } from "./deck-program-controller.js";
 import type { ProgramState } from "./program-engine.js";
 import { OutputEngine } from "./output-engine.js";
@@ -13,6 +16,9 @@ export type TriggerAction =
 export interface TriggerContext {
   readonly decks: ReadonlyMap<string, Deck>;
   readonly controller: DeckProgramController;
+  /** Composition/Slice data is required for canonical visual output routing. */
+  readonly composition: Composition;
+  readonly slices: readonly Slice[];
   readonly output?: OutputEngine;
 }
 
@@ -78,7 +84,21 @@ export class TriggerEngine {
 
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
     if (!context.output || !state.source) return;
-    context.output.syncFromProgram(state.source, state.compositionId);
-    context.output.syncFromDeck(state.source.deckId, state.source, state.compositionId);
+
+    // Composition render plan is the canonical visual output path.
+    const renderPlan = renderCompositionProgram(
+      context.composition,
+      context.slices,
+      state
+    );
+    context.output.syncFromComposition(renderPlan, state.compositionId);
+
+    // Deck-scoped outputs remain explicit overrides and use the first
+    // Program Layer only for the legacy Deck routing contract.
+    context.output.syncFromDeck(
+      state.source.deckId,
+      state.source,
+      state.compositionId
+    );
   }
 }
