@@ -45,9 +45,8 @@ export function cloneGroup(group: Group, options: CloneGroupOptions): Group {
  * Runtime state, Program/Preview/ON AIR state and Output state are not part
  * of the Deck domain model and therefore are intentionally not cloned.
  *
- * Slice mappings are Composition-owned. They are cleared from cloned Layers
- * so a cloned Deck cannot accidentally inherit the original Deck's output
- * mapping. A Composition can explicitly map the clone later.
+ * Slice mappings are Composition-owned and are therefore never cloned with a Deck.
+ * A Composition can explicitly map the clone later.
  */
 export function cloneDeck(
   deck: Deck,
@@ -71,7 +70,6 @@ export function cloneDeck(
     name: options.name ?? deck.name,
     layers: deck.layers.map((layer: Layer) => ({
       ...layer,
-      sliceIds: undefined,
       transform: layer.transform ? { ...layer.transform } : undefined,
       playback: layer.playback ? { ...layer.playback } : undefined
     })),
