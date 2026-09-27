@@ -38,6 +38,13 @@ export function attachDeckToComposition(
   }
 
   const composition = project.compositions[compositionIndex];
+
+  if (composition.locked) {
+    throw new Error(
+      `Composition "${options.compositionId}" is locked and cannot be changed.`
+    );
+  }
+
   if (composition.deckIds.includes(options.deckId)) {
     throw new Error(
       `Deck "${options.deckId}" is already attached to Composition "${options.compositionId}".`
