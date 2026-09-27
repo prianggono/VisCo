@@ -1,7 +1,6 @@
 import type { Composition } from "../domain/composition.js";
 import type { Deck } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
-import type { Layer } from "../domain/layer.js";
 import type { Slice } from "../domain/slice.js";
 import type { Source, Library } from "../domain/source.js";
 import type { OutputTarget } from "../domain/output.js";
@@ -14,8 +13,9 @@ export interface ProjectSnapshot {
   /** Presentation flows such as Offline and Online. */
   readonly channels: readonly Channel[];
   readonly decks: readonly Deck[];
+  /** Groups are persisted globally but each Group is owned by exactly one Deck. */
   readonly groups: readonly Group[];
-  readonly layers: readonly Layer[];
+  /** Layers are owned by Decks; there is intentionally no second global Layer registry. */
   readonly slices: readonly Slice[];
   readonly sources: readonly Source[];
   readonly library?: Library;
