@@ -21,11 +21,12 @@ export interface DeckRuntimeState {
   readonly columns: ReadonlyMap<number, boolean>;
 }
 
-function withActiveLayerCompatibility(state: Omit<DeckRuntimeState, "activeLayerId">): DeckRuntimeState {
+function withActiveLayerCompatibility(state: DeckRuntimeState | Omit<DeckRuntimeState, "activeLayerId">): DeckRuntimeState {
+  const { activeLayerId: _legacyActiveLayerId, ...canonical } = state as DeckRuntimeState;
   return {
-    ...state,
+    ...canonical,
     get activeLayerId() {
-      return state.activeLayerIds[0] ?? null;
+      return canonical.activeLayerIds[0] ?? null;
     }
   };
 }
@@ -68,7 +69,7 @@ export class DeckRuntime {
     if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
     const playback = new Map(current.playback);
     playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: enabled });
-    const state = withActiveLayerCompatibility({ ...current, activeLayerId: undefined as never, columns, playback });
+    const state = withActiveLayerCompatibility({ ...current, columns, playback });
     this.states.set(deckId, state);
     return state;
   }
