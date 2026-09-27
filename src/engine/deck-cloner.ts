@@ -10,7 +10,6 @@ export interface CloneIdFactory {
 export interface CloneGroupOptions {
   readonly id: string;
   readonly name?: string;
-  readonly deckId?: string;
 }
 
 export interface CloneDeckOptions {
@@ -33,7 +32,7 @@ export function cloneGroup(group: Group, options: CloneGroupOptions): Group {
     ...group,
     id: options.id,
     name: options.name ?? group.name,
-    deckId: options.deckId ?? group.deckId,
+    deckId: group.deckId,
     layerIds: [...group.layerIds]
   };
 }
