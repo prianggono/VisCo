@@ -64,7 +64,7 @@ export class TriggerEngine {
       case "program": {
         const deck = context.decks.get(action.target.deckId);
         if (!deck) throw new Error(`Deck "${action.target.deckId}" does not exist.`);
-        return context.controller.program(deck, action.target.layerId, { syncOutputs: false, compositionId: action.compositionId ?? "default" }).program;
+        return context.controller.program(deck, action.target.layerId, { compositionId: action.compositionId ?? "default" }).program;
       }
 
       case "sequence":
