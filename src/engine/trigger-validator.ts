@@ -7,7 +7,8 @@ export interface TriggerIssue {
   readonly severity: TriggerIssueSeverity;
   readonly code:
     | "missing-deck" | "missing-layer" | "missing-output"
-    | "invalid-output-action" | "duplicate-command" | "conflicting-command";
+    | "invalid-output-action" | "composition-mismatch" | "deck-not-in-composition"
+    | "duplicate-command" | "conflicting-command";
   readonly path: readonly number[];
   readonly message: string;
 }
@@ -58,6 +59,24 @@ export function validateTriggerAction(action: TriggerAction, context: TriggerCon
             path,
             message: error instanceof Error ? error.message : `Layer "${current.target.layerId}" does not exist in deck "${deck.id}".`
           });
+        }
+        if (context.composition) {
+          const compositionId = current.compositionId ?? "default";
+          if (context.composition.id !== compositionId) {
+            issues.push({
+              severity: "error",
+              code: "composition-mismatch",
+              path,
+              message: `Program targets Composition "${compositionId}", but Trigger context uses Composition "${context.composition.id}".`
+            });
+          } else if (!context.composition.deckIds.includes(current.target.deckId)) {
+            issues.push({
+              severity: "error",
+              code: "deck-not-in-composition",
+              path,
+              message: `Deck "${current.target.deckId}" is not attached to Composition "${context.composition.id}".`
+            });
+          }
         }
         registerCommand({
           key: `program:${current.compositionId ?? "default"}:${current.target.deckId}:${current.target.layerId}`,
