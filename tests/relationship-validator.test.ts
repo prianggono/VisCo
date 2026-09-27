@@ -13,7 +13,6 @@ describe("relationship validation", () => {
       }],
       decks: [{ id: "deck-1", name: "Deck 1", groupIds: ["group-1"], layers: [layer], transition: { type: "fade", durationMs: 500 } }],
       groups: [{ id: "group-1", name: "Group 1", deckId: "deck-1", layerIds: ["layer-1"], collapsed: false }],
-      layers: [layer],
       sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
       slices: [{
         id: "slice-1", name: "Left",
@@ -34,7 +33,6 @@ describe("relationship validation", () => {
       }],
       decks: [{ id: "deck-1", name: "Deck 1", groupIds: ["group-1"], layers: [layer], transition: { type: "cut", durationMs: 0 } }],
       groups: [{ id: "group-1", name: "Group 1", deckId: "deck-1", layerIds: ["missing-layer"], collapsed: false }],
-      layers: [layer],
       sources: [],
       slices: [{
         id: "slice-1", name: "Left",
@@ -45,7 +43,22 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(7);
+    expect(result.errors).toHaveLength(6);
+  });
+
+  it("allows the same local Layer ID in multiple Decks", () => {
+    const result = validateRelationships({
+      compositions: [],
+      decks: [
+        { id: "deck-1", name: "Deck 1", layers: [layer], transition: { type: "cut", durationMs: 0 } },
+        { id: "deck-2", name: "Deck 2", layers: [layer], transition: { type: "cut", durationMs: 0 } }
+      ],
+      groups: [],
+      slices: [],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }]
+    });
+
+    expect(result).toEqual({ valid: true, errors: [] });
   });
 
   it("rejects a Group owned by one Deck but referenced by another", () => {
@@ -56,7 +69,6 @@ describe("relationship validation", () => {
         { id: "deck-2", name: "Deck 2", layers: [layer], transition: { type: "cut", durationMs: 0 } }
       ],
       groups: [{ id: "group-1", name: "Group 1", deckId: "deck-2", layerIds: ["layer-1"], collapsed: false }],
-      layers: [layer],
       slices: [],
       sources: [{ id: "src-1", name: "Source 1", kind: "video" }]
     });
