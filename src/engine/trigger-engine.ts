@@ -79,6 +79,6 @@ export class TriggerEngine {
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
     if (!context.output || !state.source) return;
     context.output.syncFromProgram(state.source, state.compositionId);
-    context.output.syncFromDeck(state.source.deckId, state.source);
+    context.output.syncFromDeck(state.source.deckId, state.source, state.compositionId);
   }
 }
