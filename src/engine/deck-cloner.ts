@@ -37,6 +37,16 @@ export function cloneGroup(group: Group, options: CloneGroupOptions): Group {
   };
 }
 
+function cloneGroupForDeck(group: Group, targetDeckId: string, options: CloneGroupOptions): Group {
+  return {
+    ...group,
+    id: options.id,
+    name: options.name ?? group.name,
+    deckId: targetDeckId,
+    layerIds: [...group.layerIds]
+  };
+}
+
 /**
  * Clone a Deck as editable configuration.
  *
@@ -57,9 +67,8 @@ export function cloneDeck(
   const sourceGroups = groups.filter((group) => sourceGroupIds.has(group.id));
 
   const clonedGroups = sourceGroups.map((group) =>
-    cloneGroup(group, {
-      id: options.idFactory.nextGroupId(group, targetDeckId),
-      deckId: targetDeckId
+    cloneGroupForDeck(group, targetDeckId, {
+      id: options.idFactory.nextGroupId(group, targetDeckId)
     })
   );
 
