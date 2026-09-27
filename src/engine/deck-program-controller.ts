@@ -2,7 +2,6 @@ import type { Deck } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import { DeckRuntime, type DeckRuntimeState } from "./deck-runtime.js";
 import { resolveGroupLayers } from "./group-resolver.js";
-import { OutputEngine } from "./output-engine.js";
 import { ProgramEngine, type ProgramState } from "./program-engine.js";
 
 export interface DeckProgramControllerState {
@@ -11,15 +10,13 @@ export interface DeckProgramControllerState {
 }
 
 export interface DeckProgramOptions {
-  readonly syncOutputs?: boolean;
   readonly compositionId?: string;
 }
 
 export class DeckProgramController {
   constructor(
     private readonly deckRuntime: DeckRuntime,
-    private readonly programEngine: ProgramEngine,
-    private readonly outputEngine?: OutputEngine
+    private readonly programEngine: ProgramEngine
   ) {}
 
   preview(deck: Deck, layerId: string): DeckRuntimeState {
@@ -34,8 +31,7 @@ export class DeckProgramController {
    * Programs the ordered Layer formasi defined by a Deck-owned Group.
    *
    * Group owns membership/order only. Transition remains owned by Deck.
-   * OutputEngine is still single-source, so compatibility output sync uses
-   * the first Program Layer until multi-Layer Output routing is implemented.
+   * Output routing is handled by the Composition/Output pipeline, not by this controller.
    */
   programGroup(deck: Deck, group: Group, options: DeckProgramOptions = {}): DeckProgramControllerState {
     const resolved = resolveGroupLayers(deck, group);
@@ -65,10 +61,6 @@ export class DeckProgramController {
       options.compositionId ?? "default"
     );
 
-    if (options.syncOutputs !== false && this.outputEngine && programState.source) {
-      this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
-      this.outputEngine.syncFromDeck(deck.id, programState.source, programState.compositionId);
-    }
 
     return { deck: deckState, program: programState };
   }
