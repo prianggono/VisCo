@@ -10,7 +10,6 @@ export interface Composition {
   readonly name: string;
   readonly format: CompositionFormat;
   readonly deckIds: readonly string[];
-  readonly groupIds: readonly string[];
   readonly sliceIds: readonly string[];
   readonly locked: boolean;
 }
