@@ -47,7 +47,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
   });
 
   it("reads Program state from the Deck composition", () => {
-    const venueDeck: Deck = { ...deck, id: "venue-deck", compositionId: "venue" };
+    const venueDeck: Deck = { ...deck, id: "venue-deck" };
     const runtime = new DeckRuntime();
     runtime.register(venueDeck);
     const program = new ProgramEngine();
