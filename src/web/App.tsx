@@ -6,6 +6,7 @@ import { ProgramEngine } from "../engine/program-engine.js";
 import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
+import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -156,48 +157,14 @@ export function App() {
 
   const updateSelectedTransform = (patch: Partial<NonNullable<Layer["transform"]>>) => {
     if (!selectedLayerModel) return;
-    const transform = {
-      x: 0,
-      y: 0,
-      scaleX: 100,
-      scaleY: 100,
-      scaleLinked: true,
-      rotation: 0,
-      opacity: 100,
-      ...selectedLayerModel.transform,
-      ...patch
-    };
+    const transform = patchLayerTransform(selectedLayerModel.transform, patch);
     updateSelectedLayer({ transform });
   };
 
   const updateSelectedScale = (axis: "scaleX" | "scaleY", value: number) => {
     if (!selectedLayerModel) return;
-    const current = {
-      x: 0,
-      y: 0,
-      scaleX: 100,
-      scaleY: 100,
-      scaleLinked: true,
-      rotation: 0,
-      opacity: 100,
-      ...selectedLayerModel.transform
-    };
-
-    if (!current.scaleLinked) {
-      updateSelectedTransform({ [axis]: value });
-      return;
-    }
-
-    const otherAxis = axis === "scaleX" ? "scaleY" : "scaleX";
-    const currentAxisValue = current[axis];
-    const currentOtherValue = current[otherAxis];
-    const ratio = currentAxisValue !== 0 ? currentOtherValue / currentAxisValue : 1;
-    const linkedOtherValue = Math.round(value * ratio * 100) / 100;
-
-    updateSelectedTransform({
-      [axis]: value,
-      [otherAxis]: linkedOtherValue
-    });
+    const transform = setLayerScale(selectedLayerModel.transform, axis, value);
+    updateSelectedLayer({ transform });
   };
 
   const addDeck = (kind: DeckKind) => {
