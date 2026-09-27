@@ -59,23 +59,13 @@ describe("Project Group cloning", () => {
     expect(result.project.decks).toEqual(project.decks);
   });
 
-  it("can explicitly move the cloned Group to another Deck", () => {
+  it("keeps the cloned Group in its owning Deck", () => {
     const result = cloneGroupInProject(project, "group-1", {
-      id: "group-copy",
-      deckId: "deck-2"
+      id: "group-copy"
     });
 
-    expect(result.group.deckId).toBe("deck-2");
+    expect(result.group.deckId).toBe("deck-1");
     expect(result.group.layerIds).toEqual(["layer-1", "layer-2"]);
-  });
-
-  it("rejects a missing target Deck", () => {
-    expect(() =>
-      cloneGroupInProject(project, "group-1", {
-        id: "group-copy",
-        deckId: "missing-deck"
-      })
-    ).toThrow('Deck "missing-deck" does not exist in the project.');
   });
 
   it("rejects a duplicate Group id", () => {
