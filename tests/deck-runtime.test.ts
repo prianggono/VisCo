@@ -58,7 +58,7 @@ describe("Deck Runtime", () => {
 
     expect(state).toEqual({
       deckId: "deck-1",
-      previewLayerId: "layer-2",
+      previewLayerId: null,
       activeLayerIds: ["layer-2"],
       activeLayerId: "layer-2",
       masterLevel: 100,
@@ -76,6 +76,17 @@ describe("Deck Runtime", () => {
       deckId: "deck-1",
       layerId: "layer-2"
     });
+  });
+
+  it("keeps Preview independent when Program changes", () => {
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+    runtime.previewLayer(deck, "layer-1");
+
+    const state = runtime.programLayer(deck, "layer-2");
+
+    expect(state.previewLayerId).toBe("layer-1");
+    expect(state.activeLayerIds).toEqual(["layer-2"]);
   });
 
   it("programs multiple Layers as one active formasi", () => {
