@@ -6,10 +6,13 @@ import type { Slice } from "../domain/slice.js";
 import type { Source, Library } from "../domain/source.js";
 import type { OutputTarget } from "../domain/output.js";
 import type { LicenseInfo } from "../domain/license.js";
+import type { Channel } from "../domain/channel.js";
 
 export interface ProjectSnapshot {
   readonly version: number;
   readonly compositions: readonly Composition[];
+  /** Presentation flows such as Offline and Online. */
+  readonly channels: readonly Channel[];
   readonly decks: readonly Deck[];
   readonly groups: readonly Group[];
   readonly layers: readonly Layer[];
