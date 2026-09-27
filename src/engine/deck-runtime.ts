@@ -18,7 +18,7 @@ export interface DeckRuntimeState {
   readonly visualLevel: number;
   readonly playback: ReadonlyMap<string, LayerPlaybackState>;
   readonly listCursors: ReadonlyMap<string, number>;
-  readonly columns: ReadonlyMap<number, boolean>;
+  /** Column state is derived from Layer playback; no duplicate ON/OFF store. */
 }
 
 function withActiveLayerCompatibility(state: DeckRuntimeState | Omit<DeckRuntimeState, "activeLayerId">): DeckRuntimeState {
@@ -53,7 +53,6 @@ export class DeckRuntime {
         speed: layer.playback?.speed ?? 100
       }])),
       listCursors: new Map(),
-      columns: new Map()
     });
 
     this.states.set(deck.id, state);
@@ -63,13 +62,11 @@ export class DeckRuntime {
   setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
     if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
     const current = this.require(deckId);
-    const columns = new Map(current.columns);
-    columns.set(column, enabled);
     const layer = Array.from(current.playback.values())[column - 1];
     if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
     const playback = new Map(current.playback);
     playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: enabled });
-    const state = withActiveLayerCompatibility({ ...current, columns, playback });
+    const state = withActiveLayerCompatibility({ ...current, playback });
     this.states.set(deckId, state);
     return state;
   }
@@ -178,6 +175,14 @@ export class DeckRuntime {
     const state = withActiveLayerCompatibility({ ...current, activeLayerIds: [] });
     this.states.set(deckId, state);
     return state;
+  }
+
+  getColumnEnabled(deckId: string, column: number): boolean {
+    if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
+    const current = this.require(deckId);
+    const layer = Array.from(current.playback.values())[column - 1];
+    if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
+    return layer.playing;
   }
 
   getState(deckId: string): DeckRuntimeState {
