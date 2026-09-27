@@ -79,6 +79,33 @@ describe("Composition Program resolver", () => {
     expect(result[0]?.layers[0]?.ref).toEqual(result[1]?.layers[0]?.ref);
   });
 
+  it("resolves multiple active Layers in Slice order", () => {
+    const multiSlice: Slice = {
+      ...slices[0],
+      layerRefs: [
+        { deckId: "deck-1", layerId: "layer-2" },
+        { deckId: "deck-1", layerId: "layer-3" }
+      ]
+    };
+
+    const result = resolveCompositionProgram(composition, [multiSlice, slices[1]], program);
+
+    expect(result[0]?.layers.map(({ ref }) => ref)).toEqual([
+      { deckId: "deck-1", layerId: "layer-2" },
+      { deckId: "deck-1", layerId: "layer-3" }
+    ]);
+  });
+
+  it("rejects a Program from another Composition", () => {
+    expect(() =>
+      resolveCompositionProgram(
+        composition,
+        slices,
+        { ...program, compositionId: "composition-2" }
+      )
+    ).toThrow(/does not match Composition/);
+  });
+
   it("rejects a missing Composition Slice", () => {
     expect(() =>
       resolveCompositionProgram(
