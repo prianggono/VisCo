@@ -61,6 +61,15 @@ export class DeckRuntime {
     return state;
   }
 
+  setMasterLevel(deckId: string, level: number): DeckRuntimeState {
+    const state = {
+      ...this.require(deckId),
+      masterLevel: Math.max(0, Math.min(100, level))
+    };
+    this.states.set(deckId, state);
+    return state;
+  }
+
   setAudioLevel(deckId: string, level: number): DeckRuntimeState {
     const state = { ...this.require(deckId), audioLevel: Math.max(0, Math.min(100, level)) };
     this.states.set(deckId, state);
