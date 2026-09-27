@@ -68,7 +68,7 @@ export class OutputEngine {
   route(targetId: string, source: DeckLayerRef): OutputState {
     const target = this.requireTarget(targetId);
     if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
-    const state = { ...this.requireState(targetId), target, source, active: true };
+    const state = { ...this.requireState(targetId), target, source, renderPlan: null, active: true };
     this.states.set(targetId, state);
     return state;
   }
