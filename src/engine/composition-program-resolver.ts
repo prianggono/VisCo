@@ -50,6 +50,11 @@ export function resolveCompositionProgram(
 
     const seen = new Set<string>();
     const layers = slice.layerRefs.flatMap((ref) => {
+      if (!composition.deckIds.includes(ref.deckId)) {
+        throw new Error(
+          `Slice "${slice.id}" maps deck "${ref.deckId}", but that deck is not attached to Composition "${composition.id}".`
+        );
+      }
       const key = ref.deckId + ":" + ref.layerId;
       if (seen.has(key)) {
         throw new Error(
