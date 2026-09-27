@@ -60,9 +60,9 @@ export function validateTriggerAction(action: TriggerAction, context: TriggerCon
           });
         }
         registerCommand({
-          key: `program:${current.target.deckId}:${current.target.layerId}`,
+          key: `program:${current.compositionId ?? "default"}:${current.target.deckId}:${current.target.layerId}`,
           path,
-          description: `PROGRAM ${current.target.deckId}/${current.target.layerId}`
+          description: `PROGRAM ${current.compositionId ?? "default"} ${current.target.deckId}/${current.target.layerId}`
         });
         break;
       }
