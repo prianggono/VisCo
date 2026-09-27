@@ -161,12 +161,43 @@ export function App() {
       y: 0,
       scaleX: 100,
       scaleY: 100,
+      scaleLinked: true,
       rotation: 0,
       opacity: 100,
       ...selectedLayerModel.transform,
       ...patch
     };
     updateSelectedLayer({ transform });
+  };
+
+  const updateSelectedScale = (axis: "scaleX" | "scaleY", value: number) => {
+    if (!selectedLayerModel) return;
+    const current = {
+      x: 0,
+      y: 0,
+      scaleX: 100,
+      scaleY: 100,
+      scaleLinked: true,
+      rotation: 0,
+      opacity: 100,
+      ...selectedLayerModel.transform
+    };
+
+    if (!current.scaleLinked) {
+      updateSelectedTransform({ [axis]: value });
+      return;
+    }
+
+    const otherAxis = axis === "scaleX" ? "scaleY" : "scaleX";
+    const currentAxisValue = current[axis];
+    const currentOtherValue = current[otherAxis];
+    const ratio = currentAxisValue !== 0 ? currentOtherValue / currentAxisValue : 1;
+    const linkedOtherValue = Math.round(value * ratio * 100) / 100;
+
+    updateSelectedTransform({
+      [axis]: value,
+      [otherAxis]: linkedOtherValue
+    });
   };
 
   const addDeck = (kind: DeckKind) => {
@@ -529,9 +560,33 @@ export function App() {
                   })()}
                   {item === "Transform" && <div className="property-grid">
                     {[
-                      ["X", "x", 0], ["Y", "y", 0], ["Scale X", "scaleX", 100], ["Scale Y", "scaleY", 100], ["Rotation", "rotation", 0]
+                      ["X", "x", 0], ["Y", "y", 0], ["Rotation", "rotation", 0]
                     ].map(([label, key, fallback]) => <label key={String(key)}>{label}<input type="number" value={Number(selectedLayerModel?.transform?.[key as keyof NonNullable<Layer["transform"]>] ?? fallback)} onChange={(event) => updateSelectedTransform({ [key]: Number(event.target.value) })} /></label>)}
-                  </div>}
+                    <label>
+                      Scale X
+                      <input
+                        type="number"
+                        value={Number(selectedLayerModel?.transform?.scaleX ?? 100)}
+                        onChange={(event) => updateSelectedScale("scaleX", Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      Scale Y
+                      <input
+                        type="number"
+                        value={Number(selectedLayerModel?.transform?.scaleY ?? 100)}
+                        onChange={(event) => updateSelectedScale("scaleY", Number(event.target.value))}
+                      />
+                    </label>
+                    <label className="property-toggle">
+                      <span>Link Scale X/Y</span>
+                      <input
+                        type="checkbox"
+                        checked={selectedLayerModel?.transform?.scaleLinked ?? true}
+                        onChange={(event) => updateSelectedTransform({ scaleLinked: event.target.checked })}
+                      />
+                    </label>
+                  </div>
                   {item === "Layering" && <div className="property-grid">
                     <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
                     <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
