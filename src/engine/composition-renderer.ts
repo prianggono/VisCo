@@ -19,6 +19,7 @@ export interface CompositionSliceRenderStyle {
 
 export interface RenderedCompositionLayer {
   readonly sliceId: string;
+  readonly ref: import("../domain/deck.js").DeckLayerRef;
   readonly layerId: string;
   readonly layerStyle: LayerRenderStyle;
   readonly sliceStyle: CompositionSliceRenderStyle;
@@ -39,8 +40,9 @@ function renderSlice(
 ): readonly RenderedCompositionLayer[] {
   const sliceStyle = toSliceRenderStyle(slice.transform);
 
-  return slice.layers.map(({ layer }) => ({
+  return slice.layers.map(({ ref, layer }) => ({
     sliceId: slice.sliceId,
+    ref,
     layerId: layer.id,
     layerStyle: getLayerRenderStyle(layer),
     sliceStyle
