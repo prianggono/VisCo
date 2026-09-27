@@ -73,9 +73,20 @@ describe("Layer Transform", () => {
     expect(style.transform).toContain("rotate(15deg)");
     expect(style.transform).toContain("scale(1.25, 0.8)");
     expect(style.opacity).toBe(0.6);
+    expect(style.zIndex).toBe(0);
+    expect(style.mixBlendMode).toBe("normal");
 
-    const composited = compositeLayer(layer);
+    const layered = {
+      ...layer,
+      order: 4,
+      blendMode: "screen"
+    };
+    const layeredStyle = getLayerRenderStyle(layered);
+    expect(layeredStyle.zIndex).toBe(4);
+    expect(layeredStyle.mixBlendMode).toBe("screen");
+
+    const composited = compositeLayer(layered);
     expect(composited.layerId).toBe("layer-test");
-    expect(composited.style).toEqual(style);
+    expect(composited.style).toEqual(layeredStyle);
   });
 });
