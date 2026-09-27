@@ -2,7 +2,6 @@ import type { Composition } from "../domain/composition.js";
 import type { Channel } from "../domain/channel.js";
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
-import type { Layer } from "../domain/layer.js";
 import type { Slice } from "../domain/slice.js";
 import type { Source } from "../domain/source.js";
 
@@ -16,7 +15,6 @@ export interface RelationshipGraph {
   readonly channels?: readonly Channel[];
   readonly decks: readonly Deck[];
   readonly groups: readonly Group[];
-  readonly layers: readonly Layer[];
   readonly slices: readonly Slice[];
   readonly sources?: readonly Source[];
 }
@@ -33,8 +31,6 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   const errors: string[] = [];
   const decksById = new Map(graph.decks.map((item) => [item.id, item]));
   const deckIds = new Set(graph.decks.map((item) => item.id));
-  const groupIds = new Set(graph.groups.map((item) => item.id));
-  const layerIds = new Set(graph.layers.map((item) => item.id));
   const sliceIds = new Set(graph.slices.map((item) => item.id));
   const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
 
@@ -55,7 +51,6 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
 
   for (const deck of graph.decks) {
     for (const layer of deck.layers) {
-      if (!layerIds.has(layer.id)) errors.push(`Deck "${deck.id}" contains unregistered layer "${layer.id}".`);
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
       for (const sliceId of layer.sliceIds ?? []) {
         if (!sliceIds.has(sliceId)) errors.push(`Layer "${layer.id}" references missing slice "${sliceId}".`);
