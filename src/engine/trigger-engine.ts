@@ -5,7 +5,7 @@ import { OutputEngine } from "./output-engine.js";
 import { assertValidTriggerAction } from "./trigger-validator.js";
 
 export type TriggerAction =
-  | { readonly type: "program"; readonly target: DeckLayerRef }
+  | { readonly type: "program"; readonly target: DeckLayerRef; readonly compositionId?: string }
   | { readonly type: "sequence"; readonly actions: readonly TriggerAction[] }
   | { readonly type: "set-output-enabled"; readonly outputId: string; readonly enabled: boolean }
   | { readonly type: "set-media-feature"; readonly outputId: string; readonly feature: "stream" | "record" | "virtual"; readonly enabled: boolean };
@@ -58,7 +58,7 @@ export class TriggerEngine {
       case "program": {
         const deck = context.decks.get(action.target.deckId);
         if (!deck) throw new Error(`Deck "${action.target.deckId}" does not exist.`);
-        return context.controller.program(deck, action.target.layerId, { syncOutputs: false }).program;
+        return context.controller.program(deck, action.target.layerId, { syncOutputs: false, compositionId: action.compositionId ?? "default" }).program;
       }
 
       case "sequence":
