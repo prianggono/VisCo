@@ -93,10 +93,6 @@ export class TriggerEngine {
         state
       );
       context.output.syncFromComposition(renderPlan, state.compositionId);
-    } else {
-      // No Composition context: do not fall back to legacy global source
-      // routing. Composition is the canonical visual output path.
-      return;
     }
     // Deck-scoped outputs remain explicit overrides and use the first
     // Program Layer only for the legacy Deck routing contract.
