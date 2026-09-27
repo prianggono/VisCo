@@ -261,7 +261,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
     const controller = new DeckProgramController(runtime, program, output);
-    const mediaDeck: Deck = { ...deck3, id: "media-deck", compositionId: "media" };
+    const mediaDeck: Deck = { ...deck3, id: "media-deck" };
 
     runtime.register(mediaDeck);
     output.register({
@@ -280,7 +280,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     });
 
     trigger.execute(
-      { type: "program", target: { deckId: "media-deck", layerId: "layer-2" } },
+      { type: "program", target: { deckId: "media-deck", layerId: "layer-2" }, compositionId: "media" },
       {
         decks: new Map([[mediaDeck.id, mediaDeck]]),
         controller,
@@ -499,11 +499,11 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
   });
   it("keeps Program state independent between Venue and Media compositions", () => {
     const program = new ProgramEngine();
-    const venueDeck: Deck = { ...deck1, id: "venue-deck", compositionId: "venue" };
-    const mediaDeck: Deck = { ...deck3, id: "media-deck", compositionId: "media" };
+    const venueDeck: Deck = { ...deck1, id: "venue-deck" };
+    const mediaDeck: Deck = { ...deck3, id: "media-deck" };
 
-    program.program(venueDeck, "layer-1");
-    program.program(mediaDeck, "layer-2");
+    program.program(venueDeck, "layer-1", "venue");
+    program.program(mediaDeck, "layer-2", "media");
 
     expect(program.getState("venue").source).toEqual({
       deckId: "venue-deck",
