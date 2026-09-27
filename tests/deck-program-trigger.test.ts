@@ -4,6 +4,7 @@ import { ProgramEngine } from "../src/engine/program-engine.js";
 import { TriggerEngine } from "../src/engine/trigger-engine.js";
 import { OutputEngine } from "../src/engine/output-engine.js";
 import { DeckRuntime } from "../src/engine/deck-runtime.js";
+import { DeckProgramController } from "../src/engine/deck-program-controller.js";
 
 const deck1: Deck = {
   id: "deck-1",
@@ -251,6 +252,45 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     expect(output.getState("display-main").source).toEqual({
       deckId: "deck-1",
       layerId: "layer-1"
+    });
+  });
+
+  it("preserves composition routing when Trigger syncs Deck outputs", () => {
+    const program = new ProgramEngine();
+    const trigger = new TriggerEngine();
+    const output = new OutputEngine();
+    const runtime = new DeckRuntime();
+    const controller = new DeckProgramController(runtime, program, output);
+    const mediaDeck: Deck = { ...deck3, id: "media-deck", compositionId: "media" };
+
+    runtime.register(mediaDeck);
+    output.register({
+      id: "media-output",
+      kind: "media",
+      enabled: true,
+      deckId: "media-deck",
+      compositionId: "media",
+      media: {
+        resolution: [1920, 1080],
+        fps: 60,
+        streaming: true,
+        recording: false,
+        virtual: false
+      }
+    });
+
+    trigger.execute(
+      { type: "program", target: { deckId: "media-deck", layerId: "layer-2" } },
+      {
+        decks: new Map([[mediaDeck.id, mediaDeck]]),
+        controller,
+        output
+      }
+    );
+
+    expect(output.getState("media-output").source).toEqual({
+      deckId: "media-deck",
+      layerId: "layer-2"
     });
   });
 
