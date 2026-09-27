@@ -13,6 +13,8 @@ export interface Deck {
   readonly id: string;
   readonly name: string;
   readonly layers: readonly Layer[];
+  /** Groups are owned by this Deck. */
+  readonly groupIds?: readonly string[];
   readonly masterLevel?: number;
   readonly audioLevel?: number;
   readonly visualLevel?: number;
