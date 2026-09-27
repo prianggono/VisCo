@@ -24,7 +24,6 @@ export interface RelationshipGraph {
 export function validateRelationships(graph: RelationshipGraph): RelationshipValidationResult {
   const errors: string[] = [];
   const compositionIds = new Set(graph.compositions.map((item) => item.id));
-  const channelIds = new Set((graph.channels ?? []).map((item) => item.id));
   const deckIds = new Set(graph.decks.map((item) => item.id));
   const groupIds = new Set(graph.groups.map((item) => item.id));
   const layerIds = new Set(graph.layers.map((item) => item.id));
