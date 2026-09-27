@@ -52,9 +52,6 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   for (const deck of graph.decks) {
     for (const layer of deck.layers) {
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
-      for (const sliceId of layer.sliceIds ?? []) {
-        if (!sliceIds.has(sliceId)) errors.push(`Layer "${layer.id}" references missing slice "${sliceId}".`);
-      }
     }
 
     for (const groupId of deck.groupIds ?? []) {
