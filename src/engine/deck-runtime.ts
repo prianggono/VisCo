@@ -163,7 +163,6 @@ export class DeckRuntime {
 
     const state = withActiveLayerCompatibility({
       ...current,
-      activeLayerId: undefined as never,
       activeLayerIds: [...layerIds],
       previewLayerId: layerIds[0]
     });
