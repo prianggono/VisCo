@@ -11,7 +11,6 @@ const sourceDeck: Deck = {
       id: "layer-1",
       name: "Opening",
       sourceId: "source-video",
-      sliceIds: ["slice-live"],
       transform: { x: 12, y: -8, scaleX: 98, scaleY: 98, scaleLinked: true, rotation: 0, opacity: 100 },
       playback: { playing: true, loop: true, speed: 100 },
       blendMode: "Normal",
@@ -71,7 +70,6 @@ describe("Deck and Group cloning", () => {
     expect(result.deck.name).toBe("Deck Live Copy");
     expect(result.deck.transition).toEqual(sourceDeck.transition);
     expect(result.deck.layers[0].sourceId).toBe("source-video");
-    expect(result.deck.layers[0].sliceIds).toBeUndefined();
     expect(result.deck.layers[0].transform).toEqual(sourceDeck.layers[0].transform);
     expect(result.deck.layers[0].playback).toEqual(sourceDeck.layers[0].playback);
     expect(result.deck.groupIds).toEqual(["group-clone"]);
