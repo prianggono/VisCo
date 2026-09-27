@@ -22,17 +22,11 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const program = new ProgramEngine();
     program.program(deck, "layer-1");
 
-    const output = new OutputEngine();
-    output.register({
-      id: "display-main",
-      kind: "display",
-      enabled: true
-    });
-    output.syncFromProgram({ deckId: "deck-1", layerId: "layer-1" });
+    const output = new Map([["display-main", { source: { deckId: "deck-1", layerId: "layer-1" } }]]);
 
     const runtime = new DeckRuntime();
     runtime.register(deck);
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
 
     const state = controller.preview(deck, "layer-2");
 
@@ -42,7 +36,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
       deckId: "deck-1",
       layerId: "layer-1"
     });
-    expect(output.getState("display-main").source).toEqual({
+    expect(output.get("display-main")?.source).toEqual({
       deckId: "deck-1",
       layerId: "layer-1"
     });
@@ -68,14 +62,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     runtime.register(deck);
 
     const program = new ProgramEngine();
-    const output = new OutputEngine();
-    output.register({
-      id: "display-main",
-      kind: "display",
-      enabled: true
-    });
-
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
     const state = controller.program(deck, "layer-2");
 
     expect(state.deck.activeLayerId).toBe("layer-2");
@@ -87,7 +74,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
       type: "fade",
       durationMs: 500
     });
-    expect(output.getState("display-main").source).toEqual({
+    expect(program.getState().source).toEqual({
       deckId: "deck-1",
       layerId: "layer-2"
     });
@@ -107,7 +94,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const program = new ProgramEngine();
     const controller = new DeckProgramController(runtime, program);
 
-    const state = controller.programGroup(deck, group, { syncOutputs: false });
+    const state = controller.programGroup(deck, group, );
 
     expect(state.deck.activeLayerIds).toEqual([
       "layer-3",
