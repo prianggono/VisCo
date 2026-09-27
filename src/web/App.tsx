@@ -10,6 +10,11 @@ import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js
 import { compositeLayer, compositeProgramFirst } from "../engine/compositor.js";
 import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
+import { CompositionSliceView } from "./CompositionSliceView.js";
+import { renderCompositionProgram } from "../engine/composition-renderer.js";
+import { getDefaultSliceTransform } from "../domain/slice.js";
+import type { Composition } from "../domain/composition.js";
+import type { Slice } from "../domain/slice.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -49,6 +54,25 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "layer-2" });
+
+  const programComposition: Composition = useMemo(() => ({
+    id: "default",
+    name: "Default Composition",
+    format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+    deckIds: decks.filter((deck) => deck.kind === "visual").map((deck) => deck.id),
+    sliceIds: ["default-slice"],
+    locked: false
+  }), [decks]);
+
+  const programSlices: readonly Slice[] = useMemo(() => [{
+    id: "default-slice",
+    name: "Full Screen",
+    transform: getDefaultSliceTransform(programComposition),
+    layerRefs: decks
+      .filter((deck) => deck.kind === "visual")
+      .flatMap((deck) => deck.layers.map((layer) => ({ deckId: deck.id, layerId: layer.id }))),
+    locked: false
+  }], [decks, programComposition]);
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
   const outputEngine = useMemo(() => {
@@ -428,24 +452,32 @@ export function App() {
               <div className="program-canvas">
                 {(() => {
                   const program = programEngine.getState("default");
-                  const layer = program.layer;
-                  const source = layer?.sourceId && libraryEngine.has(layer.sourceId)
-                    ? libraryEngine.get(layer.sourceId)
-                    : undefined;
-                  const playback = layer && program.source
-                    ? deckRuntime.getState(program.source.deckId).playback.get(layer.id)
-                    : undefined;
-                  return layer ? (
-                    <MediaLayerView
-                      layer={layer}
-                      source={source}
-                      style={compositeProgramFirst(program)?.style ?? compositeLayer(layer).style}
-                      playing={playback?.playing}
-                      loop={playback?.loop}
-                      speed={playback?.speed}
-                      label="PROGRAM"
-                    />
-                  ) : <span>PROGRAM</span>;
+                  const renderPlan = renderCompositionProgram(programComposition, programSlices, program);
+                  return renderPlan.length > 0 ? renderPlan.map((item, index) => {
+                    const deck = decks.find((candidate) => candidate.id === item.ref.deckId);
+                    const layer = deck?.layers.find((candidate) => candidate.id === item.ref.layerId);
+                    if (!layer) return null;
+                    const source = layer.sourceId && libraryEngine.has(layer.sourceId)
+                      ? libraryEngine.get(layer.sourceId)
+                      : undefined;
+                    const playback = deckRuntime.getState(item.ref.deckId).playback.get(layer.id);
+                    return (
+                      <CompositionSliceView
+                        key={item.ref.deckId + ":" + item.layerId + ":" + item.sliceId + ":" + index}
+                        transform={item.sliceStyle}
+                      >
+                        <MediaLayerView
+                          layer={layer}
+                          source={source}
+                          style={item.layerStyle}
+                          playing={playback?.playing}
+                          loop={playback?.loop}
+                          speed={playback?.speed}
+                          label="PROGRAM"
+                        />
+                      </CompositionSliceView>
+                    );
+                  }) : <span>PROGRAM</span>;
                 })()}
               </div>
             </div>
