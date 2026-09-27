@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { ProjectSnapshot } from "../src/persistence/project.js";
 import { attachDeckToComposition } from "../src/engine/composition-deck-attachment.js";
 import { detachDeckFromComposition } from "../src/engine/composition-deck-detachment.js";
+import { attachDeckToChannel } from "../src/engine/channel-deck-attachment.js";
+import { detachDeckFromChannel } from "../src/engine/channel-deck-detachment.js";
 
 const project: ProjectSnapshot = {
   version: 1,
@@ -234,6 +236,86 @@ describe("Attach Deck to Composition", () => {
       })
     ).toThrow(
       'Deck "deck-a" cannot be detached because Output "output-live" still targets it in Composition "composition-live".'
+    );
+  });
+
+  it("attaches and detaches a Deck from a Channel without changing Composition or Output", () => {
+    const attached = attachDeckToChannel(project, {
+      channelId: "channel-offline",
+      deckId: "deck-b"
+    });
+
+    expect(attached.channel.deckIds).toEqual(["deck-a", "deck-b"]);
+    expect(attached.project.compositions).toEqual(project.compositions);
+    expect(attached.project.outputs).toEqual(project.outputs);
+
+    const detached = detachDeckFromChannel(attached.project, {
+      channelId: "channel-offline",
+      deckId: "deck-b"
+    });
+
+    expect(detached.channel.deckIds).toEqual(["deck-a"]);
+    expect(detached.project.compositions).toEqual(project.compositions);
+    expect(detached.project.outputs).toEqual(project.outputs);
+  });
+
+  it("supports explicit Channel insertion order", () => {
+    const result = attachDeckToChannel(project, {
+      channelId: "channel-offline",
+      deckId: "deck-b",
+      index: 0
+    });
+
+    expect(result.channel.deckIds).toEqual(["deck-b", "deck-a"]);
+  });
+
+  it("rejects duplicate Channel attachment", () => {
+    expect(() =>
+      attachDeckToChannel(project, {
+        channelId: "channel-offline",
+        deckId: "deck-a"
+      })
+    ).toThrow(
+      'Deck "deck-a" is already attached to Channel "channel-offline".'
+    );
+  });
+
+  it("rejects missing Channel or Deck", () => {
+    expect(() =>
+      attachDeckToChannel(project, {
+        channelId: "missing-channel",
+        deckId: "deck-b"
+      })
+    ).toThrow('Channel "missing-channel" does not exist in the project.');
+
+    expect(() =>
+      attachDeckToChannel(project, {
+        channelId: "channel-offline",
+        deckId: "missing-deck"
+      })
+    ).toThrow('Deck "missing-deck" does not exist in the project.');
+  });
+
+  it("rejects detaching an unassigned Deck", () => {
+    expect(() =>
+      detachDeckFromChannel(project, {
+        channelId: "channel-offline",
+        deckId: "deck-b"
+      })
+    ).toThrow(
+      'Deck "deck-b" is not attached to Channel "channel-offline".'
+    );
+  });
+
+  it("rejects an invalid Channel insertion index", () => {
+    expect(() =>
+      attachDeckToChannel(project, {
+        channelId: "channel-offline",
+        deckId: "deck-b",
+        index: 99
+      })
+    ).toThrow(
+      'Deck attachment index 99 is out of range for Channel "channel-offline".'
     );
   });
 
