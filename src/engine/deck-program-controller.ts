@@ -19,7 +19,7 @@ export class DeckProgramController {
     return this.deckRuntime.previewLayer(deck, layerId);
   }
 
-  program(deck: Deck, layerId: string, options: { readonly syncOutputs?: boolean } = {}): DeckProgramControllerState {
+  program(deck: Deck, layerId: string, options: { readonly syncOutputs?: boolean; readonly compositionId?: string } = {}): DeckProgramControllerState {
     if ((deck as Deck & { kind?: "visual" | "audio" }).kind === "audio") {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
@@ -27,7 +27,7 @@ export class DeckProgramController {
     // Runtime M is authoritative for the live Deck. Pass that state to Program
     // so the UI fader and Program gate cannot disagree.
     const runtimeDeck: Deck = { ...deck, masterLevel: deckState.masterLevel };
-    const programState = this.programEngine.program(runtimeDeck, layerId);
+    const programState = this.programEngine.program(runtimeDeck, layerId, options.compositionId ?? "default");
 
     if (options.syncOutputs !== false && this.outputEngine && programState.source) {
       this.outputEngine.syncFromProgram(programState.source, programState.compositionId);
@@ -45,7 +45,7 @@ export class DeckProgramController {
   getState(deckId: string): DeckProgramControllerState;
   getState(deckOrId: Deck | string): DeckProgramControllerState {
     const deckId = typeof deckOrId === "string" ? deckOrId : deckOrId.id;
-    const compositionId = typeof deckOrId === "string" ? "default" : deckOrId.compositionId ?? "default";
+    const compositionId = "default";
     return {
       deck: this.deckRuntime.getState(deckId),
       program: this.programEngine.getState(compositionId)
