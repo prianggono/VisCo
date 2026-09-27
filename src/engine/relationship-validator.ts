@@ -34,6 +34,31 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   const sliceIds = new Set(graph.slices.map((item) => item.id));
   const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
 
+  const duplicateIds = <T extends { readonly id: string }>(items: readonly T[], kind: string) => {
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (seen.has(item.id)) errors.push(`Duplicate ${kind} ID "${item.id}".`);
+      seen.add(item.id);
+    }
+  };
+
+  duplicateIds(graph.compositions, "Composition");
+  duplicateIds(graph.channels ?? [], "Channel");
+  duplicateIds(graph.decks, "Deck");
+  duplicateIds(graph.groups, "Group");
+  duplicateIds(graph.slices, "Slice");
+  duplicateIds(graph.sources ?? [], "Source");
+
+  for (const deck of graph.decks) {
+    const layerIds = new Set<string>();
+    for (const layer of deck.layers) {
+      if (layerIds.has(layer.id)) {
+        errors.push(`Deck "${deck.id}" contains duplicate Layer ID "${layer.id}".`);
+      }
+      layerIds.add(layer.id);
+    }
+  }
+
   for (const channel of graph.channels ?? []) {
     for (const deckId of channel.deckIds) {
       if (!deckIds.has(deckId)) errors.push(`Channel "${channel.id}" references missing deck "${deckId}".`);
