@@ -85,4 +85,45 @@ describe("Trigger validator", () => {
     expect(result.valid).toBe(false);
     expect(result.issues.map((issue) => issue.code)).toContain("invalid-output-action");
   });
+
+  it("rejects a Program targeting a different Composition", () => {
+    const result = validateTriggerAction({
+      type: "program",
+      target: { deckId: "deck-1", layerId: "layer-1" },
+      compositionId: "venue"
+    }, {
+      ...baseContext(),
+      composition: {
+        id: "default",
+        name: "Default",
+        format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+        deckIds: ["deck-1"],
+        sliceIds: [],
+        locked: false
+      }
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain("composition-mismatch");
+  });
+
+  it("rejects a Program whose Deck is not attached to the Composition", () => {
+    const result = validateTriggerAction({
+      type: "program",
+      target: { deckId: "deck-1", layerId: "layer-1" }
+    }, {
+      ...baseContext(),
+      composition: {
+        id: "default",
+        name: "Default",
+        format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+        deckIds: [],
+        sliceIds: [],
+        locked: false
+      }
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain("deck-not-in-composition");
+  });
 });
