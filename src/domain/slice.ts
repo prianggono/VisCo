@@ -1,3 +1,5 @@
+import type { DeckLayerRef } from "./deck.js";
+
 export interface SliceTransform {
   readonly x: number;
   readonly y: number;
@@ -10,6 +12,7 @@ export interface Slice {
   readonly id: string;
   readonly name: string;
   readonly transform: SliceTransform;
-  readonly layerIds: readonly string[];
+  /** Slice belongs to a Composition and can map Layers from multiple Decks. */
+  readonly layerRefs: readonly DeckLayerRef[];
   readonly locked: boolean;
 }
