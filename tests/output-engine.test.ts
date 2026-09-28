@@ -518,7 +518,7 @@ describe("Output Engine", () => {
     }];
 
     const second = [{
-      ...first[0],
+      ...first[0]!,
       ref: { deckId: "deck-1", layerId: "layer-2" },
       layerId: "layer-2"
     }];
