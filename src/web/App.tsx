@@ -16,15 +16,15 @@ type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
 type Deck = DomainDeck & { kind: DeckKind };
 
-const makeLayers = (): Layer[] =>
+const makeLayers = (deckKey: string): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
-    id: "layer-" + (index + 1),
+    id: deckKey + "-layer-" + (index + 1),
     name: "Layer " + (index + 1)
   }));
 
 const initialDecks: Deck[] = [
-  { id: "deck-1", name: "Deck 1", kind: "visual", transition: { type: "fade", durationMs: 500 }, loop: true, layers: makeLayers() },
-  { id: "deck-2", name: "Deck 2", kind: "visual", transition: { type: "cut", durationMs: 0 }, loop: false, layers: makeLayers() }
+  { id: "deck-1", name: "Deck 1", kind: "visual", transition: { type: "fade", durationMs: 500 }, loop: true, layers: makeLayers("deck-1") },
+  { id: "deck-2", name: "Deck 2", kind: "visual", transition: { type: "cut", durationMs: 0 }, loop: false, layers: makeLayers("deck-2") }
 ];
 
 const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = [
@@ -190,7 +190,7 @@ export function App() {
       kind,
       transition: { type: "fade", durationMs: 500 } as Transition,
       loop: false,
-      layers: makeLayers()
+      layers: makeLayers("deck-" + Date.now())
     };
     setDecks((items) => [...items, deck]);
     deckRuntime.register(deck);
@@ -442,7 +442,7 @@ export function App() {
               <div className="program-canvas">
                 {(() => {
                   const program = programEngine.getState("default");
-                  return program.layer ? <span style={compositeProgram(program)?.style}>PROGRAM</span> : <span>PROGRAM</span>;
+                  const composed = compositeProgram(program); return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
                 })()}
               </div>
             </div>
@@ -568,7 +568,7 @@ export function App() {
 
         <aside className="properties panel">
           <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
-          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item) => (
+          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Document", "List", "Advanced"].map((item) => (
             <div className="property-section" key={item}>
               <button className={openProperty === item ? "property-row active" : "property-row"} onClick={() => setOpenProperty(openProperty === item ? "" : item)}>
                 <span>{item}</span><span>{openProperty === item ? "⌄" : "›"}</span>
