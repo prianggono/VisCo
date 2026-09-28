@@ -51,16 +51,22 @@ export class DeckProgramController {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
 
-    const deckState = this.deckRuntime.programLayers(deck, layerIds);
+    // Validate the runtime Deck first so ProgramEngine cannot mutate its
+    // composition-scoped state when the Deck is not registered.
+    const currentDeckState = this.deckRuntime.getState(deck.id);
+
     // Runtime M is authoritative for the live Deck. Pass that state to Program
     // so the UI fader and Program gate cannot disagree.
-    const runtimeDeck: Deck = { ...deck, masterLevel: deckState.masterLevel };
+    const runtimeDeck: Deck = { ...deck, masterLevel: currentDeckState.masterLevel };
     const programState = this.programEngine.programLayers(
       runtimeDeck,
       layerIds,
       options.compositionId ?? "default"
     );
 
+    // ProgramEngine validation has completed before Runtime mutation. The
+    // remaining Runtime operation uses the same Deck/layer inputs.
+    const deckState = this.deckRuntime.programLayers(deck, layerIds);
 
     return { deck: deckState, program: programState };
   }
