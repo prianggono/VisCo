@@ -45,7 +45,7 @@ export class OutputEngine {
       target: updated,
       source: null,
       renderPlan: null,
-      active: updated.enabled
+      active: this.requireState(targetId).active
     });
     return updated;
   }
@@ -61,7 +61,7 @@ export class OutputEngine {
       target: updated,
       source: null,
       renderPlan: null,
-      active: updated.enabled
+      active: this.requireState(targetId).active
     });
     return updated;
   }
