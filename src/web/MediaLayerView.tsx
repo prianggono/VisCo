@@ -59,14 +59,14 @@ export function MediaLayerView({
         playsInline
         loop={loop}
         preload="auto"
-        style={{ ...mediaStyle, objectFit: "contain" }}
+        style={{ ...mediaStyle, objectFit: style.objectFit }}
         aria-label={layer.name}
       />
     );
   }
 
   if (source.kind === "image" && source.uri) {
-    return <img src={source.uri} alt={layer.name} style={{ ...mediaStyle, objectFit: "contain" }} />;
+    return <img src={source.uri} alt={layer.name} style={{ ...mediaStyle, objectFit: style.objectFit }} />;
   }
 
   if (source.kind === "colour") {
