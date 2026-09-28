@@ -92,7 +92,7 @@ export class TriggerEngine {
         context.slices,
         state
       );
-      context.output.syncFromComposition(renderPlan, state.compositionId);
+      context.output.syncFromComposition(\n        renderPlan,\n        state.compositionId,\n        context.controller.getTransitionState()\n      );
     }
     // Deck-scoped outputs remain explicit overrides and use the first
     // Program Layer only for the legacy Deck routing contract.
