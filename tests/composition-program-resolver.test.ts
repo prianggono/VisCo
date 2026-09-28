@@ -96,6 +96,51 @@ describe("Composition Program resolver", () => {
     ]);
   });
 
+  it("rejects duplicate Program Layer references instead of silently collapsing them", () => {
+    expect(() =>
+      resolveCompositionProgram(
+        composition,
+        slices,
+        {
+          ...program,
+          layers: [program.layers[0]!, program.layers[0]!]
+        }
+      )
+    ).toThrow('Program contains duplicate Layer reference "deck-1/layer-2"');
+  });
+
+  it("rejects a Program Layer whose embedded ID disagrees with its reference", () => {
+    expect(() =>
+      resolveCompositionProgram(
+        composition,
+        slices,
+        {
+          ...program,
+          layers: [{
+            source: { deckId: "deck-1", layerId: "layer-2" },
+            layer: { id: "layer-3", name: "Wrong Layer" }
+          }]
+        }
+      )
+    ).toThrow('does not match reference "deck-1/layer-2"');
+  });
+
+  it("rejects a Program Deck that is not attached to the Composition", () => {
+    expect(() =>
+      resolveCompositionProgram(
+        composition,
+        slices,
+        {
+          ...program,
+          layers: [{
+            source: { deckId: "deck-2", layerId: "layer-2" },
+            layer: { id: "layer-2", name: "Layer 2" }
+          }]
+        }
+      )
+    ).toThrow('Program maps deck "deck-2", but that deck is not attached to Composition "composition-1"');
+  });
+
   it("rejects a Program from another Composition", () => {
     expect(() =>
       resolveCompositionProgram(
