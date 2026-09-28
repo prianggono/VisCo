@@ -98,11 +98,11 @@ The next work should proceed without asking for a decision:
 - [x] Audit Program → Deck transition → Output synchronization and composition-scoped output sync.
 - [x] Audit Trigger validation/execution; duplicate commands intentionally allowed.
 - [x] Audit Audio routing ownership; canonical Audio In → VisCo VB → Record/Stream/Zoom path remains centralized.
-- [ ] Audit Properties panels and classify each control as connected, partial, mock, or missing.
+- [x] Audit Properties panels: General/Playback/Transform/Layering/Document/List are connected; Audio volume/pan, Slice add/reset, Trigger assignment, and Advanced remain UI placeholders.
 - [x] Audit persistence coverage; snapshot now covers Composition/Deck/Group/Layer/Slice/Scene/Source/Output.
 - [x] Audit Health Check contracts; generic ID/reference/output checks added without native binding.
-- [ ] Keep Camera/Webcam and USB Video Capture separated as canonical source classes.
-- [ ] Keep NDI and OMT as first-class source/device contracts.
+- [x] Keep Camera/Webcam and USB Video Capture separated as canonical source classes.
+- [x] Keep NDI and OMT as first-class source/device contracts.
 - [ ] Run regression/CI after every implementation batch.
 
 ## Working rule
@@ -118,8 +118,9 @@ When an item can be completed safely from the existing architecture, implement i
 - [x] Scene contract: Scene is an output mapping/routing preset. Physical displays use display Scenes; Record + Stream + External/Virtual Out share one production Scene.
 - [x] #7 Real compositor integration contract: Program carries immutable multi-layer snapshot and compositor emits deterministic render metadata.
 - [ ] #8 Native D3D11 renderer implementation: bridge contract added; Windows host implementation remains.
-- [ ] Scene runtime adapter: Scene validation/runtime routing remains to be implemented.
+- [x] Scene runtime adapter: composition-scoped Scene registration, validation and activation contract implemented.
 - [ ] Native output transport implementation remains downstream of the D3D11/media decisions.
+- [x] Output frame contract added: physical/media consumers receive a rendered Composition frame reference and Scene mapping identity.
 
 
 ### Audit batch — 2026-09-29
@@ -131,3 +132,16 @@ When an item can be completed safely from the existing architecture, implement i
 - [x] Trigger duplicate/copy-paste restriction removed per operator workflow; reference validation remains.
 - [x] Trigger output synchronization corrected to use Program composition scope.
 - [x] Project snapshot serialization covers current core domain objects including Scene.
+
+
+### Audit continuation — 2026-09-29 (continued)
+
+- [x] Scene runtime adapter implemented with one active mapping preset per Composition.
+- [x] Scene validation covers display targets and the shared Production Scene (Record / Stream / Virtual).
+- [x] Relationship validation now checks Scene → Composition references.
+- [x] Output frame boundary added so downstream physical/media transports consume rendered Composition frames rather than owning Layer state.
+- [x] Deck Runtime column mapping regression is covered by the existing deterministic layer-order test.
+- [ ] Native D3D11 implementation remains a Windows-host task.
+- [ ] Native physical display / Virtual Out / stream / recorder transport remains downstream of the locked renderer/media boundaries.
+- [ ] LED transport remains a decision gate and is intentionally not implemented.
+- [ ] License enforcement, licensing tiers, and watermark rendering remain postponed and are not part of this audit batch.
