@@ -91,6 +91,7 @@ describe("Layer Transform", () => {
     expect(style.opacity).toBe(0.6);
     expect(style.zIndex).toBe(0);
     expect(style.mixBlendMode).toBe("normal");
+    expect(style.objectFit).toBe("contain");
 
     const layered = {
       ...layer,
@@ -100,6 +101,8 @@ describe("Layer Transform", () => {
     const layeredStyle = getLayerRenderStyle(layered);
     expect(layeredStyle.zIndex).toBe(4);
     expect(layeredStyle.mixBlendMode).toBe("screen");
+    expect(getLayerRenderStyle({ ...layered, fitMode: "fill" }).objectFit).toBe("cover");
+    expect(getLayerRenderStyle({ ...layered, fitMode: "stretch" }).objectFit).toBe("fill");
 
     const composited = compositeLayer(layered);
     expect(composited.layerId).toBe("layer-test");
