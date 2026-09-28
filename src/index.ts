@@ -22,6 +22,7 @@ export * from "./engine/media-pipeline.js";
 export * from "./engine/project-persistence.js";
 export * from "./engine/library-engine.js";
 export * from "./engine/health-check.js";
+export * from "./engine/runtime-health.js";
 export * from "./engine/device-discovery.js";
 export * from "./engine/frame-pipeline.js";
 export * from "./engine/license-engine.js";
