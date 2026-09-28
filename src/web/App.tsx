@@ -13,6 +13,7 @@ import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
 import { renderCompositionProgram, renderCompositionTransition } from "../engine/composition-renderer.js";
+import { isLayerProgrammed } from "../engine/source-usage.js";
 import { getDefaultSliceTransform } from "../domain/slice.js";
 import type { Composition } from "../domain/composition.js";
 import type { Slice } from "../domain/slice.js";
@@ -326,6 +327,21 @@ export function App() {
     const itemId = event.dataTransfer.getData("text/library-id");
     const item = libraryItems.find((entry) => entry.id === itemId);
     if (item) {
+      const programmed = isLayerProgrammed(
+        { deckId, layerId },
+        [programEngine.getState("default")]
+      );
+      if (programmed) {
+        window.alert(
+          "SOURCE TIDAK DAPAT DIREPLACE\\n\\n" +
+          "Layer ini sedang digunakan di PROGRAM / ON AIR.\\n" +
+          "Program ulang terlebih dahulu, lalu Source dapat direplace."
+        );
+        return;
+      }
+
+      // Source replacement is allowed for Preview/unprogrammed Layers,
+      // including Layers that belong to Groups.
       setDecks((current) => current.map((deck) =>
         deck.id !== deckId
           ? deck
