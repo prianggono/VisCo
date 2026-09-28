@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AudioEngine } from "../src/domain/audio.js";
+import { AudioEngine, AudioRoutingEngine } from "../src/domain/audio.js";
 import { AudioOutputRouter } from "../src/engine/audio-output-router.js";
 import { OutputEngine } from "../src/engine/output-engine.js";
 
@@ -95,3 +95,28 @@ describe("Audio Output Router", () => {
     });
   });
 });
+
+
+  it("reports destinations fed from VisCo VB to Record, Stream and Zoom", () => {
+    const audio = new AudioEngine();
+    const output = new OutputEngine();
+    const routing = new AudioRoutingEngine();
+
+    routing.connect("main", "audio-in", "visco-vb");
+    routing.connect("main", "visco-vb", "record");
+    routing.connect("main", "visco-vb", "stream");
+    routing.connect("main", "visco-vb", "zoom");
+
+    const state = new AudioOutputRouter(audio, output, routing).sync();
+
+    expect(state.vbDestinations).toEqual(["record", "stream", "zoom"]);
+  });
+
+  it("does not report disabled VisCo VB destinations", () => {
+    const routing = new AudioRoutingEngine();
+
+    routing.connect("main", "visco-vb", "stream");
+    routing.setEnabled("main", "stream", false);
+
+    expect(routing.getDestinationsFromVb()).toEqual([]);
+  });
