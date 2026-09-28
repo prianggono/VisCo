@@ -17,6 +17,9 @@ export * from "./engine/trigger-validator.js";
 export * from "./engine/deck-runtime.js";
 export * from "./engine/deck-program-controller.js";
 export * from "./engine/layer-composition.js";
+export * from "./engine/compositor.js";
+export * from "./engine/media-pipeline.js";
+export * from "./engine/project-persistence.js";
 export * from "./engine/library-engine.js";
 export * from "./engine/health-check.js";
 export * from "./engine/device-discovery.js";
@@ -26,3 +29,4 @@ export * from "./engine/relationship-validator.js";
 export * from "./ui/layer-interaction.js";
 
 export * from "./native/windows-video-device.js";
+export * from "./native/d3d11-renderer.js";
