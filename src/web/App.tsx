@@ -14,6 +14,7 @@ import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
 import { renderCompositionProgram, renderCompositionTransition } from "../engine/composition-renderer.js";
 import { findSourceUsage } from "../engine/source-usage.js";
+import { revokeOwnedObjectUrls } from "../engine/object-url-lifecycle.js";
 import { getDefaultSliceTransform } from "../domain/slice.js";
 import type { Composition } from "../domain/composition.js";
 import type { Slice } from "../domain/slice.js";
@@ -22,12 +23,6 @@ import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
 type Deck = DomainDeck & { kind: DeckKind };
-
-function revokeOwnedObjectUrls(sources: readonly Source[]): void {
-  for (const source of sources) {
-    if (source.uri?.startsWith("blob:")) URL.revokeObjectURL(source.uri);
-  }
-}
 
 const makeLayers = (): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
