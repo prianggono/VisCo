@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Layer } from "../domain/layer.js";
 import type { Source } from "../domain/source.js";
 import type { LayerRenderStyle } from "../engine/layer-renderer.js";
+import { DocumentLayerView } from "./DocumentLayerView.js";
 
 interface MediaLayerViewProps {
   layer: Layer;
@@ -57,6 +58,10 @@ export function MediaLayerView({
         MISSING SOURCE
       </div>
     );
+  }
+
+  if ((source.kind === "powerpoint" || source.kind === "pdf") && source.uri) {
+    return <DocumentLayerView layer={layer} source={source} style={mediaStyle} label={label} />;
   }
 
   const missingUri = (source.kind === "video" || source.kind === "image") && !source.uri;
