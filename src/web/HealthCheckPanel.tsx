@@ -4,6 +4,8 @@ import { checkAudioDevices, checkVisCoVirtualAudio } from "../engine/audio-healt
 import { getHealthStatus, type HealthCheckItem, type HealthStatus } from "../engine/health-check.js";
 import { DEFAULT_VIRTUAL_AUDIO_CONFIG } from "../domain/virtual-audio.js";
 import { UnavailableNativeVirtualAudioBridge } from "../engine/virtual-audio-native.js";
+import { checkVisCoVirtualVideo } from "../engine/video-health-check.js";
+import { UnavailableNativeVirtualVideoBridge } from "../engine/virtual-video-native.js";
 
 const endpointMap = new Map(
   DEFAULT_VIRTUAL_AUDIO_CONFIG.endpoints.map((endpoint) => [endpoint.channel, endpoint])
@@ -11,6 +13,7 @@ const endpointMap = new Map(
 
 const browserAudioProvider = new BrowserAudioDeviceProvider();
 const nativeBridge = new UnavailableNativeVirtualAudioBridge(endpointMap);
+const virtualVideoBridge = new UnavailableNativeVirtualVideoBridge();
 
 export interface HealthCheckPanelProps {
   readonly open: boolean;
@@ -24,11 +27,12 @@ export function HealthCheckPanel({ open, onClose }: HealthCheckPanelProps) {
   const refresh = async () => {
     setChecking(true);
     try {
-      const [audio, virtual] = await Promise.all([
+      const [audio, virtual, video] = await Promise.all([
         checkAudioDevices(browserAudioProvider),
-        checkVisCoVirtualAudio(nativeBridge)
+        checkVisCoVirtualAudio(nativeBridge),
+        checkVisCoVirtualVideo(virtualVideoBridge)
       ]);
-      setItems([...audio, ...virtual]);
+      setItems([...audio, ...virtual, video]);
     } finally {
       setChecking(false);
     }
@@ -48,7 +52,7 @@ export function HealthCheckPanel({ open, onClose }: HealthCheckPanelProps) {
         <header className="health-head">
           <div>
             <strong>HEALTH CHECK</strong>
-            <span>Audio, virtual audio and device availability</span>
+            <span>Audio, virtual audio, virtual video and device availability</span>
           </div>
           <div className="health-actions">
             <span className={`health-summary ${status}`}>{checking ? "CHECKING…" : status.toUpperCase()}</span>
