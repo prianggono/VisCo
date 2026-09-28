@@ -133,8 +133,6 @@ describe("relationship validation", () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Group "group-1" belongs to deck "deck-2" but is referenced by deck "deck-1".');
   });
-});
-
 
   it("rejects a Library index that diverges from canonical Sources", () => {
     const result = validateRelationships({
@@ -164,3 +162,5 @@ describe("relationship validation", () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Library contains duplicate Source ID "src-1".');
   });
+
+});
