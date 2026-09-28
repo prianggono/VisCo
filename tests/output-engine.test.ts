@@ -84,28 +84,28 @@ describe("Output Engine", () => {
     const output = new OutputEngine();
     output.register(mediaTarget());
 
-    output.setMediaFeature("virtual", "virtual", true);
+    output.setMediaFeature("media-main", "virtual", true);
     expect(output.getState("media-main").target.media).toMatchObject({
       streaming: false,
       recording: false,
       virtual: true
     });
 
-    output.setMediaFeature("virtual", "stream", true);
+    output.setMediaFeature("media-main", "stream", true);
     expect(output.getState("media-main").target.media).toMatchObject({
       streaming: true,
       recording: false,
       virtual: true
     });
 
-    output.setMediaFeature("virtual", "record", true);
+    output.setMediaFeature("media-main", "record", true);
     expect(output.getState("media-main").target.media).toMatchObject({
       streaming: true,
       recording: true,
       virtual: true
     });
 
-    output.setMediaFeature("virtual", "stream", false);
+    output.setMediaFeature("media-main", "stream", false);
     expect(output.getState("media-main").target.media).toMatchObject({
       streaming: false,
       recording: true,
