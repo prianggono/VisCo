@@ -161,6 +161,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       deckId: "deck-3",
       layerId: "layer-2"
     });
+    expect(output.getState("media-main").transition).toMatchObject({
+      transition: { type: "wipe", durationMs: 300 },
+      active: true
+    });
   });
 
   it("syncs outputs once after a multi-action sequence", () => {
