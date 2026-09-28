@@ -59,9 +59,9 @@ describe("Transition Engine", () => {
 
     engine.start(previous, next, 1000);
 
-    expect(engine.sample(1000)?.progress).toBe(0);
-    expect(engine.sample(1150)?.progress).toBe(0.5);
-    expect(engine.sample(1300)?.progress).toBe(1);
+    expect(engine.sample("default", 1000)?.progress).toBe(0);
+    expect(engine.sample("default", 1150)?.progress).toBe(0.5);
+    expect(engine.sample("default", 1300)?.progress).toBe(1);
     expect(engine.getCurrent()).toBeNull();
   });
 
@@ -77,7 +77,7 @@ describe("Transition Engine", () => {
 
     engine.start(previous, next, 1000);
 
-    const sample = engine.sample(1000);
+    const sample = engine.sample("default", 1000);
     expect(sample?.active).toBe(false);
     expect(sample?.progress).toBe(1);
     expect(engine.getCurrent()).toBeNull();
