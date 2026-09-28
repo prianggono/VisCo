@@ -149,7 +149,7 @@ export function App() {
     const source = libraryEngine.get(selectedLayerModel.sourceId);
     if (source.kind !== "powerpoint" && source.kind !== "pdf") return;
     libraryEngine.update({ ...source, document: { ...(source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }), ...patch } });
-    setLibraryItems(libraryEngine.list());
+    setLibraryItems([...libraryEngine.list()]);
     setRuntimeRevision((value) => value + 1);
   };
 
