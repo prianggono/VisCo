@@ -10,6 +10,7 @@ export type SourceKind =
   | "pdf"
   | "camera"
   | "ndi"
+  | "omt"
   | "desktop-capture"
   | "ip-camera"
   | "colour"
