@@ -1,5 +1,6 @@
 export * from "./domain/deck.js";
 export * from "./domain/source.js";
+export * from "./domain/device.js";
 export * from "./domain/layer.js";
 export * from "./domain/group.js";
 export * from "./domain/composition.js";
@@ -15,6 +16,7 @@ export * from "./engine/deck-runtime.js";
 export * from "./engine/deck-program-controller.js";
 export * from "./engine/library-engine.js";
 export * from "./engine/health-check.js";
+export * from "./engine/device-discovery.js";
 export * from "./engine/license-engine.js";
 export * from "./engine/relationship-validator.js";
 export * from "./ui/layer-interaction.js";
