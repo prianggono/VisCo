@@ -628,7 +628,7 @@ export function App() {
                         onChange={(event) => updateSelectedTransform({ scaleLinked: event.target.checked })}
                       />
                     </label>
-                  </div>
+                  </div>}
                   {item === "Layering" && <div className="property-grid">
                     <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
                     <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
