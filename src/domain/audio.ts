@@ -83,7 +83,8 @@ export class AudioRoutingEngine {
   }
 
   getDestinationsFromVb(): readonly AudioDestination[] {
-    return this.getRoutesForTarget("visco-vb")
+    return this.getRoutes()
+      .filter((route) => route.enabled && route.sourceBus === "visco-vb")
       .map((route) => route.targetBus)
       .filter((target): target is AudioDestination =>
         target === "record" || target === "stream" || target === "zoom"
