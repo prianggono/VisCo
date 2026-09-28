@@ -86,14 +86,36 @@ export function renderCompositionTransition(
 
   const progress = Math.max(0, Math.min(1, transition.progress));
 
+  // Transition output is a temporary render stack. Keep each plan's internal
+  // Layer ordering, but place the incoming plan above every outgoing Layer so
+  // Fade/Wipe cannot be hidden by an old Layer with a larger z-index.
+  const previousMaxZ = previousPlan.reduce(
+    (max, item) => Math.max(max, item.layerStyle.zIndex),
+    Number.NEGATIVE_INFINITY
+  );
+  const currentMinZ = currentPlan.reduce(
+    (min, item) => Math.min(min, item.layerStyle.zIndex),
+    Number.POSITIVE_INFINITY
+  );
+  const zOffset = Number.isFinite(previousMaxZ) && Number.isFinite(currentMinZ)
+    ? Math.max(0, previousMaxZ - currentMinZ + 1)
+    : 0;
+
   if (transition.transition.type === "fade") {
     const previous = previousPlan.map((item) => ({
       ...item,
-      layerStyle: { ...item.layerStyle, opacity: item.layerStyle.opacity * (1 - progress) }
+      layerStyle: {
+        ...item.layerStyle,
+        opacity: item.layerStyle.opacity * (1 - progress)
+      }
     }));
     const current = currentPlan.map((item) => ({
       ...item,
-      layerStyle: { ...item.layerStyle, opacity: item.layerStyle.opacity * progress }
+      layerStyle: {
+        ...item.layerStyle,
+        opacity: item.layerStyle.opacity * progress,
+        zIndex: item.layerStyle.zIndex + zOffset
+      }
     }));
     return { layers: [...previous, ...current], active: true, progress };
   }
@@ -102,6 +124,7 @@ export function renderCompositionTransition(
     ...item,
     layerStyle: {
       ...item.layerStyle,
+      zIndex: item.layerStyle.zIndex + zOffset,
       clipPath: `inset(0 ${(1 - progress) * 100}% 0 0)`
     }
   }));
