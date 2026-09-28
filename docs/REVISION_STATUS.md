@@ -65,7 +65,7 @@ No feature package tiers are planned. Unlicensed mode remains usable with a wate
 
 ## Current runtime handoff
 
-The Source UI now owns selection flow and delegates device discovery to the canonical DeviceDiscoveryEngine. Browser camera enumeration is supported where the browser exposes media devices. NDI, OMT, Desktop Capture, Display, and LED discovery are intentionally native-provider responsibilities; the UI does not duplicate protocol or Windows device logic.
+The Source UI now owns selection flow and delegates device discovery to the canonical DeviceDiscoveryEngine. Camera/Webcam and USB Video Capture discovery are native Windows responsibilities. NDI, OMT, Desktop Capture, Display, and LED discovery are intentionally native-provider responsibilities; the UI does not duplicate protocol or Windows device logic.
 
 OMT discovery supports an optional Discovery Server field. OMT documents DNS-SD as the normal discovery mechanism and a TCP Discovery Server as the multicast-unavailable fallback; the default Discovery Server port documented by OMT is 6399.
 
@@ -74,4 +74,4 @@ The next implementation step is the Windows native provider/frame bridge. Do not
 
 ### Input clarification — USB Video Capture
 
-The live camera input is defined as **Video Capture**, not generic webcam Camera. The intended hardware is USB-connected video capture hardware such as USB HDMI/SDI capture devices. Discovery and frame acquisition are native Windows responsibilities; the React UI must not use browser camera enumeration for this input. The native device metadata should preserve backend/device capabilities so the future Windows adapter can expose resolution, pixel format, FPS, audio presence, and vendor/device identity.
+The live inputs include **Camera / Webcam** and **Video Capture** as separate device classes. Camera/Webcam covers built-in or USB cameras; Video Capture covers USB-connected HDMI/SDI/video capture devices. Discovery and frame acquisition are native Windows responsibilities; the React UI must not use browser camera enumeration for this input. The native device metadata should preserve backend/device capabilities so the future Windows adapter can expose resolution, pixel format, FPS, audio presence, and vendor/device identity.
