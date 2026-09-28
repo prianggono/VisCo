@@ -8,7 +8,7 @@ import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
-import { DeviceDiscoveryEngine, BrowserMediaDeviceDiscoveryProvider } from "../engine/device-discovery.js";
+import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
@@ -85,7 +85,6 @@ export function App() {
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const deviceDiscovery = useMemo(() => {
     const engine = new DeviceDiscoveryEngine();
-    engine.register(new BrowserMediaDeviceDiscoveryProvider());
     return engine;
   }, []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
