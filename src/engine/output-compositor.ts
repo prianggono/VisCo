@@ -5,21 +5,25 @@ import { compositeProgram, type CompositedLayer } from "./compositor.js";
 export interface CompositedOutput {
   readonly source: DeckLayerRef;
   readonly compositionId: string;
-  readonly layer: CompositedLayer;
+  /** Canonical multi-Layer Program render result. */
+  readonly layers: readonly CompositedLayer[];
 }
 
 /**
  * Bridges Program composition data to an output renderer.
  * Output routing remains owned by OutputEngine; Transform remains owned by Layer.
+ *
+ * This compatibility bridge intentionally does not collapse a multi-Layer
+ * Program into the first Layer.
  */
 export function compositeProgramForOutput(program: ProgramState): CompositedOutput | null {
   if (!program.source) return null;
-  const layer = compositeProgram(program);
-  if (!layer) return null;
+  const layers = compositeProgram(program);
+  if (!layers.length) return null;
 
   return {
     source: program.source,
     compositionId: program.compositionId,
-    layer
+    layers
   };
 }
