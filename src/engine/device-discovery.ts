@@ -32,30 +32,16 @@ export class NativeDeviceDiscoveryProvider implements DeviceDiscoveryProvider {
  * Browser discovery is deliberately limited to devices the browser can enumerate.
  * Network/video discovery remains a native responsibility.
  */
-export class BrowserMediaDeviceDiscoveryProvider implements DeviceDiscoveryProvider {
-  readonly id = "browser-media-devices";
-  readonly source = "browser" as const;
+/**
+ * USB video-capture discovery is intentionally native on Windows.
+ * Browser enumerateDevices() is not used for this source because capture
+ * cards should be handled by the Windows media-device backend.
+ */
+export class NativeVideoCaptureDiscoveryProvider extends NativeDeviceDiscoveryProvider {
+  readonly id = "native-video-capture-discovery";
 
   supports(kind: DeviceDiscoveryRequest["kind"]): boolean {
-    return kind === "camera";
-  }
-
-  async discover(request: DeviceDiscoveryRequest): Promise<readonly DiscoveredDevice[]> {
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
-      return [];
-    }
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    return devices
-      .filter((device) => device.kind === "videoinput")
-      .filter((device) => !request.query || device.label.toLowerCase().includes(request.query.toLowerCase()))
-      .map((device, index) => ({
-        id: device.deviceId || `camera-${index + 1}`,
-        name: device.label || `Camera ${index + 1}`,
-        kind: "camera" as const,
-        transport: "local" as const,
-        metadata: { groupId: device.groupId }
-      }));
+    return kind === "video-capture";
   }
 }
 
