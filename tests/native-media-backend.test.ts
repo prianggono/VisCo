@@ -22,6 +22,17 @@ describe("native media backend", () => {
     })).toBe("UNAVAILABLE · backend missing");
   });
 
+  it("maps OMT as a native protocol", async () => {
+    const backend = createUnavailableNativeMediaBackend();
+    const state = await backend.omt.start({
+      sourceId: "source-omt",
+      protocol: "omt",
+      name: "OMT Camera"
+    });
+    expect(state.protocol).toBe("omt");
+    expect(state.status).toBe("unavailable");
+  });
+
   it("creates a stable source descriptor", () => {
     expect(descriptorForNativeMediaSource(
       "source-1",
