@@ -8,7 +8,7 @@ import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
-import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
+import { DeviceDiscoveryEngine, NativeCameraDiscoveryProvider, NativeVideoCaptureDiscoveryProvider } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
@@ -63,6 +63,8 @@ export function App() {
       enabled: true,
       media: { compositionId: "default", resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false }
     });
+    engine.register(new NativeCameraDiscoveryProvider({ discover: async () => [] }));
+    engine.register(new NativeVideoCaptureDiscoveryProvider({ discover: async () => [] }));
     return engine;
   }, []);
   const [, setOutputRevision] = useState(0);
