@@ -12,6 +12,7 @@ interface MediaLayerViewProps {
   loop?: boolean;
   speed?: number;
   label: string;
+  onDocumentPageChange?: (sourceId: string, page: number) => void;
 }
 
 export function MediaLayerView({
@@ -21,7 +22,8 @@ export function MediaLayerView({
   playing = false,
   loop = false,
   speed = 100,
-  label
+  label,
+  onDocumentPageChange
 }: MediaLayerViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mediaError, setMediaError] = useState(false);
@@ -61,7 +63,7 @@ export function MediaLayerView({
   }
 
   if ((source.kind === "powerpoint" || source.kind === "pdf") && source.uri) {
-    return <DocumentLayerView layer={layer} source={source} style={mediaStyle} label={label} />;
+    return <DocumentLayerView layer={layer} source={source} style={mediaStyle} label={label} onPageChange={(page) => onDocumentPageChange?.(source.id, page)} />;
   }
 
   const missingUri = (source.kind === "video" || source.kind === "image") && !source.uri;
