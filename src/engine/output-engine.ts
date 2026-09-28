@@ -94,7 +94,7 @@ export class OutputEngine {
       .filter(state => state.active && state.target.enabled && state.target.deckId === undefined &&
         (state.target.compositionId === undefined || state.target.compositionId === compositionId))
       .map(state => {
-        const updated = { ...state, renderPlan, active: true };
+        const updated = { ...state, source: null, renderPlan, active: true };
         this.states.set(state.target.id, updated);
         return updated;
       });
