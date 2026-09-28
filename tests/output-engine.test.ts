@@ -99,6 +99,68 @@ describe("Output Engine", () => {
     expect(state.renderPlan).toBeNull();
   });
 
+  it("carries the active Deck transition into Composition output", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    const renderPlan = [{
+      sliceId: "slice-1",
+      layerId: "layer-2",
+      layerStyle: {
+        transform: "translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(1, 1)",
+        opacity: 1,
+        transformOrigin: "center center" as const,
+        zIndex: 0,
+        mixBlendMode: "normal" as const
+      },
+      sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+    }];
+    const transition = {
+      active: true,
+      progress: 0.5,
+      from: { deckId: "deck-1", layerId: "layer-1" },
+      to: { deckId: "deck-2", layerId: "layer-2" },
+      transition: { type: "fade" as const, durationMs: 500 }
+    };
+
+    output.syncFromComposition(renderPlan, "composition-1", transition);
+
+    expect(output.getState("display-main").transition).toEqual(transition);
+  });
+
+  it("carries the same Deck transition into a Deck-scoped output", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-2",
+      compositionId: "composition-1"
+    });
+
+    const transition = {
+      active: true,
+      progress: 0.25,
+      from: { deckId: "deck-1", layerId: "layer-1" },
+      to: { deckId: "deck-2", layerId: "layer-2" },
+      transition: { type: "wipe" as const, durationMs: 300 }
+    };
+
+    output.syncFromDeck(
+      "deck-2",
+      { deckId: "deck-2", layerId: "layer-2" },
+      "composition-1",
+      transition
+    );
+
+    expect(output.getState("display-main").transition).toEqual(transition);
+  });
+
   it("routes a Deck source to its output", () => {
     const output = new OutputEngine();
     output.register({
