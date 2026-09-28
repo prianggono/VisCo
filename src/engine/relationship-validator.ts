@@ -4,6 +4,7 @@ import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import type { Slice } from "../domain/slice.js";
 import type { Library, Source } from "../domain/source.js";
+import type { OutputTarget } from "../domain/output.js";
 
 export interface RelationshipValidationResult {
   readonly valid: boolean;
@@ -19,6 +20,7 @@ export interface RelationshipGraph {
   readonly sources?: readonly Source[];
   /** Optional Library index. When supplied, it must match the canonical Source registry exactly. */
   readonly library?: Library;
+  readonly outputs?: readonly OutputTarget[];
 }
 
 function hasDeckLayer(deck: Deck | undefined, layerId: string): boolean {
@@ -70,6 +72,7 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   duplicateIds(graph.groups, "Group");
   duplicateIds(graph.slices, "Slice");
   duplicateIds(graph.sources ?? [], "Source");
+  duplicateIds(graph.outputs ?? [], "Output");
 
   for (const deck of graph.decks) {
     const layerIds = new Set<string>();
@@ -78,6 +81,20 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
         errors.push(`Deck "${deck.id}" contains duplicate Layer ID "${layer.id}".`);
       }
       layerIds.add(layer.id);
+    }
+  }
+
+  const compositionIds = new Set(graph.compositions.map((item) => item.id));
+
+  for (const output of graph.outputs ?? []) {
+    if (output.compositionId !== undefined && !compositionIds.has(output.compositionId)) {
+      errors.push(`Output "${output.id}" references missing Composition "${output.compositionId}".`);
+    }
+    if (output.deckId !== undefined && !deckIds.has(output.deckId)) {
+      errors.push(`Output "${output.id}" references missing Deck "${output.deckId}".`);
+    }
+    if (output.media?.compositionId !== undefined && !compositionIds.has(output.media.compositionId)) {
+      errors.push(`Output "${output.id}" media settings reference missing Composition "${output.media.compositionId}".`);
     }
   }
 
