@@ -2,6 +2,7 @@ import type { DeckLayerRef, Transition } from "../domain/deck.js";
 import type { ProgramState } from "./program-engine.js";
 
 export interface TransitionRun {
+  readonly compositionId: string;
   readonly from: DeckLayerRef | null;
   readonly to: DeckLayerRef;
   readonly transition: Transition;
@@ -9,6 +10,7 @@ export interface TransitionRun {
 }
 
 export interface TransitionProgress {
+  readonly compositionId: string;
   readonly active: boolean;
   readonly progress: number;
   readonly from: DeckLayerRef | null;
@@ -24,33 +26,35 @@ export interface TransitionProgress {
  * composition state to the new one.
  */
 export class TransitionEngine {
-  private runState: TransitionRun | null = null;
+  private readonly runStates = new Map<string, TransitionRun>();
 
   start(previous: ProgramState, next: ProgramState, startedAt = Date.now()): TransitionRun | null {
+    const compositionId = next.compositionId;
     if (!next.source) {
-      this.runState = null;
+      this.runStates.delete(compositionId);
       return null;
     }
 
     const transition = next.transition;
     if (!transition) {
-      this.runState = null;
+      this.runStates.delete(compositionId);
       return null;
     }
 
     const run: TransitionRun = {
+      compositionId,
       from: previous.source,
       to: next.source,
       transition,
       startedAt
     };
 
-    this.runState = run;
+    this.runStates.set(compositionId, run);
     return run;
   }
 
-  sample(now = Date.now()): TransitionProgress | null {
-    const run = this.runState;
+  sample(compositionId = "default", now = Date.now()): TransitionProgress | null {
+    const run = this.runStates.get(compositionId);
     if (!run) return null;
 
     const duration = Math.max(0, run.transition.durationMs);
@@ -59,10 +63,11 @@ export class TransitionEngine {
     const active = progress < 1;
 
     if (!active) {
-      this.runState = null;
+      this.runStates.delete(compositionId);
     }
 
     return {
+      compositionId,
       active,
       progress,
       from: run.from,
@@ -71,13 +76,13 @@ export class TransitionEngine {
     };
   }
 
-  getCurrent(): TransitionRun | null {
-    return this.runState;
+  getCurrent(compositionId = "default"): TransitionRun | null {
+    return this.runStates.get(compositionId) ?? null;
   }
 
-  cancel(): TransitionRun | null {
-    const current = this.runState;
-    this.runState = null;
+  cancel(compositionId = "default"): TransitionRun | null {
+    const current = this.runStates.get(compositionId) ?? null;
+    this.runStates.delete(compositionId);
     return current;
   }
 }
