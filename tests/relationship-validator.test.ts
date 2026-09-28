@@ -85,6 +85,42 @@ describe("relationship validation", () => {
     );
   });
 
+  it("rejects duplicate Layer references inside one Slice", () => {
+    const result = validateRelationships({
+      compositions: [{
+        id: "comp-1",
+        name: "Venue",
+        format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+        deckIds: ["deck-1"],
+        sliceIds: ["slice-1"],
+        locked: false
+      }],
+      decks: [{
+        id: "deck-1",
+        name: "Deck 1",
+        layers: [layer],
+        transition: { type: "cut", durationMs: 0 }
+      }],
+      groups: [],
+      slices: [{
+        id: "slice-1",
+        name: "Left",
+        transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 },
+        layerRefs: [
+          { deckId: "deck-1", layerId: "layer-1" },
+          { deckId: "deck-1", layerId: "layer-1" }
+        ],
+        locked: false
+      }],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }]
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Slice "slice-1" contains duplicate Layer reference "deck-1/layer-1".'
+    );
+  });
+
   it("allows the same local Layer ID in multiple Decks", () => {
     const result = validateRelationships({
       compositions: [],
