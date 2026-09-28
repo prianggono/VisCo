@@ -101,7 +101,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
@@ -126,16 +126,34 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       }
     });
 
+    const composition = {
+      id: "default",
+      name: "Default",
+      format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 as const },
+      deckIds: ["deck-3"],
+      sliceIds: ["slice-1"],
+      locked: false
+    };
+    const slices = [{
+      id: "slice-1",
+      name: "Full Screen",
+      transform: { x: 960, y: 540, width: 1920, height: 1080, rotation: 0 },
+      layerRefs: [{ deckId: "deck-3", layerId: "layer-2" }],
+      locked: false
+    }];
+
     const state = trigger.execute(
       {
         type: "program",
         target: { deckId: "deck-3", layerId: "layer-2" }
       },
-      { decks, controller, output }
+      { decks, controller, output, composition, slices }
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
-    expect(output.getState("display-main").source).toEqual({
+    expect(output.getState("display-main").source).toBeNull();
+    expect(output.getState("display-main").renderPlan).toHaveLength(1);
+    expect(output.getState("display-main").renderPlan?.[0]?.ref).toEqual({
       deckId: "deck-3",
       layerId: "layer-2"
     });
@@ -150,24 +168,18 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
     const decks = new Map([
       [deck1.id, deck1],
       [deck3.id, deck3]
     ]);
 
-    let programSyncs = 0;
     let deckSyncs = 0;
-    const originalProgramSync = output.syncFromProgram.bind(output);
     const originalDeckSync = output.syncFromDeck.bind(output);
 
-    output.syncFromProgram = (source) => {
-      programSyncs += 1;
-      return originalProgramSync(source);
-    };
-    output.syncFromDeck = (deckId, source) => {
+    output.syncFromDeck = (deckId, source, compositionId) => {
       deckSyncs += 1;
-      return originalDeckSync(deckId, source);
+      return originalDeckSync(deckId, source, compositionId);
     };
 
     output.register({
@@ -188,7 +200,6 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     );
 
     expect(state.source).toEqual({ deckId: "deck-3", layerId: "layer-2" });
-    expect(programSyncs).toBe(1);
     expect(deckSyncs).toBe(1);
     expect(output.getState("display-main").source).toEqual({
       deckId: "deck-3",
@@ -201,7 +212,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
 
     output.register({
       id: "display-main",
@@ -227,7 +238,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
 
     output.register({
       id: "display-main",
@@ -235,8 +246,23 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
       enabled: true
     });
 
+    const composition = {
+      id: "default",
+      name: "Default",
+      format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 as const },
+      deckIds: ["deck-1"],
+      sliceIds: ["slice-1"],
+      locked: false
+    };
+    const slices = [{
+      id: "slice-1",
+      name: "Full Screen",
+      transform: { x: 960, y: 540, width: 1920, height: 1080, rotation: 0 },
+      layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }],
+      locked: false
+    }];
+
     program.program(deck1, "layer-1");
-    output.syncFromProgram({ deckId: "deck-1", layerId: "layer-1" });
     output.setEnabled("display-main", false);
 
     trigger.execute(
@@ -245,14 +271,18 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         outputId: "display-main",
         enabled: true
       },
-      { decks: new Map([[deck1.id, deck1]]), controller, output }
+      {
+        decks: new Map([[deck1.id, deck1]]),
+        controller,
+        output,
+        composition,
+        slices
+      }
     );
 
     expect(output.getState("display-main").active).toBe(true);
-    expect(output.getState("display-main").source).toEqual({
-      deckId: "deck-1",
-      layerId: "layer-1"
-    });
+    expect(output.getState("display-main").source).toBeNull();
+    expect(output.getState("display-main").renderPlan).toHaveLength(1);
   });
 
   it("preserves composition routing when Trigger syncs Deck outputs", () => {
@@ -260,7 +290,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
     const mediaDeck: Deck = { ...deck3, id: "media-deck" };
 
     runtime.register(mediaDeck);
@@ -299,7 +329,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
 
     output.register({
       id: "media-main",
@@ -404,7 +434,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
     const runtime = new DeckRuntime();
-    const controller = new DeckProgramController(runtime, program, output);
+    const controller = new DeckProgramController(runtime, program);
 
     output.register({
       id: "display-main",
