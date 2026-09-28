@@ -75,3 +75,36 @@ The next implementation step is the Windows native provider/frame bridge. Do not
 ### Input clarification — USB Video Capture
 
 The live inputs include **Camera / Webcam** and **Video Capture** as separate device classes. Camera/Webcam covers built-in or USB cameras; Video Capture covers USB-connected HDMI/SDI/video capture devices. Discovery and frame acquisition are native Windows responsibilities; the React UI must not use browser camera enumeration for this input. The native device metadata should preserve backend/device capabilities so the future Windows adapter can expose resolution, pixel format, FPS, audio presence, and vendor/device identity.
+
+
+## Decision gates — do not implement before explicit agreement
+
+Only the following architecture choices are currently blocked on a decision:
+
+1. **Renderer backend** — choose the native rendering backend/strategy for the Windows compositor (for example D3D11/D3D12/OpenGL/hybrid). This affects the real Composition Renderer and output path.
+2. **Native media/capture backend** — choose the Windows multimedia stack that will own decode, audio, USB capture, NDI, OMT, IP camera, and frame conversion. This should be one canonical native pipeline, not separate UI implementations.
+3. **LED output architecture** — define the native transport/driver boundary for LED controllers and mapping outputs before implementing real LED output.
+4. **Real output transport details** — physical display / Virtual Out / stream / recorder backend choices are downstream of the renderer/media decisions.
+5. **License enforcement timing** — explicitly postponed. Do not implement enforcement or licensing tiers while the project is still in try-and-error. Watermark policy remains only as a domain contract.
+
+Everything else can be audited, tested, documented, or implemented without waiting for those decisions.
+
+## Autonomous work queue
+
+The next work should proceed without asking for a decision:
+
+- [ ] Verify Program Layer Snapshot invariants and add regression tests.
+- [ ] Finish Layering contract at the engine level: deterministic layer ordering and blend metadata for multi-layer composition, without selecting a GPU backend.
+- [ ] Audit Program → Deck transition → Output synchronization and add missing tests.
+- [ ] Audit Trigger validation/execution and add missing tests.
+- [ ] Audit Audio routing ownership and remove/avoid duplicate routing paths.
+- [ ] Audit Properties panels and classify each control as connected, partial, mock, or missing.
+- [ ] Audit persistence coverage against the current domain snapshot.
+- [ ] Audit Health Check contracts and identify missing checks without binding them to a native backend.
+- [ ] Keep Camera/Webcam and USB Video Capture separated as canonical source classes.
+- [ ] Keep NDI and OMT as first-class source/device contracts.
+- [ ] Run regression/CI after every implementation batch.
+
+## Working rule
+
+When an item can be completed safely from the existing architecture, implement it directly. When an item changes a foundational technology choice or native backend, stop at the decision gate and ask PRI before coding it.
