@@ -85,6 +85,8 @@ export class TriggerEngine {
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
     if (!context.output || !state.source) return;
 
+    const transition = context.controller.getTransitionState();
+
     // Composition render plan is the canonical visual output path.
     if (context.composition && context.slices) {
       const renderPlan = renderCompositionProgram(
