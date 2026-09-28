@@ -43,11 +43,22 @@ describe("Deck click -> Preview / Program -> Output", () => {
     program.program(venueDeck, "layer-1", "venue");
     const controller = new DeckProgramController(runtime, program);
 
-    expect(controller.getState(venueDeck).program.source).toEqual({
+    expect(controller.getProgramState("venue").source).toEqual({
       deckId: "venue-deck",
       layerId: "layer-1"
     });
-    expect(controller.getState(venueDeck).program.compositionId).toBe("venue");
+    expect(controller.getProgramState("venue").compositionId).toBe("venue");
+  });
+
+  it("does not mutate Program when the Deck is not registered in Runtime", () => {
+    const runtime = new DeckRuntime();
+    const program = new ProgramEngine();
+    const controller = new DeckProgramController(runtime, program);
+
+    expect(() => controller.program(deck, "layer-1")).toThrow(
+      'Deck "deck-1" is not registered.'
+    );
+    expect(program.getState("default").source).toBeNull();
   });
 
   it("clicking a Layer box programs immediately", () => {
