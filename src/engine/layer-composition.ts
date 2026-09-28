@@ -14,8 +14,6 @@ export interface LayerCompositionInput {
  */
 export function orderLayers(input: LayerCompositionInput): readonly Layer[] {
   const positions = new Map(input.layers.map((layer, index) => [layer.id, index]));
-  const groupedIds = new Set((input.groups ?? []).flatMap((group) => group.layerIds));
-
   return [...input.layers].sort((a, b) => {
     const orderA = a.order ?? 0;
     const orderB = b.order ?? 0;
@@ -23,9 +21,6 @@ export function orderLayers(input: LayerCompositionInput): readonly Layer[] {
 
     const positionA = positions.get(a.id) ?? 0;
     const positionB = positions.get(b.id) ?? 0;
-    if (groupedIds.has(a.id) !== groupedIds.has(b.id)) {
-      return groupedIds.has(a.id) ? 1 : -1;
-    }
     return positionA - positionB;
   });
 }
