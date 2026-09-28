@@ -50,6 +50,22 @@ export class ProgramEngine {
     return [...this.states.values()];
   }
 
+  /** Force-detaches a Source from committed Program snapshots. The Program remains active with a missing Source. */
+  detachSource(sourceId: string): readonly ProgramState[] {
+    const updated: ProgramState[] = [];
+    for (const [compositionId, state] of this.states) {
+      const layers = state.layers.map((item) =>
+        item.layer.sourceId === sourceId
+          ? { ...item, layer: { ...item.layer, sourceId: null } }
+          : item
+      );
+      const next = createState(compositionId, layers, state.transition);
+      this.states.set(compositionId, next);
+      updated.push(next);
+    }
+    return updated;
+  }
+
   program(deck: Deck, layerId: string, compositionId = "default"): ProgramState {
     return this.programLayers(deck, [layerId], compositionId);
   }
