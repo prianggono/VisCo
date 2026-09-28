@@ -27,6 +27,59 @@ export function MediaLayerView({
 }: MediaLayerViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mediaError, setMediaError] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (source?.kind !== "camera") {
+      setCameraStream(null);
+      return;
+    }
+
+    let cancelled = false;
+    const requestedDeviceId = typeof source.metadata?.deviceId === "string"
+      ? source.metadata.deviceId
+      : undefined;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMediaError(true);
+      return;
+    }
+
+    const constraints: MediaStreamConstraints = {
+      video: requestedDeviceId ? { deviceId: { exact: requestedDeviceId } } : true,
+      audio: false
+    };
+
+    void navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+      if (cancelled) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      setMediaError(false);
+      setCameraStream(stream);
+    }).catch(() => {
+      if (!cancelled) {
+        setCameraStream(null);
+        setMediaError(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      setCameraStream((current) => {
+        current?.getTracks().forEach((track) => track.stop());
+        return null;
+      });
+    };
+  }, [source?.id, source?.kind, source?.metadata?.deviceId]);
+
+  useEffect(() => {
+    if (!videoRef.current || !cameraStream) return;
+    videoRef.current.srcObject = cameraStream;
+    return () => {
+      if (videoRef.current) videoRef.current.srcObject = null;
+    };
+  }, [cameraStream]);
 
   useEffect(() => {
     setMediaError(false);
@@ -75,6 +128,19 @@ export function MediaLayerView({
       >
         MISSING MEDIA · {source.name || label}
       </div>
+    );
+  }
+
+  if (source.kind === "camera") {
+    return (
+      <video
+        ref={videoRef}
+        muted
+        autoPlay
+        playsInline
+        style={{ ...mediaStyle, objectFit: style.objectFit }}
+        aria-label={layer.name}
+      />
     );
   }
 
