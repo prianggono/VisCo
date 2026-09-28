@@ -94,7 +94,6 @@ describe("Audio Output Router", () => {
       ]
     });
   });
-});
 
 
   it("reports destinations fed from VisCo VB to Record, Stream and Zoom", () => {
@@ -120,3 +119,4 @@ describe("Audio Output Router", () => {
 
     expect(routing.getDestinationsFromVb()).toEqual([]);
   });
+
