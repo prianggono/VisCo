@@ -48,6 +48,56 @@ describe("ProgramEngine", () => {
     expect(state.transition).toEqual({ type: "fade", durationMs: 300 });
   });
 
+  it("keeps Program state isolated between Compositions", () => {
+    const engine = new ProgramEngine();
+
+    engine.program(deck, "camera-left", "offline");
+    engine.program(deck, "ppt", "online");
+
+    expect(engine.getState("offline").source).toEqual({
+      deckId: "deck-1",
+      layerId: "camera-left"
+    });
+    expect(engine.getState("online").source).toEqual({
+      deckId: "deck-1",
+      layerId: "ppt"
+    });
+  });
+
+  it("replaces the previous Program formasi completely within one Composition", () => {
+    const engine = new ProgramEngine();
+
+    engine.programLayers(deck, ["camera-left", "ppt"], "offline");
+    const next = engine.program(deck, "camera-right", "offline");
+
+    expect(next.layers.map(({ source }) => source)).toEqual([
+      { deckId: "deck-1", layerId: "camera-right" }
+    ]);
+    expect(engine.getState("offline").layers).toHaveLength(1);
+    expect(engine.getState("offline").source).toEqual({
+      deckId: "deck-1",
+      layerId: "camera-right"
+    });
+  });
+
+  it("returns an empty state for an unknown Composition without affecting existing state", () => {
+    const engine = new ProgramEngine();
+
+    engine.program(deck, "ppt", "offline");
+
+    expect(engine.getState("unknown")).toEqual({
+      compositionId: "unknown",
+      layers: [],
+      source: null,
+      layer: null,
+      transition: null
+    });
+    expect(engine.getState("offline").source).toEqual({
+      deckId: "deck-1",
+      layerId: "ppt"
+    });
+  });
+
   it("keeps single-Layer programming compatible", () => {
     const engine = new ProgramEngine();
 
