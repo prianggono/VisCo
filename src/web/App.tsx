@@ -683,7 +683,7 @@ export function App() {
 
         <aside className="properties panel">
           <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
-          {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item) => (
+          {["General", "Document", "List", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Advanced"].map((item) => (
             <div className="property-section" key={item}>
               <button className={openProperty === item ? "property-row active" : "property-row"} onClick={() => setOpenProperty(openProperty === item ? "" : item)}>
                 <span>{item}</span><span>{openProperty === item ? "⌄" : "›"}</span>
