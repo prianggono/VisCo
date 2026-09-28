@@ -109,6 +109,12 @@ export function App() {
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+
+  useEffect(() => {
+    return () => {
+      revokeOwnedObjectUrls(libraryEngine.list());
+    };
+  }, [libraryEngine]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
