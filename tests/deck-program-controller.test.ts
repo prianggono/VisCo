@@ -84,6 +84,37 @@ describe("Deck click -> Preview / Program -> Output", () => {
     });
   });
 
+  it("executes the transition owned by the target Deck", () => {
+    const secondDeck: Deck = {
+      ...deck,
+      id: "deck-2",
+      transition: { type: "wipe", durationMs: 300 }
+    };
+    const runtime = new DeckRuntime();
+    runtime.register(deck);
+    runtime.register(secondDeck);
+
+    const program = new ProgramEngine();
+    const controller = new DeckProgramController(runtime, program);
+
+    controller.program(deck, "layer-1");
+    const state = controller.program(secondDeck, "layer-2");
+
+    expect(state.transition?.transition).toEqual({
+      type: "wipe",
+      durationMs: 300
+    });
+    expect(state.transition?.from).toEqual({
+      deckId: "deck-1",
+      layerId: "layer-1"
+    });
+    expect(state.transition?.to).toEqual({
+      deckId: "deck-2",
+      layerId: "layer-2"
+    });
+    expect(state.transition?.active).toBe(true);
+  });
+
   it("programs a Group as an ordered multi-Layer formasi", () => {
     const group: Group = {
       id: "group-1",
