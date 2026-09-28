@@ -32,7 +32,6 @@ const project: ProjectSnapshot = {
           id: "layer-1",
           name: "Opening",
           sourceId: "source-video",
-          sliceIds: ["slice-live"],
           transform: { x: 10, y: 20, scaleX: 100, scaleY: 100, rotation: 0, opacity: 100 },
           playback: { playing: true, loop: true, speed: 100 }
         }
@@ -89,7 +88,6 @@ describe("Project Deck cloning", () => {
     expect(result.project.outputs[0].deckId).toBe("deck-live");
 
     expect(result.deck.layers[0].sourceId).toBe("source-video");
-    expect(result.deck.layers[0].sliceIds).toBeUndefined();
     expect(result.groups[0].deckId).toBe("deck-clone");
 
     expect(project.decks).toHaveLength(1);
