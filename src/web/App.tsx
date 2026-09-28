@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { HealthCheckPanel } from "./HealthCheckPanel.js";
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
@@ -12,7 +12,7 @@ import { compositeLayer } from "../engine/compositor.js";
 import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
-import { renderCompositionProgram } from "../engine/composition-renderer.js";
+import { renderCompositionProgram, renderCompositionTransition } from "../engine/composition-renderer.js";
 import { getDefaultSliceTransform } from "../domain/slice.js";
 import type { Composition } from "../domain/composition.js";
 import type { Slice } from "../domain/slice.js";
@@ -348,6 +348,24 @@ export function App() {
   const mediaSettings = outputState.target.media!;
   const fullscreenState = outputEngine.getState("fullscreen");
 
+  useEffect(() => {
+    if (!outputState.transition?.active) return;
+
+    let frame = 0;
+    const tick = () => {
+      const transition = deckProgramController.getTransitionState();
+      outputEngine.setTransition("media-output", transition);
+      outputEngine.setTransition("fullscreen", transition);
+      setOutputRevision((value) => value + 1);
+      if (transition?.active) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [outputState.transition?.active, deckProgramController, outputEngine]);
+
   const toggleOutput = (targetId: string) => {
     const state = outputEngine.getState(targetId);
     const enabled = !state.target.enabled;
@@ -465,7 +483,12 @@ export function App() {
                 {(() => {
                   const program = programEngine.getState("default");
                   const renderPlan = renderCompositionProgram(programComposition, programSlices, program);
-                  return renderPlan.length > 0 ? renderPlan.map((item, index) => {
+                  const transitionRender = renderCompositionTransition(
+                    outputState.previousRenderPlan,
+                    renderPlan,
+                    outputState.transition
+                  );
+                  return transitionRender.layers.length > 0 ? transitionRender.layers.map((item, index) => {
                     const deck = decks.find((candidate) => candidate.id === item.ref.deckId);
                     const layer = deck?.layers.find((candidate) => candidate.id === item.ref.layerId);
                     if (!layer) return null;
