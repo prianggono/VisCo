@@ -62,3 +62,48 @@ export function renderCompositionProgram(
 ): readonly RenderedCompositionLayer[] {
   return resolveCompositionProgram(composition, slices, program).flatMap(renderSlice);
 }
+
+
+export interface CompositionTransitionRenderPlan {
+  readonly layers: readonly RenderedCompositionLayer[];
+  readonly active: boolean;
+  readonly progress: number;
+}
+
+/**
+ * Applies the runtime transition to two already-resolved Composition render
+ * plans. Transition ownership remains on Deck/TransitionEngine; this function
+ * only converts runtime progress into render instructions.
+ */
+export function renderCompositionTransition(
+  previousPlan: readonly RenderedCompositionLayer[] | null,
+  currentPlan: readonly RenderedCompositionLayer[],
+  transition: import("./transition-engine.js").TransitionProgress | null
+): CompositionTransitionRenderPlan {
+  if (!transition || !transition.active || transition.progress >= 1 || transition.transition.type === "cut" || !previousPlan) {
+    return { layers: currentPlan, active: false, progress: transition?.progress ?? 1 };
+  }
+
+  const progress = Math.max(0, Math.min(1, transition.progress));
+
+  if (transition.transition.type === "fade") {
+    const previous = previousPlan.map((item) => ({
+      ...item,
+      layerStyle: { ...item.layerStyle, opacity: item.layerStyle.opacity * (1 - progress) }
+    }));
+    const current = currentPlan.map((item) => ({
+      ...item,
+      layerStyle: { ...item.layerStyle, opacity: item.layerStyle.opacity * progress }
+    }));
+    return { layers: [...previous, ...current], active: true, progress };
+  }
+
+  const current = currentPlan.map((item) => ({
+    ...item,
+    layerStyle: {
+      ...item.layerStyle,
+      clipPath: `inset(0 ${(1 - progress) * 100}% 0 0)`
+    }
+  }));
+  return { layers: [...previousPlan, ...current], active: true, progress };
+}
