@@ -119,4 +119,4 @@ describe("Audio Output Router", () => {
 
     expect(routing.getDestinationsFromVb()).toEqual([]);
   });
-
+});
