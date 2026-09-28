@@ -494,6 +494,51 @@ describe("Output Engine", () => {
     expect(output.getState("display-main").source).toBeNull();
   });
 
+  it("preserves every Layer in a multi-layer Composition render plan", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    const renderPlan = [
+      {
+        sliceId: "slice-1",
+        ref: { deckId: "deck-1", layerId: "camera" },
+        layerId: "camera",
+        layerStyle: {
+          transform: "translate(0px, 0px)",
+          opacity: 1,
+          transformOrigin: "center center" as const,
+          zIndex: 1,
+          mixBlendMode: "normal" as const
+        },
+        sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+      },
+      {
+        sliceId: "slice-1",
+        ref: { deckId: "deck-1", layerId: "ppt" },
+        layerId: "ppt",
+        layerStyle: {
+          transform: "translate(0px, 0px)",
+          opacity: 1,
+          transformOrigin: "center center" as const,
+          zIndex: 2,
+          mixBlendMode: "normal" as const
+        },
+        sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+      }
+    ];
+
+    const states = output.syncFromComposition(renderPlan, "composition-1");
+
+    expect(states).toHaveLength(1);
+    expect(output.getState("display-main").renderPlan?.map(({ layerId }) => layerId))
+      .toEqual(["camera", "ppt"]);
+  });
+
   it("retains the previous Composition render plan for transition rendering", () => {
     const output = new OutputEngine();
     output.register({
