@@ -94,7 +94,7 @@ Everything else can be audited, tested, documented, or implemented without waiti
 The next work should proceed without asking for a decision:
 
 - [ ] Verify Program Layer Snapshot invariants and add regression tests.
-- [ ] Finish Layering contract at the engine level: deterministic layer ordering and blend metadata for multi-layer composition, without selecting a GPU backend.
+- [x] Finish Layering contract at the engine level: deterministic layer ordering and blend metadata for multi-layer composition, without selecting a GPU backend.
 - [ ] Audit Program → Deck transition → Output synchronization and add missing tests.
 - [ ] Audit Trigger validation/execution and add missing tests.
 - [ ] Audit Audio routing ownership and remove/avoid duplicate routing paths.
@@ -108,3 +108,13 @@ The next work should proceed without asking for a decision:
 ## Working rule
 
 When an item can be completed safely from the existing architecture, implement it directly. When an item changes a foundational technology choice or native backend, stop at the decision gate and ask PRI before coding it.
+
+
+## Audit continuation — #4 onward
+
+- [x] #4 Transform canonical state: Layer.transform is the single transform source.
+- [x] #5 Multi-layer ordering contract: deterministic Layer.order with stable insertion tie-breaker; Group remains organizational and does not duplicate Layer state.
+- [x] #6 Slice mapping contract: Slice remains composition-owned and references Layer IDs; mapping supports rectangle, corner-pin, Bezier, polygon, crop/scale, rotation and grid/snap metadata.
+- [x] Scene contract: Scene is an output mapping/routing preset. Physical displays use display Scenes; Record + Stream + External/Virtual Out share one production Scene.
+- [ ] #7 Real compositor integration: multi-layer composition contract exists; native GPU compositor remains downstream of the D3D11 decision.
+- [ ] #8 Native D3D11 renderer implementation.
