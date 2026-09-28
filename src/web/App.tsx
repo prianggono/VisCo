@@ -339,6 +339,32 @@ export function App() {
     }
   };
 
+  const removeSource = (sourceId: string) => {
+    if (!libraryEngine.has(sourceId)) return;
+    const source = libraryEngine.get(sourceId);
+    const usage = findSourceUsage(sourceId, { decks, groups: [], programs: programEngine.getStates() });
+    const refs = [
+      ...usage.layers.map((item) => "Deck \"" + item.deckName + "\" / Layer \"" + item.layerName + "\""),
+      ...usage.program.map((item) => "PROGRAM \"" + item.compositionId + "\" / Layer \"" + item.layerName + "\"")
+    ];
+    const detail = refs.length ? "\\n\\nDigunakan oleh:\\n- " + refs.join("\\n- ") : "";
+    const warning = "HAPUS SOURCE \"" + source.name + "\"?"+ detail + "\\n\\nJika diteruskan, semua reference akan dilepas dan Program yang memakai Source ini akan menjadi MISSING SOURCE.";
+    if (!window.confirm(warning)) return;
+
+    setDecks((current) => current.map((deck) => ({
+      ...deck,
+      layers: deck.layers.map((layer) =>
+        layer.sourceId === sourceId ? { ...layer, sourceId: null } : layer
+      )
+    })));
+    programEngine.detachSource(sourceId);
+    libraryEngine.remove(sourceId);
+    revokeOwnedObjectUrls([source]);
+    setLibraryItems(libraryEngine.list());
+    setRuntimeRevision((value) => value + 1);
+    setOutputRevision((value) => value + 1);
+  };
+
   const handleLibraryDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     registerFiles(Array.from(event.dataTransfer.files));
@@ -473,7 +499,8 @@ export function App() {
                     onDragStart={(event) => event.dataTransfer.setData("text/library-id", item.id)}
                   >
                     <span className="library-icon">{item.name.slice(0, 1).toUpperCase()}</span>
-                    {item.name}
+                    <span>{item.name}</span>
+                    <span className="library-remove" role="button" title="Remove Source" onClick={(event) => { event.stopPropagation(); removeSource(item.id); }}>×</span>
                   </button>
                 ))}
               </div>
