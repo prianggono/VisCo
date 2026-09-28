@@ -19,3 +19,4 @@ export * from "./engine/license-engine.js";
 export * from "./engine/relationship-validator.js";
 export * from "./ui/layer-interaction.js";
 export * from "./engine/project-persistence.js";
+export * from "./engine/audio-device.js";
