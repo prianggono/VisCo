@@ -58,7 +58,7 @@ export class DeckProgramController {
     const deckState = this.deckRuntime.programLayers(deck, layerIds);
 
     this.transitionEngine.start(previousProgram, programState);
-    const transition = this.transitionEngine.sample();
+    const transition = this.transitionEngine.sample(compositionId);
 
     return {
       deck: deckState,
@@ -72,7 +72,7 @@ export class DeckProgramController {
   }
 
   getTransitionState(): TransitionProgress | null {
-    return this.transitionEngine.sample();
+    return this.transitionEngine.sample(compositionId);
   }
 
   getState(deck: Deck): DeckProgramControllerState;
