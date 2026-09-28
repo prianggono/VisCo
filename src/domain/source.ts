@@ -8,6 +8,7 @@ export type SourceKind =
   | "stinger"
   | "powerpoint"
   | "pdf"
+  | "camera"
   | "video-capture"
   | "ndi"
   | "omt"
