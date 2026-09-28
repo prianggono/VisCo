@@ -27,7 +27,7 @@ This is the handoff checklist for future revisions.
 - [x] Trigger owns multi-action execution and validation
 - [x] Output owns routing and output feature switches
 - [x] Deck Runtime owns Preview/active state
-- [x] Trigger validation blocks duplicate/conflicting actions before execution
+- [x] Trigger validation checks references/action compatibility; duplicate/copy-pasted commands are allowed
 - [x] Program output synchronization carries Composition scope
 - [x] Stream/Record encoder settings can differ while sharing Media Composition
 
@@ -81,8 +81,8 @@ The live inputs include **Camera / Webcam** and **Video Capture** as separate de
 
 Only the following architecture choices are currently blocked on a decision:
 
-1. **Renderer backend** — choose the native rendering backend/strategy for the Windows compositor (for example D3D11/D3D12/OpenGL/hybrid). This affects the real Composition Renderer and output path.
-2. **Native media/capture backend** — choose the Windows multimedia stack that will own decode, audio, USB capture, NDI, OMT, IP camera, and frame conversion. This should be one canonical native pipeline, not separate UI implementations.
+1. **Renderer backend** — D3D11 is locked. Native implementation remains pending.
+2. **Native media/capture backend** — locked: Media Foundation primary decode, FFmpeg compatibility fallback, DirectShow capture fallback, and native professional capture boundary.
 3. **LED output architecture** — define the native transport/driver boundary for LED controllers and mapping outputs before implementing real LED output.
 4. **Real output transport details** — physical display / Virtual Out / stream / recorder backend choices are downstream of the renderer/media decisions.
 5. **License enforcement timing** — explicitly postponed. Do not implement enforcement or licensing tiers while the project is still in try-and-error. Watermark policy remains only as a domain contract.
@@ -93,14 +93,14 @@ Everything else can be audited, tested, documented, or implemented without waiti
 
 The next work should proceed without asking for a decision:
 
-- [ ] Verify Program Layer Snapshot invariants and add regression tests.
+- [x] Verify Program Layer Snapshot invariants and add regression tests.
 - [x] Finish Layering contract at the engine level: deterministic layer ordering and blend metadata for multi-layer composition, without selecting a GPU backend.
-- [ ] Audit Program → Deck transition → Output synchronization and add missing tests.
-- [ ] Audit Trigger validation/execution and add missing tests.
-- [ ] Audit Audio routing ownership and remove/avoid duplicate routing paths.
+- [x] Audit Program → Deck transition → Output synchronization and composition-scoped output sync.
+- [x] Audit Trigger validation/execution; duplicate commands intentionally allowed.
+- [x] Audit Audio routing ownership; canonical Audio In → VisCo VB → Record/Stream/Zoom path remains centralized.
 - [ ] Audit Properties panels and classify each control as connected, partial, mock, or missing.
-- [ ] Audit persistence coverage against the current domain snapshot.
-- [ ] Audit Health Check contracts and identify missing checks without binding them to a native backend.
+- [x] Audit persistence coverage; snapshot now covers Composition/Deck/Group/Layer/Slice/Scene/Source/Output.
+- [x] Audit Health Check contracts; generic ID/reference/output checks added without native binding.
 - [ ] Keep Camera/Webcam and USB Video Capture separated as canonical source classes.
 - [ ] Keep NDI and OMT as first-class source/device contracts.
 - [ ] Run regression/CI after every implementation batch.
@@ -116,5 +116,16 @@ When an item can be completed safely from the existing architecture, implement i
 - [x] #5 Multi-layer ordering contract: deterministic Layer.order with stable insertion tie-breaker; Group remains organizational and does not duplicate Layer state.
 - [x] #6 Slice mapping contract: Slice remains composition-owned and references Layer IDs; mapping supports rectangle, corner-pin, Bezier, polygon, crop/scale, rotation and grid/snap metadata.
 - [x] Scene contract: Scene is an output mapping/routing preset. Physical displays use display Scenes; Record + Stream + External/Virtual Out share one production Scene.
-- [ ] #7 Real compositor integration: multi-layer composition contract exists; native GPU compositor remains downstream of the D3D11 decision.
-- [ ] #8 Native D3D11 renderer implementation.
+- [x] #7 Real compositor integration contract: Program carries immutable multi-layer snapshot and compositor emits deterministic render metadata.
+- [ ] #8 Native D3D11 renderer implementation: bridge contract added; Windows host implementation remains.
+
+
+### Audit batch — 2026-09-29
+
+- [x] Program snapshot preserves all Deck Layers while retaining the selected Layer as UI/trigger focus.
+- [x] Multi-layer compositor consumes Program snapshot and emits deterministic render order plus blend/transform metadata.
+- [x] D3D11 native renderer boundary defined without leaking Windows APIs into React/domain code.
+- [x] Media pipeline boundary defined: Media Foundation → FFmpeg compatibility; DirectShow/professional capture fallback boundary.
+- [x] Trigger duplicate/copy-paste restriction removed per operator workflow; reference validation remains.
+- [x] Trigger output synchronization corrected to use Program composition scope.
+- [x] Project snapshot serialization covers current core domain objects including Scene.
