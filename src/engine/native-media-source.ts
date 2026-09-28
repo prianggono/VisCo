@@ -56,6 +56,8 @@ export function protocolForSource(source: Pick<Source, "kind">): NativeMediaProt
   switch (source.kind) {
     case "ndi":
       return "ndi";
+    case "omt":
+      return "omt";
     case "ip-camera":
       return "ip-camera";
     case "desktop-capture":
