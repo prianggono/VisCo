@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findSourceUsage, isLayerProgrammed } from "../src/engine/source-usage.js";
+import { assertSourceRemovable, findSourceUsage, isLayerProgrammed } from "../src/engine/source-usage.js";
 
 const decks = [{
   id: "deck-1",
@@ -78,4 +78,20 @@ describe("Source usage resolver", () => {
 
     expect(result.layers.map((item) => item.layerId)).toEqual(["layer-2", "layer-3"]);
   });
+  it("blocks removal and reports Deck/Layer/Group references", () => {
+    expect(() => assertSourceRemovable("src-1", { decks, groups })).toThrow(
+      'Source "src-1" is still in use: Deck "Deck 1" / Layer "Layer 1" · Group: Opening Group.'
+    );
+  });
+
+  it("blocks removal and reports committed Program references", () => {
+    expect(() => assertSourceRemovable("src-1", { decks: [], groups: [], programs })).toThrow(
+      'PROGRAM "offline" / Deck "deck-1" / Layer "Layer 1"'
+    );
+  });
+
+  it("allows removal when no Layer or Program references remain", () => {
+    expect(() => assertSourceRemovable("unused", { decks: [], groups: [], programs })).not.toThrow();
+  });
+
 });
