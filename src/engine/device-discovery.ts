@@ -1,5 +1,4 @@
 import type {
-  DeviceDiscoveryProvider,
   DeviceDiscoveryRequest,
   DeviceDiscoveryResult,
   DiscoveredDevice,
@@ -37,19 +36,33 @@ export class NativeDeviceDiscoveryProvider implements DeviceDiscoveryProvider {
  * Browser enumerateDevices() is not used for this source because capture
  * cards should be handled by the Windows media-device backend.
  */
-export class NativeCameraDiscoveryProvider extends NativeDeviceDiscoveryProvider {
+export class NativeCameraDiscoveryProvider implements DeviceDiscoveryProvider {
   readonly id = "native-camera-discovery";
+  readonly source = "native" as const;
+
+  constructor(private readonly bridge: NativeDeviceDiscoveryBridge) {}
 
   supports(kind: DeviceDiscoveryRequest["kind"]): boolean {
     return kind === "camera";
   }
+
+  discover(request: DeviceDiscoveryRequest): Promise<readonly DiscoveredDevice[]> {
+    return this.bridge.discover(request);
+  }
 }
 
-export class NativeVideoCaptureDiscoveryProvider extends NativeDeviceDiscoveryProvider {
+export class NativeVideoCaptureDiscoveryProvider implements DeviceDiscoveryProvider {
   readonly id = "native-video-capture-discovery";
+  readonly source = "native" as const;
+
+  constructor(private readonly bridge: NativeDeviceDiscoveryBridge) {}
 
   supports(kind: DeviceDiscoveryRequest["kind"]): boolean {
     return kind === "video-capture";
+  }
+
+  discover(request: DeviceDiscoveryRequest): Promise<readonly DiscoveredDevice[]> {
+    return this.bridge.discover(request);
   }
 }
 
