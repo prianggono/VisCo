@@ -53,7 +53,7 @@ This is the handoff checklist for future revisions.
 - [ ] Zoom audio/video integration
 - [ ] MIDI / Shortcut runtime
 - [ ] Health checks against real devices/files
-- [ ] License verification and watermark renderer
+- [ ] License verification and watermark renderer — intentionally postponed per PRI
 - [ ] Windows desktop packaging
 
 ## Rule for the next revision
@@ -118,6 +118,8 @@ When an item can be completed safely from the existing architecture, implement i
 - [x] Scene contract: Scene is an output mapping/routing preset. Physical displays use display Scenes; Record + Stream + External/Virtual Out share one production Scene.
 - [x] #7 Real compositor integration contract: Program carries immutable multi-layer snapshot and compositor emits deterministic render metadata.
 - [ ] #8 Native D3D11 renderer implementation: bridge contract added; Windows host implementation remains.
+- [ ] Scene runtime adapter: Scene validation/runtime routing remains to be implemented.
+- [ ] Native output transport implementation remains downstream of the D3D11/media decisions.
 
 
 ### Audit batch — 2026-09-29
