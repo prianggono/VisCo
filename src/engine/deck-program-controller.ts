@@ -57,9 +57,8 @@ export class DeckProgramController {
 
     const deckState = this.deckRuntime.programLayers(deck, layerIds);
 
-    const transition = this.transitionEngine.start(previousProgram, programState)?.active
-      ? this.transitionEngine.sample()
-      : this.transitionEngine.sample();
+    this.transitionEngine.start(previousProgram, programState);
+    const transition = this.transitionEngine.sample();
 
     return {
       deck: deckState,
