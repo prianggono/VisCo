@@ -9,8 +9,12 @@ export interface OutputState {
   readonly target: OutputTarget;
   /** Compatibility routing reference for Deck/Layer-scoped outputs. */
   readonly source: DeckLayerRef | null;
-  /** Composition render result consumed by physical/media output pipelines. */
+  /** Current canonical Composition render result. */
   readonly renderPlan: readonly RenderedCompositionLayer[] | null;
+  /** Previous render result retained only while a transition is being rendered. */
+  readonly previousRenderPlan: readonly RenderedCompositionLayer[] | null;
+  /** Ephemeral Deck-owned transition currently being rendered, if any. */
+  readonly transition: TransitionProgress | null;
   readonly active: boolean;
 }
 
@@ -23,7 +27,14 @@ export class OutputEngine {
     if (target.kind === "media" && !target.media) throw new Error(`Media output "${target.id}" requires media settings.`);
     if (target.kind === "display" && target.media) throw new Error(`Display output "${target.id}" cannot have media settings.`);
     this.targets.set(target.id, target);
-    this.states.set(target.id, { target, source: null, renderPlan: null, transition: null, active: target.enabled });
+    this.states.set(target.id, {
+      target,
+      source: null,
+      renderPlan: null,
+      previousRenderPlan: null,
+      transition: null,
+      active: target.enabled
+    });
   }
 
   setEnabled(targetId: string, enabled: boolean): OutputState {
@@ -46,6 +57,8 @@ export class OutputEngine {
       target: updated,
       source: null,
       renderPlan: null,
+      previousRenderPlan: null,
+      transition: null,
       active: this.requireState(targetId).active
     });
     return updated;
@@ -62,6 +75,8 @@ export class OutputEngine {
       target: updated,
       source: null,
       renderPlan: null,
+      previousRenderPlan: null,
+      transition: null,
       active: this.requireState(targetId).active
     });
     return updated;
@@ -81,7 +96,15 @@ export class OutputEngine {
   route(targetId: string, source: DeckLayerRef): OutputState {
     const target = this.requireTarget(targetId);
     if (!target.enabled) throw new Error(`Output "${target.id}" is disabled.`);
-    const state = { ...this.requireState(targetId), target, source, renderPlan: null, transition: null, active: true };
+    const state = {
+      ...this.requireState(targetId),
+      target,
+      source,
+      renderPlan: null,
+      previousRenderPlan: null,
+      transition: null,
+      active: true
+    };
     this.states.set(targetId, state);
     return state;
   }
@@ -96,36 +119,59 @@ export class OutputEngine {
 
   /**
    * Composition is the canonical visual result for physical/media outputs.
-   * Layer and Slice ownership remain in their domain objects; Output only
-   * receives the current render plan.
+   * The previous plan is retained so the renderer can execute Deck transitions.
    */
   syncFromComposition(
     renderPlan: readonly RenderedCompositionLayer[],
-    compositionId = "default"
+    compositionId = "default",
+    transition: TransitionProgress | null = null
   ): readonly OutputState[] {
     return [...this.states.values()]
       .filter(state => state.active && state.target.enabled && state.target.deckId === undefined &&
         (state.target.compositionId === undefined || state.target.compositionId === compositionId))
       .map(state => {
-        const updated = { ...state, source: null, renderPlan, transition, active: true };
+        const updated = {
+          ...state,
+          source: null,
+          previousRenderPlan: state.renderPlan,
+          renderPlan,
+          transition,
+          active: true
+        };
         this.states.set(state.target.id, updated);
         return updated;
       });
   }
 
   /** A Deck override is scoped to the Deck and its Composition. */
-  syncFromDeck(deckId: string, currentLayer: DeckLayerRef, compositionId = "default", transition: TransitionProgress | null = null): readonly OutputState[] {
+  syncFromDeck(
+    deckId: string,
+    currentLayer: DeckLayerRef,
+    compositionId = "default",
+    transition: TransitionProgress | null = null
+  ): readonly OutputState[] {
     if (currentLayer.deckId !== deckId) {
       throw new Error(`Layer "${currentLayer.layerId}" does not belong to deck "${deckId}".`);
     }
     return [...this.states.values()]
       .filter(state => state.active && state.target.enabled && state.target.deckId === deckId &&
         (state.target.compositionId === undefined || state.target.compositionId === compositionId))
-      .map(state => {\n        const routed = this.route(state.target.id, currentLayer);\n        const updated = { ...routed, transition };\n        this.states.set(state.target.id, updated);\n        return updated;\n      });
+      .map(state => {
+        const routed = this.route(state.target.id, currentLayer);
+        const updated = { ...routed, transition };
+        this.states.set(state.target.id, updated);
+        return updated;
+      });
   }
 
-  setTransition(targetId: string, transition: TransitionProgress | null): OutputState {\n    const state = { ...this.requireState(targetId), transition };\n    this.states.set(targetId, state);\n    return state;\n  }\n\n  stop(targetId: string): OutputState {
-    const state = { ...this.requireState(targetId), active: false };
+  setTransition(targetId: string, transition: TransitionProgress | null): OutputState {
+    const state = { ...this.requireState(targetId), transition };
+    this.states.set(targetId, state);
+    return state;
+  }
+
+  stop(targetId: string): OutputState {
+    const state = { ...this.requireState(targetId), transition: null, active: false };
     this.states.set(targetId, state);
     return state;
   }
