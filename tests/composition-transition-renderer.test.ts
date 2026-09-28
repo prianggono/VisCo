@@ -16,8 +16,8 @@ const plan = (layerId: string, opacity = 100): RenderedCompositionLayer => ({
 });
 
 describe("Composition transition renderer", () => {
-  const previous = [plan("old", 100)];
-  const current = [plan("new", 100)];
+  const previous = [plan("old", 1)];
+  const current = [plan("new", 1)];
 
   it("cuts directly to the current plan", () => {
     const result = renderCompositionTransition(previous, current, {
@@ -42,8 +42,8 @@ describe("Composition transition renderer", () => {
     });
 
     expect(result.layers).toHaveLength(2);
-    expect(result.layers[0]?.layerStyle.opacity).toBe(75);
-    expect(result.layers[1]?.layerStyle.opacity).toBe(25);
+    expect(result.layers[0]?.layerStyle.opacity).toBe(0.75);
+    expect(result.layers[1]?.layerStyle.opacity).toBe(0.25);
     expect(result.active).toBe(true);
   });
 
