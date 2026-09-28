@@ -36,6 +36,7 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
   { label: "Image Sequence / Stinger", kind: "image-sequence" },
   { label: "PowerPoint", kind: "powerpoint", accept: ".ppt,.pptx" },
   { label: "PDF", kind: "pdf", accept: ".pdf" },
+  { label: "Camera / Webcam", kind: "camera" },
   { label: "Video Capture", kind: "video-capture" },
   { label: "NDI", kind: "ndi" },
   { label: "OMT", kind: "omt" },
@@ -256,12 +257,12 @@ export function App() {
 
   const discoverDevices = async () => {
     const selected = selectedInputKind;
-    const discoverable = ["video-capture", "ndi", "omt", "desktop-capture"].includes(selected);
+    const discoverable = ["camera", "video-capture", "ndi", "omt", "desktop-capture"].includes(selected);
     if (!discoverable) return;
     setDiscoveryBusy(true);
     setDiscoveryMessage("");
     const result = await deviceDiscovery.discover({
-      kind: selected as "video-capture" | "ndi" | "omt" | "desktop-capture",
+      kind: selected as "camera" | "video-capture" | "ndi" | "omt" | "desktop-capture",
       ...(discoveryServer.trim() ? { discoveryServer: discoveryServer.trim() } : {})
     });
     setDiscoveredDevices(result.devices);
@@ -693,7 +694,7 @@ export function App() {
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
                 <div className="input-group-title">LIVE / CAPTURE</div>
-                {inputTypes.filter((item) => ["video-capture","ndi","omt","desktop-capture","ip-camera"].includes(item.kind)).map((item) => (
+                {inputTypes.filter((item) => ["camera","video-capture","ndi","omt","desktop-capture","ip-camera"].includes(item.kind)).map((item) => (
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
                 <div className="input-group-title">GENERATED / INTERNAL</div>
@@ -716,12 +717,12 @@ export function App() {
                         </div>
                       ) : (
                         <div className="input-technical-config">
-                          {["video-capture","ndi","omt","desktop-capture"].includes(selected.kind) && <div className="device-discovery-config">
+                          {["camera","video-capture","ndi","omt","desktop-capture"].includes(selected.kind) && <div className="device-discovery-config">
                             <div className="discovery-toolbar">
                               {(selected.kind === "ndi" || selected.kind === "omt") && <input value={discoveryServer} onChange={(event) => setDiscoveryServer(event.target.value)} placeholder={selected.kind === "omt" ? "Discovery Server host:6399 (optional)" : "NDI Discovery Server host:5959 (optional)"} />}
                               <button className="input-browse" onClick={discoverDevices} disabled={discoveryBusy}>{discoveryBusy ? "DISCOVERING…" : "DISCOVER DEVICES"}</button>
                             </div>
-                            <div className="input-config-note">{discoveryMessage || "Discovery is handled by the native device adapter. USB video-capture devices are discovered by the Windows native adapter; NDI/OMT/Desktop Capture use their respective native adapters."}</div>
+                            <div className="input-config-note">{discoveryMessage || "Discovery is handled by the native device adapter. Camera/Webcam and USB Video Capture devices are discovered by the Windows native adapter; NDI/OMT/Desktop Capture use their respective native adapters."}</div>
                             {discoveredDevices.length > 0 && <div className="device-list">{discoveredDevices.map((device) => <button className="device-list-item" key={device.id} onClick={() => addDiscoveredDevice(device)}><span><strong>{device.name}</strong><small>{device.kind} · {device.address ?? device.uri ?? device.transport}</small></span><b>ADD</b></button>)}</div>}
                           </div>}
                           {selected.kind === "ip-camera" && <div className="device-discovery-config">
