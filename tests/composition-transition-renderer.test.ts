@@ -47,6 +47,27 @@ describe("Composition transition renderer", () => {
     expect(result.active).toBe(true);
   });
 
+  it("places incoming Fade layers above outgoing layers without changing their relative order", () => {
+    const previousStack = [
+      { ...plan("old-back"), layerStyle: { ...plan("old-back").layerStyle, zIndex: 10 } },
+      { ...plan("old-front"), layerStyle: { ...plan("old-front").layerStyle, zIndex: 20 } }
+    ];
+    const currentStack = [
+      { ...plan("new-back"), layerStyle: { ...plan("new-back").layerStyle, zIndex: 0 } },
+      { ...plan("new-front"), layerStyle: { ...plan("new-front").layerStyle, zIndex: 5 } }
+    ];
+
+    const result = renderCompositionTransition(previousStack, currentStack, {
+      active: true,
+      progress: 0.5,
+      from: { deckId: "deck-1", layerId: "old-back" },
+      to: { deckId: "deck-1", layerId: "new-back" },
+      transition: { type: "fade", durationMs: 400 }
+    });
+
+    expect(result.layers.map((item) => item.layerStyle.zIndex)).toEqual([10, 20, 21, 26]);
+  });
+
   it("wipes the current plan from left to right", () => {
     const result = renderCompositionTransition(previous, current, {
       active: true,
@@ -59,6 +80,7 @@ describe("Composition transition renderer", () => {
     expect(result.layers).toHaveLength(2);
     expect(result.layers[0]).toEqual(previous[0]);
     expect(result.layers[1]?.layerStyle.clipPath).toBe("inset(0 75% 0 0)");
+    expect(result.layers[1]?.layerStyle.zIndex).toBeGreaterThan(result.layers[0]?.layerStyle.zIndex ?? 0);
     expect(result.active).toBe(true);
   });
 
