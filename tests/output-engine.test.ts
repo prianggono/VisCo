@@ -289,6 +289,36 @@ describe("Output Engine", () => {
     expect(output.getState("display-main").source).toEqual(deck1Layer2);
   });
 
+  it("clears legacy source when Composition render becomes canonical", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    output.route("display-main", deck1Layer2);
+
+    const renderPlan = [{
+      sliceId: "slice-1",
+      layerId: "layer-1",
+      layerStyle: {
+        transform: "translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(1, 1)",
+        opacity: 1,
+        transformOrigin: "center center" as const,
+        zIndex: 0,
+        mixBlendMode: "normal" as const
+      },
+      sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+    }];
+
+    output.syncFromComposition(renderPlan, "composition-1");
+
+    expect(output.getState("display-main").source).toBeNull();
+    expect(output.getState("display-main").renderPlan).toEqual(renderPlan);
+  });
+
   it("routes a Composition render plan without replacing Layer ownership", () => {
     const output = new OutputEngine();
     output.register({
