@@ -28,6 +28,7 @@ export * from "./engine/device-discovery.js";
 export * from "./engine/frame-pipeline.js";
 export * from "./engine/resilient-frame-source.js";
 export * from "./engine/output-transport.js";
+export * from "./engine/control-mapping.js";
 export * from "./engine/license-engine.js";
 export * from "./engine/relationship-validator.js";
 export * from "./engine/scene-runtime.js";
@@ -36,4 +37,5 @@ export * from "./ui/layer-interaction.js";
 
 export * from "./native/windows-video-device.js";
 export * from "./native/d3d11-renderer.js";
+export * from "./native/windows-display-output.js";
 export * from "./native/artnet-led-output.js";
