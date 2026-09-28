@@ -3,6 +3,7 @@ import type { Group } from "../domain/group.js";
 import { DeckRuntime, type DeckRuntimeState } from "./deck-runtime.js";
 import { resolveGroupLayers } from "./group-resolver.js";
 import { ProgramEngine, type ProgramState } from "./program-engine.js";
+import { TransitionEngine, type TransitionProgress } from "./transition-engine.js";
 
 export interface DeckProgramControllerState {
   readonly deck: DeckRuntimeState;
