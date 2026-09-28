@@ -9,6 +9,8 @@ export interface LayerRenderStyle {
   readonly transformOrigin: "center center";
   readonly zIndex: number;
   readonly mixBlendMode: LayerBlendMode;
+  /** Optional transient clip applied by the renderer during a transition. */
+  readonly clipPath?: string;
 }
 
 const resolveBlendMode = (blendMode?: string): LayerBlendMode => {
