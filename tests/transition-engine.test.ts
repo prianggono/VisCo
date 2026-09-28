@@ -27,9 +27,28 @@ describe("Transition Engine", () => {
 
     const run = engine.start(previous, next, 1000);
 
+    expect(run?.compositionId).toBe("default");
     expect(run?.transition).toEqual({ type: "wipe", durationMs: 300 });
     expect(run?.from).toEqual({ deckId: "deck-a", layerId: "layer-1" });
     expect(run?.to).toEqual({ deckId: "deck-b", layerId: "layer-1" });
+  });
+
+  it("isolates concurrent transition runs by Composition", () => {
+    const program = new ProgramEngine();
+    const engine = new TransitionEngine();
+
+    const offlinePrevious = program.program(deckA, "layer-1", "offline");
+    const offlineNext = program.program(deckB, "layer-1", "offline");
+    const onlinePrevious = program.program(deckA, "layer-1", "online");
+    const onlineNext = program.program(deckB, "layer-1", "online");
+
+    engine.start(offlinePrevious, offlineNext, 1000);
+    engine.start(onlinePrevious, onlineNext, 2000);
+
+    expect(engine.sample("offline", 1150)?.progress).toBe(0.5);
+    expect(engine.sample("online", 2150)?.progress).toBe(0.5);
+    expect(engine.getCurrent("offline")?.compositionId).toBe("offline");
+    expect(engine.getCurrent("online")?.compositionId).toBe("online");
   });
 
   it("reports transition progress and completes at the configured duration", () => {
