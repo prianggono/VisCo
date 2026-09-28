@@ -87,14 +87,14 @@ export function MediaLayerView({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || source?.kind === "camera") return;
     video.playbackRate = Math.max(0.01, speed / 100);
     if (playing) {
       void video.play().catch(() => undefined);
     } else {
       video.pause();
     }
-  }, [playing, speed, source?.uri]);
+  }, [playing, speed, source?.uri, source?.kind]);
 
   const mediaStyle: CSSProperties = {
     ...style,
