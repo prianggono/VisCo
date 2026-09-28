@@ -3,7 +3,7 @@ import type { Channel } from "../domain/channel.js";
 import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import type { Slice } from "../domain/slice.js";
-import type { Source } from "../domain/source.js";
+import type { Library, Source } from "../domain/source.js";
 
 export interface RelationshipValidationResult {
   readonly valid: boolean;
@@ -17,6 +17,8 @@ export interface RelationshipGraph {
   readonly groups: readonly Group[];
   readonly slices: readonly Slice[];
   readonly sources?: readonly Source[];
+  /** Optional Library index. When supplied, it must match the canonical Source registry exactly. */
+  readonly library?: Library;
 }
 
 function hasDeckLayer(deck: Deck | undefined, layerId: string): boolean {
@@ -33,6 +35,26 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   const deckIds = new Set(graph.decks.map((item) => item.id));
   const sliceIds = new Set(graph.slices.map((item) => item.id));
   const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
+  const librarySourceIds = graph.library?.sourceIds;
+
+  if (librarySourceIds) {
+    const seenLibrarySourceIds = new Set<string>();
+    for (const sourceId of librarySourceIds) {
+      if (seenLibrarySourceIds.has(sourceId)) {
+        errors.push(`Library contains duplicate Source ID "${sourceId}".`);
+      }
+      seenLibrarySourceIds.add(sourceId);
+      if (!sourceIds.has(sourceId)) {
+        errors.push(`Library references missing Source "${sourceId}".`);
+      }
+    }
+
+    for (const sourceId of sourceIds) {
+      if (!seenLibrarySourceIds.has(sourceId)) {
+        errors.push(`Source "${sourceId}" is missing from Library index.`);
+      }
+    }
+  }
 
   const duplicateIds = <T extends { readonly id: string }>(items: readonly T[], kind: string) => {
     const seen = new Set<string>();
