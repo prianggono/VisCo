@@ -87,3 +87,25 @@ export function isLayerProgrammed(
     )
   );
 }
+
+export function assertSourceRemovable(sourceId: string, graph: SourceUsageGraph): void {
+  const usage = findSourceUsage(sourceId, graph);
+  if (usage.layers.length === 0 && usage.program.length === 0) return;
+
+  const references = usage.layers.map((item) => {
+    const groups = item.groupNames.length
+      ? ` · Group: ${item.groupNames.join(", ")}`
+      : "";
+    return `Deck "${item.deckName}" / Layer "${item.layerName}"${groups}`;
+  });
+
+  references.push(
+    ...usage.program.map((item) =>
+      `PROGRAM "${item.compositionId}" / Deck "${item.deckId}" / Layer "${item.layerName}"`
+    )
+  );
+
+  throw new Error(
+    `Source "${sourceId}" is still in use: ${references.join("; ")}.`
+  );
+}
