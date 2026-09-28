@@ -93,6 +93,14 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     if (output.deckId !== undefined && !deckIds.has(output.deckId)) {
       errors.push(`Output "${output.id}" references missing Deck "${output.deckId}".`);
     }
+    if (output.compositionId !== undefined && output.deckId !== undefined) {
+      const composition = graph.compositions.find((item) => item.id === output.compositionId);
+      if (composition && !composition.deckIds.includes(output.deckId)) {
+        errors.push(
+          `Output "${output.id}" targets Deck "${output.deckId}", but that Deck is not attached to Composition "${output.compositionId}".`
+        );
+      }
+    }
     if (output.media?.compositionId !== undefined && !compositionIds.has(output.media.compositionId)) {
       errors.push(`Output "${output.id}" media settings reference missing Composition "${output.media.compositionId}".`);
     }
