@@ -8,6 +8,8 @@ import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { DeviceDiscoveryEngine, BrowserMediaDeviceDiscoveryProvider } from "../engine/device-discovery.js";
+import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -35,7 +37,9 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
   { label: "PowerPoint", kind: "powerpoint", accept: ".ppt,.pptx" },
   { label: "PDF", kind: "pdf", accept: ".pdf" },
   { label: "Camera", kind: "camera" },
-  { label: "NDI / Desktop Capture", kind: "ndi" },
+  { label: "NDI", kind: "ndi" },
+  { label: "OMT", kind: "omt" },
+  { label: "Desktop Capture", kind: "desktop-capture" },
   { label: "IP Camera", kind: "ip-camera" },
   { label: "Colour", kind: "colour" },
   { label: "Timer", kind: "timer" },
@@ -79,10 +83,20 @@ export function App() {
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
+  const deviceDiscovery = useMemo(() => {
+    const engine = new DeviceDiscoveryEngine();
+    engine.register(new BrowserMediaDeviceDiscoveryProvider());
+    return engine;
+  }, []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
+  const [discoveredDevices, setDiscoveredDevices] = useState<readonly DiscoveredDevice[]>([]);
+  const [discoveryBusy, setDiscoveryBusy] = useState(false);
+  const [discoveryMessage, setDiscoveryMessage] = useState("");
+  const [discoveryServer, setDiscoveryServer] = useState("");
+  const [ipCameraUri, setIpCameraUri] = useState("");
   const [openProperty, setOpenProperty] = useState("General");
 
   const selectPreview = (deckId: string, layerId: string) => {
@@ -218,19 +232,67 @@ export function App() {
     if (sources.length) setLibraryItems((items) => [...items, ...sources]);
   };
 
-  const addInternalInput = (kind: SourceKind) => {
+  const addInternalInput = (kind: SourceKind, device?: DiscoveredDevice) => {
     const source: Source = {
       id: "source-" + Date.now(),
-      name: kind === "colour" ? "Colour" : kind === "timer" ? "Timer" : kind,
-      kind
+      name: device?.name ?? (kind === "colour" ? "Colour" : kind === "timer" ? "Timer" : kind),
+      kind,
+      ...(device?.uri || device?.address ? { uri: device.uri ?? device.address } : {}),
+      ...(device ? {
+        metadata: {
+          deviceId: device.id,
+          deviceKind: device.kind,
+          transport: device.transport,
+          address: device.address,
+          ...(device.metadata ?? {})
+        }
+      } : {})
     };
     libraryEngine.add(source);
     setLibraryItems((items) => [...items, source]);
     setShowAddInput(false);
+    setDiscoveredDevices([]);
+    setDiscoveryMessage("");
+  };
+
+  const discoverDevices = async () => {
+    const selected = selectedInputKind;
+    const discoverable = ["camera", "ndi", "omt", "desktop-capture"].includes(selected);
+    if (!discoverable) return;
+    setDiscoveryBusy(true);
+    setDiscoveryMessage("");
+    const result = await deviceDiscovery.discover({
+      kind: selected as "camera" | "ndi" | "omt" | "desktop-capture",
+      ...(discoveryServer.trim() ? { discoveryServer: discoveryServer.trim() } : {})
+    });
+    setDiscoveredDevices(result.devices);
+    setDiscoveryMessage(result.message ?? `${result.devices.length} device(s) found.`);
+    setDiscoveryBusy(false);
+  };
+
+  const addDiscoveredDevice = (device: DiscoveredDevice) => {
+    addInternalInput(sourceKindForDevice(device.kind), device);
+  };
+
+  const addManualIpCamera = () => {
+    const uri = ipCameraUri.trim();
+    if (!uri) return;
+    addInternalInput("ip-camera", {
+      id: `ip-camera-${Date.now()}`,
+      name: uri,
+      kind: "ip-camera",
+      transport: "network",
+      uri
+    });
+    setIpCameraUri("");
   };
 
   const addInput = (kind: SourceKind, accept?: string) => {
-    if (["colour", "timer", "title", "composition", "video-delay", "audio-input", "camera", "ndi", "ip-camera"].includes(kind)) {
+    if (["colour", "timer", "title", "composition", "video-delay", "audio-input", "camera", "ndi", "omt", "desktop-capture", "ip-camera"].includes(kind)) {
+      if (kind === "ip-camera") {
+        setSelectedInputKind(kind);
+        return;
+      }
       addInternalInput(kind);
       return;
     }
@@ -632,7 +694,7 @@ export function App() {
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
                 <div className="input-group-title">LIVE / CAPTURE</div>
-                {inputTypes.filter((item) => ["camera","ndi","ip-camera"].includes(item.kind)).map((item) => (
+                {inputTypes.filter((item) => ["camera","ndi","omt","desktop-capture","ip-camera"].includes(item.kind)).map((item) => (
                   <button key={item.kind} className={selectedInputKind === item.kind ? "input-side-item active" : "input-side-item"} onClick={() => setSelectedInputKind(item.kind)}>{item.label}</button>
                 ))}
                 <div className="input-group-title">GENERATED / INTERNAL</div>
@@ -655,12 +717,23 @@ export function App() {
                         </div>
                       ) : (
                         <div className="input-technical-config">
-                          {selected.kind === "camera" && <><label>Device<select defaultValue=""><option value="">Auto Detect</option></select></label><label>Video Format<select defaultValue="auto"><option value="auto">Auto</option></select></label><label>FPS<select defaultValue="auto"><option value="auto">Auto / Best Performance</option></select></label></>}
-                          {selected.kind === "ndi" && <><label>Source<select defaultValue=""><option value="">Detect NDI sources on LAN</option></select></label><label>Capture<select defaultValue="desktop"><option value="desktop">Desktop / Window</option></select></label></>}
-                          {selected.kind === "ip-camera" && <><label>Protocol<select defaultValue="rtsp"><option value="rtsp">RTSP</option><option value="onvif">ONVIF</option></select></label><label>Address<input placeholder="rtsp://..." /></label><label>Latency<select defaultValue="low"><option value="low">Low Latency</option></select></label></>}
+                          {["camera","ndi","omt","desktop-capture"].includes(selected.kind) && <div className="device-discovery-config">
+                            <div className="discovery-toolbar">
+                              {(selected.kind === "ndi" || selected.kind === "omt") && <input value={discoveryServer} onChange={(event) => setDiscoveryServer(event.target.value)} placeholder={selected.kind === "omt" ? "Discovery Server host:6399 (optional)" : "NDI Discovery Server host:5959 (optional)"} />}
+                              <button className="input-browse" onClick={discoverDevices} disabled={discoveryBusy}>{discoveryBusy ? "DISCOVERING…" : "DISCOVER DEVICES"}</button>
+                            </div>
+                            <div className="input-config-note">{discoveryMessage || "Discovery is handled by the native device adapter. Camera enumeration can use the browser while NDI/OMT/Desktop Capture await the Windows bridge."}</div>
+                            {discoveredDevices.length > 0 && <div className="device-list">{discoveredDevices.map((device) => <button className="device-list-item" key={device.id} onClick={() => addDiscoveredDevice(device)}><span><strong>{device.name}</strong><small>{device.kind} · {device.address ?? device.uri ?? device.transport}</small></span><b>ADD</b></button>)}</div>}
+                          </div>}
+                          {selected.kind === "ip-camera" && <div className="device-discovery-config">
+                            <label>Protocol<select defaultValue="rtsp"><option value="rtsp">RTSP</option><option value="onvif">ONVIF</option></select></label>
+                            <label>Address<input value={ipCameraUri} onChange={(event) => setIpCameraUri(event.target.value)} placeholder="rtsp://..." /></label>
+                            <label>Latency<select defaultValue="low"><option value="low">Low Latency</option></select></label>
+                            <button className="input-browse" onClick={addManualIpCamera} disabled={!ipCameraUri.trim()}>ADD IP CAMERA</button>
+                          </div>}
                           {selected.kind === "audio-input" && <><label>Device<select defaultValue=""><option value="">Detect audio devices</option></select></label><label>Channels<select defaultValue="stereo"><option value="mono">Mono</option><option value="stereo">Stereo</option></select></label></>}
                           {["colour","timer","title","composition","video-delay"].includes(selected.kind) && <div className="input-config-note">This is an internal VisCo source. Create it first, then configure its detailed properties from the Properties panel.</div>}
-                          {["camera","ndi","ip-camera","audio-input"].includes(selected.kind) && <div className="input-config-note">Technical settings are retained by the source and can be refined later in Properties.</div>}
+                          {selected.kind === "audio-input" && <div className="input-config-note">Audio device routing remains owned by the Audio Engine; this selector only defines the input source.</div>}
                         </div>
                       )}
                     </>
