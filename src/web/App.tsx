@@ -13,7 +13,7 @@ import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
 import { renderCompositionProgram, renderCompositionTransition } from "../engine/composition-renderer.js";
-import { findSourceUsage, isLayerProgrammed } from "../engine/source-usage.js";
+import { findSourceUsage } from "../engine/source-usage.js";
 import { getDefaultSliceTransform } from "../domain/slice.js";
 import type { Composition } from "../domain/composition.js";
 import type { Slice } from "../domain/slice.js";
@@ -22,6 +22,12 @@ import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
 type Deck = DomainDeck & { kind: DeckKind };
+
+function revokeOwnedObjectUrls(sources: readonly Source[]): void {
+  for (const source of sources) {
+    if (source.uri?.startsWith("blob:")) URL.revokeObjectURL(source.uri);
+  }
+}
 
 const makeLayers = (): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
@@ -351,19 +357,6 @@ export function App() {
     const itemId = event.dataTransfer.getData("text/library-id");
     const item = libraryItems.find((entry) => entry.id === itemId);
     if (item) {
-      const programmed = isLayerProgrammed(
-        { deckId, layerId },
-        [programEngine.getState("default")]
-      );
-      if (programmed) {
-        window.alert(
-          "SOURCE TIDAK DAPAT DIREPLACE\\n\\n" +
-          "Layer ini sedang digunakan di PROGRAM / ON AIR.\\n" +
-          "Program ulang terlebih dahulu, lalu Source dapat direplace."
-        );
-        return;
-      }
-
       // Source replacement is allowed for Preview/unprogrammed Layers,
       // including Layers that belong to Groups.
       setDecks((current) => current.map((deck) =>
