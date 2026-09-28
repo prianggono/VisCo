@@ -17,6 +17,14 @@ export interface ProgramState {
   readonly transition: Transition | null;
 }
 
+function snapshotLayer(layer: Layer): Layer {
+  return {
+    ...layer,
+    transform: layer.transform ? { ...layer.transform } : undefined,
+    playback: layer.playback ? { ...layer.playback } : undefined
+  };
+}
+
 function createState(
   compositionId: string,
   layers: readonly ProgramLayerState[],
@@ -87,7 +95,7 @@ export class ProgramEngine {
       const layer = getDeckLayer(deck, { deckId: deck.id, layerId });
       return {
         source: { deckId: deck.id, layerId: layer.id },
-        layer
+        layer: snapshotLayer(layer)
       };
     });
 
