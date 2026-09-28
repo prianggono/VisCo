@@ -11,6 +11,8 @@ export interface LayerTransform {
   readonly opacity: number;
 }
 
+export type LayerFitMode = "fit" | "fill" | "stretch";
+
 export interface LayerPlayback {
   readonly playing: boolean;
   readonly loop: boolean;
@@ -23,6 +25,8 @@ export interface Layer {
   readonly sourceId?: Source["id"] | null;
   readonly transform?: LayerTransform;
   readonly playback?: LayerPlayback;
+  /** Quick Resolume-style media framing mode inside the Layer bounds. */
+  readonly fitMode?: LayerFitMode;
   readonly blendMode?: string;
   readonly order?: number;
 }
