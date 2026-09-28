@@ -9,6 +9,7 @@ export interface LayerRenderStyle {
   readonly transformOrigin: "center center";
   readonly zIndex: number;
   readonly mixBlendMode: LayerBlendMode;
+  readonly objectFit: "contain" | "cover" | "fill";
   /** Optional transient clip applied by the renderer during a transition. */
   readonly clipPath?: string;
 }
@@ -26,6 +27,12 @@ const resolveBlendMode = (blendMode?: string): LayerBlendMode => {
     : "normal";
 };
 
+const resolveObjectFit = (fitMode?: Layer["fitMode"]): "contain" | "cover" | "fill" => {
+  if (fitMode === "fill") return "cover";
+  if (fitMode === "stretch") return "fill";
+  return "contain";
+};
+
 export function getLayerRenderStyle(layer: Layer): LayerRenderStyle {
   const transform = getLayerRenderTransform(layer);
   return {
@@ -33,6 +40,7 @@ export function getLayerRenderStyle(layer: Layer): LayerRenderStyle {
     opacity: transform.opacity,
     transformOrigin: "center center",
     zIndex: layer.order ?? 0,
-    mixBlendMode: resolveBlendMode(layer.blendMode)
+    mixBlendMode: resolveBlendMode(layer.blendMode),
+    objectFit: resolveObjectFit(layer.fitMode)
   };
 }
