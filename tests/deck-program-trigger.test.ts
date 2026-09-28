@@ -4,6 +4,7 @@ import { ProgramEngine } from "../src/engine/program-engine.js";
 import { TriggerEngine } from "../src/engine/trigger-engine.js";
 import { OutputEngine } from "../src/engine/output-engine.js";
 import { DeckRuntime } from "../src/engine/deck-runtime.js";
+import { DeckProgramController } from "../src/engine/deck-program-controller.js";
 
 const deck1: Deck = {
   id: "deck-1",
