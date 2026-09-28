@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { HealthCheckPanel } from "./HealthCheckPanel.js";
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
 import { OutputEngine } from "../engine/output-engine.js";
@@ -102,6 +103,7 @@ export function App() {
   const audioOutputRouter = useMemo(() => new AudioOutputRouter(audioEngine, outputEngine), [audioEngine, outputEngine]);
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine), [deckRuntime, programEngine, outputEngine]);
+  const [showHealthCheck, setShowHealthCheck] = useState(false);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
@@ -389,7 +391,7 @@ export function App() {
           <div><strong>VisCo</strong><span>Visual Control & Live Production System</span></div>
         </div>
         <nav className="topnav">
-          <button>File</button><button>Edit</button><button>View</button><button>Settings</button>
+          <button>File</button><button>Edit</button><button>View</button><button>Settings</button><button onClick={() => setShowHealthCheck(true)}>Health Check</button>
         </nav>
         <div className="status"><span className="status-dot" /> SYSTEM READY</div>
       </header>
@@ -694,6 +696,8 @@ export function App() {
           ))}
         </aside>
       </section>
+
+      <HealthCheckPanel open={showHealthCheck} onClose={() => setShowHealthCheck(false)} />
 
       <footer className="media-bar">
         <div className="output-group">
