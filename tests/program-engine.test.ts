@@ -116,6 +116,45 @@ describe("ProgramEngine", () => {
     );
   });
 
+
+  it("isolates Program snapshots from later canonical Layer mutation", () => {
+    const engine = new ProgramEngine();
+    const canonicalLayer = {
+      id: "ppt",
+      name: "PPT",
+      sourceId: "source-old",
+      transform: { x: 10, y: 20, scaleX: 100, scaleY: 100, rotation: 0, opacity: 100 },
+      playback: { playing: true, loop: false, speed: 100 }
+    };
+    const mutableDeck: Deck = { ...deck, layers: [canonicalLayer] };
+
+    const state = engine.program(mutableDeck, "ppt");
+    (canonicalLayer.transform as { x: number }).x = 999;
+    (canonicalLayer.playback as { speed: number }).speed = 25;
+    (canonicalLayer as { sourceId: string }).sourceId = "source-new";
+
+    expect(state.layer?.sourceId).toBe("source-old");
+    expect(state.layer?.transform?.x).toBe(10);
+    expect(state.layer?.playback?.speed).toBe(100);
+  });
+
+  it("force-detaches a Source from committed Program snapshots", () => {
+    const engine = new ProgramEngine();
+    const sourceDeck: Deck = {
+      ...deck,
+      layers: deck.layers.map((layer) => ({ ...layer, sourceId: layer.id === "ppt" ? "source-ppt" : "source-other" }))
+    };
+
+    engine.programLayers(sourceDeck, ["ppt", "camera-left"], "offline");
+    engine.program(sourceDeck, "ppt", "online");
+
+    const updated = engine.detachSource("source-ppt");
+
+    expect(updated.map((state) => state.compositionId)).toEqual(["offline", "online"]);
+    expect(engine.getState("offline").layers.map((item) => item.layer.sourceId)).toEqual([null, "source-other"]);
+    expect(engine.getState("online").layer?.sourceId).toBeNull();
+  });
+
   it("keeps M gating and validates Layer membership", () => {
     const engine = new ProgramEngine();
 
