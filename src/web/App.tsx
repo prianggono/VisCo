@@ -51,7 +51,7 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
-  const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "layer-2" });
+  const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
   const outputEngine = useMemo(() => {
