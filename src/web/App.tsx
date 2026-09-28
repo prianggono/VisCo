@@ -489,9 +489,9 @@ export function App() {
                     outputState.transition
                   );
                   return transitionRender.layers.length > 0 ? transitionRender.layers.map((item, index) => {
-                    const deck = decks.find((candidate) => candidate.id === item.ref.deckId);
-                    const layer = deck?.layers.find((candidate) => candidate.id === item.ref.layerId);
-                    if (!layer) return null;
+                    // Program rendering must use the committed Layer snapshot.
+                    // Canonical Deck edits are intentionally isolated from ON AIR.
+                    const layer = item.layer;
                     const source = layer.sourceId && libraryEngine.has(layer.sourceId)
                       ? libraryEngine.get(layer.sourceId)
                       : undefined;
