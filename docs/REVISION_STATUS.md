@@ -43,7 +43,7 @@ This is the handoff checklist for future revisions.
 ## Runtime engines still planned
 
 - [ ] Real video/image/audio decode
-- [ ] Camera / capture / NDI / OMT / IP camera
+- [ ] USB Video Capture / NDI / OMT / IP camera
 - [ ] Composition renderer
 - [ ] Slice mapping renderer
 - [ ] Physical display / LED output
@@ -70,3 +70,8 @@ The Source UI now owns selection flow and delegates device discovery to the cano
 OMT discovery supports an optional Discovery Server field. OMT documents DNS-SD as the normal discovery mechanism and a TCP Discovery Server as the multicast-unavailable fallback; the default Discovery Server port documented by OMT is 6399.
 
 The next implementation step is the Windows native provider/frame bridge. Do not move native capture or frame conversion into the React UI.
+
+
+### Input clarification — USB Video Capture
+
+The live camera input is defined as **Video Capture**, not generic webcam Camera. The intended hardware is USB-connected video capture hardware such as USB HDMI/SDI capture devices. Discovery and frame acquisition are native Windows responsibilities; the React UI must not use browser camera enumeration for this input. The native device metadata should preserve backend/device capabilities so the future Windows adapter can expose resolution, pixel format, FPS, audio presence, and vendor/device identity.
