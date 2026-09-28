@@ -71,6 +71,20 @@ describe("Project persistence boundary", () => {
     expect(() => serializeProject(broken)).toThrow('Library references missing Source "missing-source".');
   });
 
+  it("rejects an Output whose Deck is outside its Composition", () => {
+    const broken = {
+      ...project,
+      outputs: [{
+        ...project.outputs[0],
+        deckId: "deck-2"
+      }]
+    };
+
+    expect(() => serializeProject(broken)).toThrow(
+      'Output "display-1" targets Deck "deck-2", but that Deck is not attached to Composition "comp-1".'
+    );
+  });
+
   it("rejects broken Output references before serialization", () => {
     const broken = {
       ...project,
