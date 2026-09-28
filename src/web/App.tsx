@@ -676,6 +676,11 @@ export function App() {
                     </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
                   })()}
                   {item === "Transform" && <div className="property-grid">
+                    <div className="property-buttons transform-presets">
+                      <button onClick={() => updateSelectedLayer({ fitMode: "fit" })}>FIT</button>
+                      <button onClick={() => updateSelectedLayer({ fitMode: "fill" })}>FILL</button>
+                      <button onClick={() => updateSelectedLayer({ fitMode: "stretch" })}>STRETCH</button>
+                    </div>
                     {[
                       ["X", "x", 0], ["Y", "y", 0], ["Rotation", "rotation", 0]
                     ].map(([label, key, fallback]) => <label key={String(key)}>{label}<input type="number" value={Number(selectedLayerModel?.transform?.[key as keyof NonNullable<Layer["transform"]>] ?? fallback)} onChange={(event) => updateSelectedTransform({ [key]: Number(event.target.value) })} /></label>)}
