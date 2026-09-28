@@ -16,17 +16,21 @@ export class LibraryEngine {
   }
 
   update(source: Source): Source {
-    if (!this.sources.has(source.id)) {
+    const previous = this.sources.get(source.id);
+    if (!previous) {
       throw new Error(`Source "${source.id}" does not exist.`);
     }
     this.sources.set(source.id, source);
-    return source;
+    return previous;
   }
 
-  remove(sourceId: string): void {
-    if (!this.sources.delete(sourceId)) {
+  remove(sourceId: string): Source {
+    const source = this.sources.get(sourceId);
+    if (!source) {
       throw new Error(`Source "${sourceId}" does not exist.`);
     }
+    this.sources.delete(sourceId);
+    return source;
   }
 
   get(sourceId: string): Source {
