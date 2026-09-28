@@ -27,3 +27,4 @@ export * from "./engine/audio-health-check.js";
 export * from "./engine/virtual-video-native.js";
 export * from "./engine/virtual-video-engine.js";
 export * from "./engine/video-health-check.js";
+export * from "./engine/transition-engine.js";
