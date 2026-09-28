@@ -745,7 +745,7 @@ export function App() {
               <div className="modal-drop">Files can also be dragged directly into Library.</div>
               <div className="input-select-actions">
                 <button className="modal-cancel" onClick={() => setShowAddInput(false)}>CANCEL</button>
-                {!inputTypes.find((item) => item.kind === selectedInputKind)?.accept && <button className="modal-add" onClick={() => addInternalInput(selectedInputKind)}>ADD TO LIBRARY</button>}
+                {!inputTypes.find((item) => item.kind === selectedInputKind)?.accept && !["camera","ndi","omt","desktop-capture","ip-camera"].includes(selectedInputKind) && <button className="modal-add" onClick={() => addInternalInput(selectedInputKind)}>ADD TO LIBRARY</button>}
               </div>
             </div>
             <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
