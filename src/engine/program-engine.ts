@@ -46,6 +46,10 @@ export class ProgramEngine {
     return this.states.get(compositionId) ?? createState(compositionId, [], null);
   }
 
+  getStates(): readonly ProgramState[] {
+    return [...this.states.values()];
+  }
+
   program(deck: Deck, layerId: string, compositionId = "default"): ProgramState {
     return this.programLayers(deck, [layerId], compositionId);
   }
