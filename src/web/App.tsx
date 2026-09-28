@@ -7,7 +7,7 @@ import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
-import { compositeLayer, compositeProgramFirst } from "../engine/compositor.js";
+import { compositeLayer } from "../engine/compositor.js";
 import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
