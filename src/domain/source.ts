@@ -48,6 +48,9 @@ export interface Source {
   readonly id: string;
   readonly name: string;
   readonly kind: SourceKind;
+  /** Canonical native file path when available; runtime URI may be a temporary blob URL in the web shell. */
+  readonly filePath?: string;
+  /** Runtime URI used by the current renderer. Do not persist blob URLs as the canonical file identity. */
   readonly uri?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;
   readonly list?: ListConfig;
