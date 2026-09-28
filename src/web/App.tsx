@@ -124,14 +124,14 @@ export function App() {
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    deckProgramController.program(deck, layerId);
+    const controllerState = deckProgramController.program(deck, layerId);
     deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
 
     const program = programEngine.getState("default");
     const renderPlan = renderCompositionProgram(programComposition, programSlices, program);
-    outputEngine.syncFromComposition(renderPlan, program.compositionId);
+    outputEngine.syncFromComposition(renderPlan, program.compositionId, controllerState.transition);
     if (program.source) {
-      outputEngine.syncFromDeck(program.source.deckId, program.source, program.compositionId);
+      outputEngine.syncFromDeck(program.source.deckId, program.source, program.compositionId, controllerState.transition);
     }
 
     setOutputRevision((value) => value + 1);
