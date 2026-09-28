@@ -1,27 +1,24 @@
 import type { Layer } from "../domain/layer.js";
 import type { ProgramState } from "./program-engine.js";
 import { getLayerRenderStyle, type LayerRenderStyle } from "./layer-renderer.js";
+import { compositeLayers } from "./layer-composition.js";
 
 export interface CompositedLayer {
   readonly layerId: string;
   readonly style: LayerRenderStyle;
+  readonly renderOrder: number;
 }
 
-/**
- * Composition stage for a single Layer. It consumes the Layer directly and
- * never stores a second Transform state.
- */
-export function compositeLayer(layer: Layer): CompositedLayer {
-  return {
-    layerId: layer.id,
-    style: getLayerRenderStyle(layer)
-  };
+export function compositeLayer(layer: Layer, renderOrder = layer.order ?? 0): CompositedLayer {
+  return { layerId: layer.id, style: getLayerRenderStyle(layer), renderOrder };
 }
 
-/**
- * Program composition entry point. Program remains the source of truth for
- * the active Layer; the compositor only derives render data from it.
- */
-export function compositeProgram(program: ProgramState): CompositedLayer | null {
-  return program.layer ? compositeLayer(program.layer) : null;
+/** CPU-side composition contract; GPU work is delegated to the native renderer. */
+export function compositeLayersForRender(layers: readonly Layer[]): readonly CompositedLayer[] {
+  return compositeLayers({ layers }).map((layer) => compositeLayer(layer, layer.order ?? 0));
+}
+
+export function compositeProgram(program: ProgramState): readonly CompositedLayer[] {
+  const layers = program.layers.length > 0 ? program.layers : (program.layer ? [program.layer] : []);
+  return compositeLayersForRender(layers);
 }
