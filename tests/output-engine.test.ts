@@ -49,6 +49,56 @@ describe("Output Engine", () => {
     ).toThrow('Media output "media-main" requires media settings.');
   });
 
+
+  it("clears stale Composition render data when Composition scope changes", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    const renderPlan = [{
+      sliceId: "slice-1",
+      layerId: "layer-1",
+      layerStyle: {
+        transform: "translate(-50%, -50%) translate(0px, 0px) rotate(0deg) scale(1, 1)",
+        opacity: 1,
+        transformOrigin: "center center" as const,
+        zIndex: 0,
+        mixBlendMode: "normal" as const
+      },
+      sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+    }];
+
+    output.syncFromComposition(renderPlan, "composition-1");
+    output.setCompositionTarget("display-main", "composition-2");
+
+    const state = output.getState("display-main");
+    expect(state.target.compositionId).toBe("composition-2");
+    expect(state.source).toBeNull();
+    expect(state.renderPlan).toBeNull();
+  });
+
+  it("clears stale Deck routing when Deck scope changes", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      deckId: "deck-1"
+    });
+
+    output.route("display-main", deck1Layer2);
+    output.setDeckTarget("display-main", "deck-2");
+
+    const state = output.getState("display-main");
+    expect(state.target.deckId).toBe("deck-2");
+    expect(state.source).toBeNull();
+    expect(state.renderPlan).toBeNull();
+  });
+
   it("routes a Deck source to its output", () => {
     const output = new OutputEngine();
     output.register({
