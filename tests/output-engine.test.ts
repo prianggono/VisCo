@@ -80,6 +80,39 @@ describe("Output Engine", () => {
     });
   });
 
+  it("keeps Virtual Out independent from Stream and Record", () => {
+    const output = new OutputEngine();
+    output.register(mediaTarget());
+
+    output.setMediaFeature("virtual", "virtual", true);
+    expect(output.getState("media-main").target.media).toMatchObject({
+      streaming: false,
+      recording: false,
+      virtual: true
+    });
+
+    output.setMediaFeature("virtual", "stream", true);
+    expect(output.getState("media-main").target.media).toMatchObject({
+      streaming: true,
+      recording: false,
+      virtual: true
+    });
+
+    output.setMediaFeature("virtual", "record", true);
+    expect(output.getState("media-main").target.media).toMatchObject({
+      streaming: true,
+      recording: true,
+      virtual: true
+    });
+
+    output.setMediaFeature("virtual", "stream", false);
+    expect(output.getState("media-main").target.media).toMatchObject({
+      streaming: false,
+      recording: true,
+      virtual: true
+    });
+  });
+
   it("shares one resolution and FPS configuration for all media outputs", () => {
     const output = new OutputEngine();
     output.register(
