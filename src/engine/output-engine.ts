@@ -40,7 +40,13 @@ export class OutputEngine {
       ? (() => { const { compositionId: _compositionId, ...rest } = target; return rest; })()
       : { ...target, compositionId };
     this.targets.set(targetId, updated);
-    this.states.set(targetId, { ...this.requireState(targetId), target: updated });
+    this.states.set(targetId, {
+      ...this.requireState(targetId),
+      target: updated,
+      source: null,
+      renderPlan: null,
+      active: updated.enabled
+    });
     return updated;
   }
 
@@ -50,7 +56,13 @@ export class OutputEngine {
       ? (() => { const { deckId: _deckId, ...withoutDeck } = target; return withoutDeck; })()
       : { ...target, deckId };
     this.targets.set(targetId, updated);
-    this.states.set(targetId, { ...this.requireState(targetId), target: updated });
+    this.states.set(targetId, {
+      ...this.requireState(targetId),
+      target: updated,
+      source: null,
+      renderPlan: null,
+      active: updated.enabled
+    });
     return updated;
   }
 
