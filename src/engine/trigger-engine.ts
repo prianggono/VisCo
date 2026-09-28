@@ -85,9 +85,10 @@ export class TriggerEngine {
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
     if (!context.output || !state.source) return;
 
-    const transition = context.controller.getTransitionState();
+    // Take one immutable runtime snapshot for the whole output sync.
+    // Composition output remains canonical and contains every Program Layer.
+    const transition = context.controller.getTransitionState(state.compositionId);
 
-    // Composition render plan is the canonical visual output path.
     if (context.composition && context.slices) {
       const renderPlan = renderCompositionProgram(
         context.composition,
@@ -97,16 +98,17 @@ export class TriggerEngine {
       context.output.syncFromComposition(
         renderPlan,
         state.compositionId,
-        context.controller.getTransitionState()
+        transition
       );
     }
-    // Deck-scoped outputs remain explicit overrides and use the first
-    // Program Layer only for the legacy Deck routing contract.
+
+    // Deck-scoped outputs are explicit overrides. They retain the legacy
+    // single-source contract and therefore route the Program's first Layer.
     context.output.syncFromDeck(
       state.source.deckId,
       state.source,
       state.compositionId,
-      context.controller.getTransitionState()
+      transition
     );
   }
 }
