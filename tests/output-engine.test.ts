@@ -494,4 +494,41 @@ describe("Output Engine", () => {
     expect(output.getState("display-main").source).toBeNull();
   });
 
+  it("retains the previous Composition render plan for transition rendering", () => {
+    const output = new OutputEngine();
+    output.register({
+      id: "display-main",
+      kind: "display",
+      enabled: true,
+      compositionId: "composition-1"
+    });
+
+    const first = [{
+      sliceId: "slice-1",
+      ref: { deckId: "deck-1", layerId: "layer-1" },
+      layerId: "layer-1",
+      layerStyle: {
+        transform: "translate(0px, 0px)",
+        opacity: 100,
+        transformOrigin: "center center" as const,
+        zIndex: 0,
+        mixBlendMode: "normal" as const
+      },
+      sliceStyle: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }
+    }];
+
+    const second = [{
+      ...first[0],
+      ref: { deckId: "deck-1", layerId: "layer-2" },
+      layerId: "layer-2"
+    }];
+
+    output.syncFromComposition(first, "composition-1");
+    output.syncFromComposition(second, "composition-1");
+
+    expect(output.getState("display-main").previousRenderPlan).toEqual(first);
+    expect(output.getState("display-main").renderPlan).toEqual(second);
+  });
+
+
 });
