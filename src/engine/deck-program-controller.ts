@@ -23,6 +23,9 @@ export class DeckProgramController {
     if ((deck as Deck & { kind?: "visual" | "audio" }).kind === "audio") {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
+    if (!this.deckRuntime.has(deck.id)) {
+      this.deckRuntime.register(deck);
+    }
     const deckState = this.deckRuntime.programLayer(deck, layerId);
     // Runtime M is authoritative for the live Deck. Pass that state to Program
     // so the UI fader and Program gate cannot disagree.
