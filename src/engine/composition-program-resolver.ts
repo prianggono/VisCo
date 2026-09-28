@@ -32,13 +32,34 @@ export function resolveCompositionProgram(
     );
   }
 
-  const sliceById = new Map(slices.map((slice) => [slice.id, slice]));
-  const activeByRef = new Map(
-    program.layers.map(({ source, layer }) => [
-      source.deckId + ":" + source.layerId,
-      { ref: source, layer }
-    ])
-  );
+  const sliceById = new Map<string, Slice>();
+  for (const slice of slices) {
+    if (sliceById.has(slice.id)) {
+      throw new Error(`Duplicate Slice "${slice.id}" was supplied to Composition resolver.`);
+    }
+    sliceById.set(slice.id, slice);
+  }
+
+  const activeByRef = new Map<string, ResolvedCompositionLayer>();
+  for (const { source, layer } of program.layers) {
+    const key = source.deckId + ":" + source.layerId;
+    if (activeByRef.has(key)) {
+      throw new Error(
+        `Program contains duplicate Layer reference "${source.deckId}/${source.layerId}".`
+      );
+    }
+    if (layer.id !== source.layerId) {
+      throw new Error(
+        `Program Layer "${layer.id}" does not match reference "${source.deckId}/${source.layerId}".`
+      );
+    }
+    if (!composition.deckIds.includes(source.deckId)) {
+      throw new Error(
+        `Program maps deck "${source.deckId}", but that deck is not attached to Composition "${composition.id}".`
+      );
+    }
+    activeByRef.set(key, { ref: source, layer });
+  }
 
   return composition.sliceIds.map((sliceId) => {
     const slice = sliceById.get(sliceId);
