@@ -20,3 +20,5 @@ export * from "./engine/relationship-validator.js";
 export * from "./ui/layer-interaction.js";
 export * from "./engine/project-persistence.js";
 export * from "./engine/audio-device.js";
+export * from "./domain/virtual-audio.js";
+export * from "./engine/virtual-audio-engine.js";
