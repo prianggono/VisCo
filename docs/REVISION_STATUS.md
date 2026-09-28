@@ -34,15 +34,16 @@ This is the handoff checklist for future revisions.
 ## UI status
 
 - [ ] Web UI fully converted from mock state to domain/engine adapters
-- [ ] Add Input modal converted to full Input Select workflow
+- [x] Add Input modal converted to full Input Select workflow
 - [ ] Properties connected to selected Source/Layer
 - [ ] View/layout persistence connected to Project
 - [ ] Real Output status connected to Output Engine
+- [x] Device discovery contract and Source UI selection workflow (NDI / OMT / IP Camera / Camera / Desktop Capture)
 
 ## Runtime engines still planned
 
 - [ ] Real video/image/audio decode
-- [ ] Camera / capture / NDI / IP camera
+- [ ] Camera / capture / NDI / OMT / IP camera
 - [ ] Composition renderer
 - [ ] Slice mapping renderer
 - [ ] Physical display / LED output
@@ -60,3 +61,12 @@ This is the handoff checklist for future revisions.
 Do not implement an unchecked item in the UI first. Add or update the owning domain/engine contract, add tests, then connect the UI adapter.
 
 No feature package tiers are planned. Unlicensed mode remains usable with a watermark; licensed mode removes the watermark.
+
+
+## Current runtime handoff
+
+The Source UI now owns selection flow and delegates device discovery to the canonical DeviceDiscoveryEngine. Browser camera enumeration is supported where the browser exposes media devices. NDI, OMT, Desktop Capture, Display, and LED discovery are intentionally native-provider responsibilities; the UI does not duplicate protocol or Windows device logic.
+
+OMT discovery supports an optional Discovery Server field. OMT documents DNS-SD as the normal discovery mechanism and a TCP Discovery Server as the multicast-unavailable fallback; the default Discovery Server port documented by OMT is 6399.
+
+The next implementation step is the Windows native provider/frame bridge. Do not move native capture or frame conversion into the React UI.
