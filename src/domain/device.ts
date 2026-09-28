@@ -1,7 +1,7 @@
 import type { SourceKind } from "./source.js";
 
 export type DeviceKind =
-  | "camera"
+  | "video-capture"
   | "ndi"
   | "omt"
   | "ip-camera"
@@ -51,8 +51,8 @@ export function sourceKindForDevice(kind: DeviceKind): SourceKind {
       return "ip-camera";
     case "desktop-capture":
       return "desktop-capture";
-    case "camera":
-      return "camera";
+    case "video-capture":
+      return "video-capture";
     default:
       throw new Error(`Device "${kind}" is not a Library Source.`);
   }
