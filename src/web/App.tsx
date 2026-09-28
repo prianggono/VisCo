@@ -181,22 +181,24 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
-  const updateSelectedDocument = (patch: Partial<NonNullable<Source["document"]>>) => {
-    if (!selectedLayerModel?.sourceId) return;
-    const source = libraryEngine.get(selectedLayerModel.sourceId);
+  const updateSourceDocument = (sourceId: string, patch: Partial<NonNullable<Source["document"]>>) => {
+    if (!libraryEngine.has(sourceId)) return;
+    const source = libraryEngine.get(sourceId);
     if (source.kind !== "powerpoint" && source.kind !== "pdf") return;
-    const usage = findSourceUsage(source.id, { decks, groups: [], programs: programEngine.getStates() });
-    if (usage.program.length > 0) {
-      window.alert(
-        "SOURCE SEDANG ON AIR\\n\\n" +
-        "Source \"" + source.name + "\" sedang digunakan oleh PROGRAM.\\n" +
-        "Ubah Source setelah program ulang, atau gunakan Source berbeda untuk Layer ini."
-      );
-      return;
-    }
-    libraryEngine.update({ ...source, document: { ...(source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }), ...patch } });
+    libraryEngine.update({
+      ...source,
+      document: {
+        ...(source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }),
+        ...patch
+      }
+    });
     setLibraryItems(libraryEngine.list());
     setRuntimeRevision((value) => value + 1);
+  };
+
+  const updateSelectedDocument = (patch: Partial<NonNullable<Source["document"]>>) => {
+    if (!selectedLayerModel?.sourceId) return;
+    updateSourceDocument(selectedLayerModel.sourceId, patch);
   };
 
   const updateSelectedSourceList = (patch: Partial<NonNullable<Source["list"]>>) => {
@@ -532,6 +534,7 @@ export function App() {
                       loop={playback?.loop}
                       speed={playback?.speed}
                       label="PREVIEW"
+                      onDocumentPageChange={(sourceId, page) => updateSourceDocument(sourceId, { currentPage: page })}
                     />
                   ) : <span>PREVIEW</span>;
                 })()}
@@ -569,6 +572,7 @@ export function App() {
                           loop={playback?.loop}
                           speed={playback?.speed}
                           label="PROGRAM"
+                          onDocumentPageChange={(sourceId, page) => updateSourceDocument(sourceId, { currentPage: page })}
                         />
                       </CompositionSliceView>
                     );
