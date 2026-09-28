@@ -14,6 +14,7 @@ describe("relationship validation", () => {
       decks: [{ id: "deck-1", name: "Deck 1", groupIds: ["group-1"], layers: [layer], transition: { type: "fade", durationMs: 500 } }],
       groups: [{ id: "group-1", name: "Group 1", deckId: "deck-1", layerIds: ["layer-1"], collapsed: false }],
       sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
+      library: { sourceIds: ["src-1"] },
       slices: [{
         id: "slice-1", name: "Left",
         transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 },
@@ -133,3 +134,33 @@ describe("relationship validation", () => {
     expect(result.errors).toContain('Group "group-1" belongs to deck "deck-2" but is referenced by deck "deck-1".');
   });
 });
+
+
+  it("rejects a Library index that diverges from canonical Sources", () => {
+    const result = validateRelationships({
+      compositions: [],
+      decks: [],
+      groups: [],
+      slices: [],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
+      library: { sourceIds: ["src-2"] }
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Library references missing Source "src-2".');
+    expect(result.errors).toContain('Source "src-1" is missing from Library index.');
+  });
+
+  it("rejects duplicate Source IDs inside the Library index", () => {
+    const result = validateRelationships({
+      compositions: [],
+      decks: [],
+      groups: [],
+      slices: [],
+      sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
+      library: { sourceIds: ["src-1", "src-1"] }
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Library contains duplicate Source ID "src-1".');
+  });
