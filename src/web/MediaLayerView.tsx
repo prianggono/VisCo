@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Layer } from "../domain/layer.js";
 import type { Source } from "../domain/source.js";
 import type { LayerRenderStyle } from "../engine/layer-renderer.js";
@@ -23,6 +23,11 @@ export function MediaLayerView({
   label
 }: MediaLayerViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [mediaError, setMediaError] = useState(false);
+
+  useEffect(() => {
+    setMediaError(false);
+  }, [source?.id, source?.uri, source?.kind]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -47,7 +52,23 @@ export function MediaLayerView({
   };
 
   if (!source) {
-    return <div style={{ ...mediaStyle, display: "grid", placeItems: "center" }}>{label}</div>;
+    return (
+      <div style={{ ...mediaStyle, display: "grid", placeItems: "center", color: "#fff", fontSize: 14 }}>
+        MISSING SOURCE
+      </div>
+    );
+  }
+
+  const missingUri = (source.kind === "video" || source.kind === "image") && !source.uri;
+  if (missingUri || mediaError) {
+    return (
+      <div
+        style={{ ...mediaStyle, display: "grid", placeItems: "center", color: "#fff", fontSize: 14 }}
+        aria-label={layer.name}
+      >
+        MISSING MEDIA · {source.name || label}
+      </div>
+    );
   }
 
   if (source.kind === "video" && source.uri) {
@@ -59,6 +80,7 @@ export function MediaLayerView({
         playsInline
         loop={loop}
         preload="auto"
+        onError={() => setMediaError(true)}
         style={{ ...mediaStyle, objectFit: style.objectFit }}
         aria-label={layer.name}
       />
@@ -66,7 +88,14 @@ export function MediaLayerView({
   }
 
   if (source.kind === "image" && source.uri) {
-    return <img src={source.uri} alt={layer.name} style={{ ...mediaStyle, objectFit: style.objectFit }} />;
+    return (
+      <img
+        src={source.uri}
+        alt={layer.name}
+        onError={() => setMediaError(true)}
+        style={{ ...mediaStyle, objectFit: style.objectFit }}
+      />
+    );
   }
 
   if (source.kind === "colour") {
