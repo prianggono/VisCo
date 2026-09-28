@@ -8,6 +8,7 @@ import { TransitionEngine, type TransitionProgress } from "./transition-engine.j
 export interface DeckProgramControllerState {
   readonly deck: DeckRuntimeState;
   readonly program: ProgramState;
+  readonly transition: TransitionProgress | null;
 }
 
 export interface DeckProgramOptions {
@@ -17,7 +18,8 @@ export interface DeckProgramOptions {
 export class DeckProgramController {
   constructor(
     private readonly deckRuntime: DeckRuntime,
-    private readonly programEngine: ProgramEngine
+    private readonly programEngine: ProgramEngine,
+    private readonly transitionEngine: TransitionEngine = new TransitionEngine()
   ) {}
 
   preview(deck: Deck, layerId: string): DeckRuntimeState {
@@ -28,19 +30,9 @@ export class DeckProgramController {
     return this.programLayers(deck, [layerId], options);
   }
 
-  /**
-   * Programs the ordered Layer formasi defined by a Deck-owned Group.
-   *
-   * Group owns membership/order only. Transition remains owned by Deck.
-   * Output routing is handled by the Composition/Output pipeline, not by this controller.
-   */
   programGroup(deck: Deck, group: Group, options: DeckProgramOptions = {}): DeckProgramControllerState {
     const resolved = resolveGroupLayers(deck, group);
-    return this.programLayers(
-      deck,
-      resolved.map(({ ref }) => ref.layerId),
-      options
-    );
+    return this.programLayers(deck, resolved.map(({ ref }) => ref.layerId), options);
   }
 
   private programLayers(
@@ -52,28 +44,36 @@ export class DeckProgramController {
       throw new Error(`Audio deck "${deck.id}" cannot enter visual Program.`);
     }
 
-    // Validate the runtime Deck first so ProgramEngine cannot mutate its
-    // composition-scoped state when the Deck is not registered.
     const currentDeckState = this.deckRuntime.getState(deck.id);
-
-    // Runtime M is authoritative for the live Deck. Pass that state to Program
-    // so the UI fader and Program gate cannot disagree.
     const runtimeDeck: Deck = { ...deck, masterLevel: currentDeckState.masterLevel };
+    const compositionId = options.compositionId ?? "default";
+    const previousProgram = this.programEngine.getState(compositionId);
+
     const programState = this.programEngine.programLayers(
       runtimeDeck,
       layerIds,
-      options.compositionId ?? "default"
+      compositionId
     );
 
-    // ProgramEngine validation has completed before Runtime mutation. The
-    // remaining Runtime operation uses the same Deck/layer inputs.
     const deckState = this.deckRuntime.programLayers(deck, layerIds);
 
-    return { deck: deckState, program: programState };
+    const transition = this.transitionEngine.start(previousProgram, programState)?.active
+      ? this.transitionEngine.sample()
+      : this.transitionEngine.sample();
+
+    return {
+      deck: deckState,
+      program: programState,
+      transition
+    };
   }
 
   getProgramState(compositionId = "default"): ProgramState {
     return this.programEngine.getState(compositionId);
+  }
+
+  getTransitionState(): TransitionProgress | null {
+    return this.transitionEngine.sample();
   }
 
   getState(deck: Deck): DeckProgramControllerState;
@@ -83,7 +83,8 @@ export class DeckProgramController {
     const compositionId = "default";
     return {
       deck: this.deckRuntime.getState(deckId),
-      program: this.programEngine.getState(compositionId)
+      program: this.programEngine.getState(compositionId),
+      transition: this.transitionEngine.sample()
     };
   }
 }
