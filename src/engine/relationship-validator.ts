@@ -161,7 +161,18 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   }
 
   for (const slice of graph.slices) {
+    const seenLayerRefs = new Set<string>();
+
     for (const ref of slice.layerRefs) {
+      const refKey = ref.deckId + ":" + ref.layerId;
+      if (seenLayerRefs.has(refKey)) {
+        errors.push(
+          `Slice "${slice.id}" contains duplicate Layer reference "${ref.deckId}/${ref.layerId}".`
+        );
+        continue;
+      }
+      seenLayerRefs.add(refKey);
+
       if (!hasDeckLayerRef(decksById, ref)) {
         errors.push(`Slice "${slice.id}" references missing layer "${ref.layerId}" in deck "${ref.deckId}".`);
         continue;
