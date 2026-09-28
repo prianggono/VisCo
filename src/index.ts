@@ -23,3 +23,4 @@ export * from "./engine/audio-device.js";
 export * from "./domain/virtual-audio.js";
 export * from "./engine/virtual-audio-engine.js";
 export * from "./engine/virtual-audio-native.js";
+export * from "./engine/audio-health-check.js";
