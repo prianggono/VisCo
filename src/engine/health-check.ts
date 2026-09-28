@@ -18,3 +18,9 @@ export function summarizeHealth(items: readonly HealthCheckItem[]): HealthCheckR
     items
   };
 }
+
+export function getHealthStatus(report: HealthCheckReport): HealthStatus {
+  if (report.items.some((item) => item.status === "error")) return "error";
+  if (report.items.some((item) => item.status === "warning")) return "warning";
+  return "ok";
+}
