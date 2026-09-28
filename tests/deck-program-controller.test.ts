@@ -143,7 +143,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const controller = new DeckProgramController(runtime, program);
 
     expect(() =>
-      controller.programGroup(mutedDeck, group, { syncOutputs: false })
+      controller.programGroup(mutedDeck, group)
     ).toThrow('muted by M');
   });
 
@@ -167,7 +167,7 @@ describe("Deck click -> Preview / Program -> Output", () => {
     const controller = new DeckProgramController(runtime, program);
 
     expect(() =>
-      controller.programGroup(audioDeck, group, { syncOutputs: false })
+      controller.programGroup(audioDeck, group)
     ).toThrow('cannot enter visual Program');
   });
 });
