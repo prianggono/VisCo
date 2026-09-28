@@ -13,7 +13,7 @@ import { cloneDeck } from "../engine/deck-cloner.js";
 import { MediaLayerView } from "./MediaLayerView.js";
 import { CompositionSliceView } from "./CompositionSliceView.js";
 import { renderCompositionProgram, renderCompositionTransition } from "../engine/composition-renderer.js";
-import { isLayerProgrammed } from "../engine/source-usage.js";
+import { findSourceUsage, isLayerProgrammed } from "../engine/source-usage.js";
 import { getDefaultSliceTransform } from "../domain/slice.js";
 import type { Composition } from "../domain/composition.js";
 import type { Slice } from "../domain/slice.js";
@@ -173,6 +173,15 @@ export function App() {
     if (!selectedLayerModel?.sourceId) return;
     const source = libraryEngine.get(selectedLayerModel.sourceId);
     if (source.kind !== "powerpoint" && source.kind !== "pdf") return;
+    const usage = findSourceUsage(source.id, { decks, groups: [], programs: programEngine.getStates() });
+    if (usage.program.length > 0) {
+      window.alert(
+        "SOURCE SEDANG ON AIR\\n\\n" +
+        "Source \"" + source.name + "\" sedang digunakan oleh PROGRAM.\\n" +
+        "Ubah Source setelah program ulang, atau gunakan Source berbeda untuk Layer ini."
+      );
+      return;
+    }
     libraryEngine.update({ ...source, document: { ...(source.document ?? { currentPage: 1, autoNext: true, durationMs: 5000, autoFirst: false, loop: false }), ...patch } });
     setLibraryItems(libraryEngine.list());
     setRuntimeRevision((value) => value + 1);
@@ -182,6 +191,15 @@ export function App() {
     if (!selectedLayerModel?.sourceId) return;
     const source = libraryEngine.get(selectedLayerModel.sourceId);
     if (source.kind !== "list") return;
+    const usage = findSourceUsage(source.id, { decks, groups: [], programs: programEngine.getStates() });
+    if (usage.program.length > 0) {
+      window.alert(
+        "SOURCE SEDANG ON AIR\\n\\n" +
+        "Source \"" + source.name + "\" sedang digunakan oleh PROGRAM.\\n" +
+        "Ubah Source setelah program ulang, atau gunakan Source berbeda untuk Layer ini."
+      );
+      return;
+    }
     libraryEngine.update({ ...source, list: { ...(source.list ?? { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }), ...patch } });
     setLibraryItems(libraryEngine.list());
     setRuntimeRevision((value) => value + 1);
