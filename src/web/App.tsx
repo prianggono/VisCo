@@ -158,7 +158,7 @@ export function App() {
     const source = libraryEngine.get(selectedLayerModel.sourceId);
     if (source.kind !== "list") return;
     libraryEngine.update({ ...source, list: { ...(source.list ?? { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }), ...patch } });
-    setLibraryItems(libraryEngine.list());
+    setLibraryItems([...libraryEngine.list()]);
     setRuntimeRevision((value) => value + 1);
   };
 
