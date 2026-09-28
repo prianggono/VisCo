@@ -61,6 +61,10 @@ export class DeckRuntime {
     return state;
   }
 
+  has(deckId: string): boolean {
+    return this.states.has(deckId);
+  }
+
   setMasterLevel(deckId: string, level: number): DeckRuntimeState {
     const state = { ...this.require(deckId), masterLevel: Math.max(0, Math.min(100, level)) };
     this.states.set(deckId, state);
