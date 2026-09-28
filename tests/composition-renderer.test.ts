@@ -83,4 +83,95 @@ describe("Composition renderer", () => {
 
     expect(result.map(({ layerId }) => layerId)).toEqual(["layer-2"]);
   });
+
+  it("preserves multi-Deck Slice mapping order while Layer order remains the stacking value", () => {
+    const multiComposition: Composition = {
+      ...composition,
+      deckIds: ["deck-1", "deck-2"],
+      sliceIds: ["slice-1", "slice-2"]
+    };
+
+    const firstSlice: Slice = {
+      ...slice,
+      id: "slice-1",
+      layerRefs: [
+        { deckId: "deck-1", layerId: "layer-1" },
+        { deckId: "deck-2", layerId: "layer-1" }
+      ]
+    };
+
+    const secondSlice: Slice = {
+      ...slice,
+      id: "slice-2",
+      layerRefs: [{ deckId: "deck-2", layerId: "layer-2" }]
+    };
+
+    const multiProgram: ProgramState = {
+      ...program,
+      layers: [
+        {
+          source: { deckId: "deck-1", layerId: "layer-1" },
+          layer: { id: "layer-1", name: "Deck 1 Layer 1", order: 20 }
+        },
+        {
+          source: { deckId: "deck-2", layerId: "layer-1" },
+          layer: { id: "layer-1", name: "Deck 2 Layer 1", order: 5 }
+        },
+        {
+          source: { deckId: "deck-2", layerId: "layer-2" },
+          layer: { id: "layer-2", name: "Deck 2 Layer 2", order: 30 }
+        }
+      ],
+      source: { deckId: "deck-1", layerId: "layer-1" },
+      layer: { id: "layer-1", name: "Deck 1 Layer 1", order: 20 }
+    };
+
+    const result = renderCompositionProgram(
+      multiComposition,
+      [firstSlice, secondSlice],
+      multiProgram
+    );
+
+    expect(result.map((item) => item.sliceId)).toEqual([
+      "slice-1",
+      "slice-1",
+      "slice-2"
+    ]);
+    expect(result.map((item) => item.ref)).toEqual([
+      { deckId: "deck-1", layerId: "layer-1" },
+      { deckId: "deck-2", layerId: "layer-1" },
+      { deckId: "deck-2", layerId: "layer-2" }
+    ]);
+    expect(result.map((item) => item.layerStyle.zIndex)).toEqual([20, 5, 30]);
+  });
+
+  it("uses Slice layerRefs order only as the DOM-order tie-breaker when Layer orders match", () => {
+    const tiedSlice: Slice = {
+      ...slice,
+      layerRefs: [
+        { deckId: "deck-1", layerId: "layer-2" },
+        { deckId: "deck-1", layerId: "layer-1" }
+      ]
+    };
+
+    const tiedProgram: ProgramState = {
+      ...program,
+      layers: [
+        {
+          source: { deckId: "deck-1", layerId: "layer-2" },
+          layer: { id: "layer-2", name: "Layer 2", order: 10 }
+        },
+        {
+          source: { deckId: "deck-1", layerId: "layer-1" },
+          layer: { id: "layer-1", name: "Layer 1", order: 10 }
+        }
+      ]
+    };
+
+    const result = renderCompositionProgram(composition, [tiedSlice], tiedProgram);
+
+    expect(result.map((item) => item.layerId)).toEqual(["layer-2", "layer-1"]);
+    expect(result.map((item) => item.layerStyle.zIndex)).toEqual([10, 10]);
+  });
+
 });
