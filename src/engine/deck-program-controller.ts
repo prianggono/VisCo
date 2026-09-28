@@ -71,7 +71,7 @@ export class DeckProgramController {
     return this.programEngine.getState(compositionId);
   }
 
-  getTransitionState(): TransitionProgress | null {
+  getTransitionState(compositionId = "default"): TransitionProgress | null {
     return this.transitionEngine.sample(compositionId);
   }
 
@@ -83,7 +83,7 @@ export class DeckProgramController {
     return {
       deck: this.deckRuntime.getState(deckId),
       program: this.programEngine.getState(compositionId),
-      transition: this.transitionEngine.sample()
+      transition: this.transitionEngine.sample(compositionId)
     };
   }
 }
