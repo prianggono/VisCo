@@ -18,3 +18,4 @@ export * from "./engine/health-check.js";
 export * from "./engine/license-engine.js";
 export * from "./engine/relationship-validator.js";
 export * from "./ui/layer-interaction.js";
+export * from "./engine/project-persistence.js";
