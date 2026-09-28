@@ -37,6 +37,14 @@ export class NativeDeviceDiscoveryProvider implements DeviceDiscoveryProvider {
  * Browser enumerateDevices() is not used for this source because capture
  * cards should be handled by the Windows media-device backend.
  */
+export class NativeCameraDiscoveryProvider extends NativeDeviceDiscoveryProvider {
+  readonly id = "native-camera-discovery";
+
+  supports(kind: DeviceDiscoveryRequest["kind"]): boolean {
+    return kind === "camera";
+  }
+}
+
 export class NativeVideoCaptureDiscoveryProvider extends NativeDeviceDiscoveryProvider {
   readonly id = "native-video-capture-discovery";
 
