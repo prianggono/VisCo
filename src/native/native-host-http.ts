@@ -146,6 +146,19 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
     return await response.json() as NativeAsioStatus;
   }
 
+  async bindRenderSource(sourceId: string, nativeSourceId: "capture" | "network"): Promise<void> {
+    const response = await fetch(this.baseUrl + `/render/bind?sourceId=${encodeURIComponent(sourceId)}&native=${encodeURIComponent(nativeSourceId)}`, { cache: "no-store" });
+    const payload = await response.json() as { ok?: boolean; message?: string };
+    if (!response.ok || !payload.ok) throw new Error(payload.message ?? "Failed to bind render source.");
+  }
+
+  async setRenderLayers(layers: readonly { readonly id: string; readonly sourceId?: string | null; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rotation: number; readonly scaleX: number; readonly scaleY: number; readonly opacity: number; readonly order: number }[]): Promise<void> {
+    const value = layers.map((layer) => [layer.id, layer.sourceId ?? "", layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.scaleX, layer.scaleY, layer.opacity, layer.order].join("|")).join(";");
+    const response = await fetch(this.baseUrl + `/render/layers?value=${encodeURIComponent(value)}`, { cache: "no-store" });
+    const payload = await response.json() as { ok?: boolean; message?: string };
+    if (!response.ok || !payload.ok) throw new Error(payload.message ?? "Failed to set native render layers.");
+  }
+
   async runtimeAdapters(): Promise<readonly NativeRuntimeAdapterStatus[]> {
     const response = await fetch(`${this.baseUrl}/runtime`, { cache: "no-store" });
     if (!response.ok) throw new Error(`Native runtime status failed (${response.status}).`);
