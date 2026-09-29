@@ -89,6 +89,9 @@ describe("project/output integration", () => {
     expect(output.syncFromScene(scene, source).map((state) => state.target.id)).toEqual(["display-1"]);
     const production = { ...scene, id: "production-scene", name: "Production", target: { kind: "production" as const, record: true, stream: true, virtual: true } };
     expect(output.syncFromScene(production, source).map((state) => state.target.id)).toEqual(["production"]);
+    expect(output.getActiveStates().map((state) => state.target.id)).toEqual(["production"]);
+    expect(output.syncFromScene(scene, source).map((state) => state.target.id)).toEqual(["display-1"]);
+    expect(output.getActiveStates().map((state) => state.target.id)).toEqual(["display-1"]);
     output.setMediaFeature("production", "stream", false);
     const streamOnly = { ...production, target: { kind: "production" as const, record: false, stream: true, virtual: false } };
     expect(output.syncFromScene(streamOnly, source)).toEqual([]);
