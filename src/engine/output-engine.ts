@@ -110,6 +110,7 @@ export class OutputEngine {
   }
 
   getState(targetId: string): OutputState { return this.requireState(targetId); }
+  list(): readonly OutputTarget[] { return [...this.targets.values()]; }
   getActiveStates(): readonly OutputState[] { return [...this.states.values()].filter(state => state.active); }
 
   private requireTarget(targetId: string): OutputTarget {
