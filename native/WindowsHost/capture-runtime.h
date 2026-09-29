@@ -40,6 +40,11 @@ struct NativeRenderLayer {
   float scaleY = 1.0f;
   float opacity = 1.0f;
   int order = 0;
+  float cropLeft = 0.0f;
+  float cropTop = 0.0f;
+  float cropRight = 0.0f;
+  float cropBottom = 0.0f;
+  std::string sliceId;
 };
 
 class MediaFoundationHost {
