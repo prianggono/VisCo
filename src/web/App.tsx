@@ -17,6 +17,7 @@ import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Slice } from "../domain/slice.js";
+import type { Composition } from "../domain/composition.js";
 import type { Scene } from "../domain/scene.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
@@ -58,6 +59,11 @@ const inputTypes: Array<{ label: string; kind: SourceKind; accept?: string }> = 
 
 export function App() {
   const [decks, setDecks] = useState(initialDecks);
+  const [compositions, setCompositions] = useState<Composition[]>([{
+    id: "default", name: "Default Composition",
+    format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+    deckIds: initialDecks.map((deck) => deck.id), groupIds: [], sliceIds: [], locked: false
+  }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
@@ -449,15 +455,9 @@ export function App() {
   };
 
   const buildProjectSnapshot = () => createProjectSnapshot({
-    compositions: [{
-      id: "default",
-      name: "Default Composition",
-      format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
-      deckIds: decks.map((deck) => deck.id),
-      groupIds: [],
-      sliceIds: slices.map((slice) => slice.id),
-      locked: false
-    }],
+    compositions: compositions.map((composition) => composition.id === "default"
+      ? { ...composition, deckIds: decks.map((deck) => deck.id), sliceIds: slices.map((slice) => slice.id) }
+      : composition),
     decks,
     groups: [],
     layers: decks.flatMap((deck) => deck.layers),
@@ -483,6 +483,7 @@ export function App() {
       const snapshot = parseProject(text);
       const loadedDecks = snapshot.decks as Deck[];
       setDecks(loadedDecks);
+      setCompositions([...snapshot.compositions]);
       deckRuntime.replaceAll(loadedDecks);
       programEngine.clear("default");
       setSlices([...snapshot.slices]);
