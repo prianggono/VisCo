@@ -22,63 +22,13 @@
 #include <atomic>
 #include <sstream>
 #include <cctype>
+#include "capture-runtime.h"
 
 using Microsoft::WRL::ComPtr;
 
 static void check(HRESULT hr, const char* what) {
   if (FAILED(hr)) throw std::runtime_error(what);
 }
-
-class D3D11Host {
-  ComPtr<ID3D11Device> device_;
-  ComPtr<ID3D11DeviceContext> context_;
-  ComPtr<IDXGISwapChain1> swap_;
-  ComPtr<ID3D11RenderTargetView> target_;
-public:
-  void initialize(HWND hwnd, UINT width, UINT height) {
-    UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#if defined(_DEBUG)
-    flags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-    D3D_FEATURE_LEVEL level{};
-    check(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, nullptr, 0,
-      D3D11_SDK_VERSION, &device_, &level, &context_), "D3D11CreateDevice failed");
-
-    ComPtr<IDXGIDevice> dxgiDevice;
-    check(device_.As(&dxgiDevice), "IDXGIDevice query failed");
-    ComPtr<IDXGIAdapter> adapter;
-    check(dxgiDevice->GetAdapter(&adapter), "DXGI adapter query failed");
-    ComPtr<IDXGIFactory2> factory;
-    check(adapter->GetParent(IID_PPV_ARGS(&factory)), "DXGI factory query failed");
-
-    DXGI_SWAP_CHAIN_DESC1 desc{};
-    desc.Width = width; desc.Height = height;
-    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    desc.SampleDesc.Count = 1;
-    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    desc.BufferCount = 2;
-    desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    check(factory->CreateSwapChainForHwnd(device_.Get(), hwnd, &desc, nullptr, nullptr, &swap_), "SwapChain creation failed");
-    resizeTarget(width, height);
-  }
-
-  void resizeTarget(UINT width, UINT height) {
-    if (!swap_) return;
-    target_.Reset();
-    check(swap_->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0), "ResizeBuffers failed");
-    ComPtr<ID3D11Texture2D> back;
-    check(swap_->GetBuffer(0, IID_PPV_ARGS(&back)), "Backbuffer query failed");
-    check(device_->CreateRenderTargetView(back.Get(), nullptr, &target_), "RTV creation failed");
-  }
-
-  void render() {
-    if (!target_) return;
-    const float clear[4] = {0.f,0.f,0.f,1.f};
-    context_->OMSetRenderTargets(1, target_.GetAddressOf(), nullptr);
-    context_->ClearRenderTargetView(target_.Get(), clear);
-    check(swap_->Present(1, 0), "Present failed");
-  }
-};
 
 class MediaFoundationHost {
 public:
@@ -118,24 +68,6 @@ public:
   std::vector<std::wstring> enumerateVideoDevices() {
     std::vector<std::wstring> result;
     for (const auto& item : enumerateVideoDeviceInfo()) result.push_back(item.name);
-    return result;
-  }
-};
-
-class WasapiHost {
-public:
-  std::vector<std::wstring> enumerate() {
-    ComPtr<IMMDeviceEnumerator> enumerator;
-    check(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator)), "MMDeviceEnumerator failed");
-    ComPtr<IMMDeviceCollection> collection;
-    check(enumerator->EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE, &collection), "EnumAudioEndpoints failed");
-    UINT count=0; collection->GetCount(&count);
-    std::vector<std::wstring> result;
-    for(UINT i=0;i<count;i++) {
-      ComPtr<IMMDevice> device; collection->Item(i,&device);
-      LPWSTR id=nullptr; device->GetId(&id);
-      if(id){ result.emplace_back(id); CoTaskMemFree(id); }
-    }
     return result;
   }
 };
@@ -183,6 +115,7 @@ class HttpControlServer {
   std::thread thread_;
   MediaFoundationHost* media_ = nullptr;
   WasapiHost* audio_ = nullptr;
+  MediaCaptureHost* capture_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
     std::ostringstream response;
@@ -207,6 +140,26 @@ class HttpControlServer {
       sendResponse(client, "{}", "204 No Content");
     } else if (requestLine.rfind("GET /health", 0) == 0) {
       sendResponse(client, R"({"available":true,"version":"native-host-1","backend":"d3d11","capture":"media-foundation","audio":"wasapi","led":"art-net"})");
+    } else if (requestLine.rfind("GET /capture/start", 0) == 0) {
+      const q = requestLine.find("device=");
+      std::string id = q == std::string::npos ? "" : requestLine.substr(q + 7);
+      const amp = id.find('&'); if (amp != std::string::npos) id.resize(amp);
+      if (id.rfind("win-video-", 0) != 0) {
+        sendResponse(client, R"({"ok":false,"message":"Invalid capture device id."})", "400 Bad Request");
+      } else {
+        try {
+          const size_t index = std::stoul(id.substr(10));
+          const auto devices = media_->enumerateVideoDeviceInfo();
+          if (index >= devices.size()) throw std::runtime_error("Capture device not found.");
+          capture_->start(devices[index].symbolicLink, 1280, 720, 30);
+          sendResponse(client, R"({"ok":true,"running":true,"device":")" + id + R"("})");
+        } catch (const std::exception& ex) {
+          sendResponse(client, std::string(R"({"ok":false,"message":")") + ex.what() + R"("})", "500 Internal Server Error");
+        }
+      }
+    } else if (requestLine.rfind("GET /capture/stop", 0) == 0) {
+      capture_->stop();
+      sendResponse(client, R"({"ok":true,"running":false})");
     } else if (requestLine.rfind("GET /devices", 0) == 0) {
       const auto q = requestLine.find("kind=");
       std::string kind = q == std::string::npos ? "" : requestLine.substr(q + 5);
@@ -258,8 +211,8 @@ class HttpControlServer {
   }
 
 public:
-  void start(MediaFoundationHost& media, WasapiHost& audio, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -301,15 +254,21 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     WasapiHost audio;
     const auto cameras=media.enumerateVideoDevices();
     const auto audioDevices=audio.enumerate();
+    MediaCaptureHost capture(media);
+    MjpegPreviewServer preview(capture);
+    preview.start(47822);
+    if (!media.enumerateVideoDeviceInfo().empty()) {
+      capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
+    }
     HttpControlServer http;
-    http.start(media, audio);
+    http.start(media, audio, capture);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
     MSG msg{};
     while(msg.message != WM_QUIT) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
-      renderer.render();
+      renderer.render(capture.latest());
       Sleep(33);
     }
     return 0;
