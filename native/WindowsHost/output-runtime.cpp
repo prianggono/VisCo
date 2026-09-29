@@ -15,6 +15,8 @@
 using Microsoft::WRL::ComPtr;
 
 namespace {
+enum OMTCodec { OMTCodec_BGRA = 0x41524742 };
+
 static void requireHr(HRESULT hr, const char* message) {
   if (FAILED(hr)) throw std::runtime_error(message);
 }
