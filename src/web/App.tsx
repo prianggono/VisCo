@@ -12,6 +12,7 @@ import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import { TriggerEngine, type TriggerAction } from "../engine/trigger-engine.js";
 import { SceneRuntime } from "../engine/scene-runtime.js";
 import { resolveAdvancedOutput } from "../engine/advanced-output.js";
+import { addSlicePoint, moveSlicePoint, removeSlicePoint, patchSliceMapping } from "../engine/slice-editor.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
@@ -874,7 +875,29 @@ export function App() {
 })()}
                   {item === "Slice" && (() => {
                     const selectedSlices = slices.filter((slice) => (selectedLayerModel?.sliceIds ?? []).includes(slice.id));
-                    return <><SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} /><div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div><div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>{selectedSlices.map((slice) => <div className="property-grid" key={slice.id}><label>Width<input type="number" min="1" value={slice.transform.width} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, width: Number(event.target.value) } } : item))} /></label><label>Height<input type="number" min="1" value={slice.transform.height} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, height: Number(event.target.value) } } : item))} /></label><label>X<input type="number" value={slice.transform.x} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, x: Number(event.target.value) } } : item))} /></label><label>Y<input type="number" value={slice.transform.y} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, y: Number(event.target.value) } } : item))} /></label></div>)}</>;
+                    const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
+                    return <>
+                      <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
+                      <div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div>
+                      <div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>
+                      {selectedSlices.map((slice) => <div key={slice.id}>
+                        <div className="property-grid">
+                          <label>Mode<select value={slice.mapping?.mode ?? "rectangle"} onChange={(event) => updateSlice(slice.id, (current) => patchSliceMapping(current, { mode: event.target.value as NonNullable<Slice["mapping"]>["mode"] }))}><option value="rectangle">Rectangle</option><option value="corner-pin">Corner Pin</option><option value="bezier">Bezier</option><option value="polygon">Polygon</option></select></label>
+                          <label>Width<input type="number" min="1" value={slice.transform.width} onChange={(event) => updateSlice(slice.id, (current) => ({ ...current, transform: { ...current.transform, width: Number(event.target.value) } }))} /></label>
+                          <label>Height<input type="number" min="1" value={slice.transform.height} onChange={(event) => updateSlice(slice.id, (current) => ({ ...current, transform: { ...current.transform, height: Number(event.target.value) } }))} /></label>
+                          <label>X<input type="number" value={slice.transform.x} onChange={(event) => updateSlice(slice.id, (current) => ({ ...current, transform: { ...current.transform, x: Number(event.target.value) } }))} /></label>
+                          <label>Y<input type="number" value={slice.transform.y} onChange={(event) => updateSlice(slice.id, (current) => ({ ...current, transform: { ...current.transform, y: Number(event.target.value) } }))} /></label>
+                        </div>
+                        {sliceEditorState.tool === "pen" && <div className="property-buttons">
+                          <button onClick={() => updateSlice(slice.id, (current) => addSlicePoint(current, { x: current.transform.x + current.transform.width / 2, y: current.transform.y + current.transform.height / 2 }))}>+ Point</button>
+                          {(slice.mapping?.points ?? []).map((point, pointIndex) => <div className="property-value" key={pointIndex}>
+                            <label>Point {pointIndex + 1} X<input type="number" value={point.x} onChange={(event) => updateSlice(slice.id, (current) => moveSlicePoint(current, pointIndex, { x: Number(event.target.value), y: current.mapping?.points?.[pointIndex]?.y ?? point.y }))} /></label>
+                            <label>Y<input type="number" value={point.y} onChange={(event) => updateSlice(slice.id, (current) => moveSlicePoint(current, pointIndex, { x: current.mapping?.points?.[pointIndex]?.x ?? point.x, y: Number(event.target.value) }))} /></label>
+                            <button onClick={() => updateSlice(slice.id, (current) => removeSlicePoint(current, pointIndex))}>×</button>
+                          </div>)}
+                        </div>}
+                      </div>)}
+                    </>;
                   })()}
                   {item === "Advanced" && <div className="property-empty">Advanced layer options.</div>}
                 </div>
