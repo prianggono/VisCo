@@ -29,6 +29,18 @@ export class LibraryEngine {
     }
   }
 
+  canRemove(sourceId: string, layers: readonly import("../domain/layer.js").Layer[] = []): boolean {
+    if (!this.sources.has(sourceId)) throw new Error(`Source "${sourceId}" does not exist.`);
+    return !layers.some((layer) => layer.sourceId === sourceId);
+  }
+
+  removeIfUnused(sourceId: string, layers: readonly import("../domain/layer.js").Layer[] = []): void {
+    if (!this.canRemove(sourceId, layers)) {
+      throw new Error(`Source "${sourceId}" is still used by a Layer.`);
+    }
+    this.remove(sourceId);
+  }
+
   get(sourceId: string): Source {
     const source = this.sources.get(sourceId);
     if (!source) throw new Error(`Source "${sourceId}" does not exist.`);
@@ -38,6 +50,16 @@ export class LibraryEngine {
   list(kind?: SourceKind): readonly Source[] {
     const all = [...this.sources.values()];
     return kind ? all.filter((source) => source.kind === kind) : all;
+  }
+
+  search(query: string): readonly Source[] {
+    const value = query.trim().toLowerCase();
+    if (!value) return this.list();
+    return this.list().filter((source) => source.name.toLowerCase().includes(value) || source.id.toLowerCase().includes(value));
+  }
+
+  sort(by: "name" | "kind" | "id" = "name"): readonly Source[] {
+    return [...this.list()].sort((a, b) => a[by].localeCompare(b[by]));
   }
 
   has(sourceId: string): boolean {
