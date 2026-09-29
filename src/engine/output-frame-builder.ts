@@ -53,24 +53,52 @@ export function createOutputFrame(
       .map((ref) => ref.layerId))
   )];
   const selectedLayerIds = new Set(layerIds);
-  const layers = program.layers
-    .filter((layer) => selectedLayerIds.has(layer.id))
-    .map((layer, index) => {
-      const t = layer.transform;
-      return {
-        id: layer.id,
-        sourceId: layer.sourceId ?? null,
-        x: t?.x ?? 0,
-        y: t?.y ?? 0,
-        width: format.width,
-        height: format.height,
-        rotation: t?.rotation ?? 0,
-        scaleX: t?.scaleX ?? 1,
-        scaleY: t?.scaleY ?? 1,
-        opacity: t?.opacity ?? 1,
-        order: layer.order ?? index
-      };
-    });
+  const layers = selectedSlices.length > 0
+    ? selectedSlices.flatMap((slice, sliceIndex) =>
+        program.layers
+          .filter((layer) => slice.layerRefs.some((ref) =>
+            ref.deckId === program.source?.deckId && ref.layerId === layer.id))
+          .map((layer, layerIndex) => {
+            const t = layer.transform;
+            const st = slice.transform;
+            return {
+              id: `${layer.id}@${slice.id}`,
+              sourceId: layer.sourceId ?? null,
+              x: st.x + (t?.x ?? 0),
+              y: st.y + (t?.y ?? 0),
+              width: st.width,
+              height: st.height,
+              rotation: st.rotation + (t?.rotation ?? 0),
+              scaleX: (st.scaleX ?? 1) * (t?.scaleX ?? 1),
+              scaleY: (st.scaleY ?? 1) * (t?.scaleY ?? 1),
+              opacity: t?.opacity ?? 1,
+              order: (layer.order ?? layerIndex) + sliceIndex * 100000,
+              ...(st.cropLeft !== undefined ? { cropLeft: st.cropLeft } : {}),
+              ...(st.cropTop !== undefined ? { cropTop: st.cropTop } : {}),
+              ...(st.cropRight !== undefined ? { cropRight: st.cropRight } : {}),
+              ...(st.cropBottom !== undefined ? { cropBottom: st.cropBottom } : {}),
+              sliceId: slice.id
+            };
+          })
+      )
+    : program.layers
+        .filter((layer) => selectedLayerIds.has(layer.id))
+        .map((layer, index) => {
+          const t = layer.transform;
+          return {
+            id: layer.id,
+            sourceId: layer.sourceId ?? null,
+            x: t?.x ?? 0,
+            y: t?.y ?? 0,
+            width: format.width,
+            height: format.height,
+            rotation: t?.rotation ?? 0,
+            scaleX: t?.scaleX ?? 1,
+            scaleY: t?.scaleY ?? 1,
+            opacity: t?.opacity ?? 1,
+            order: layer.order ?? index
+          };
+        });
 
   return {
     source: {
