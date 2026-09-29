@@ -155,3 +155,15 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [ ] Native Record/Stream/Virtual Output sinks still need to consume the same rendered GPU frame.
 - [ ] Native end-to-end Preview/Program control from the TypeScript application into the Windows host still needs the desktop transport bridge.
 - [ ] This change has not yet been validated by a completed Windows GitHub Actions run.
+
+
+## Native output path implementation — 2026-09-30
+
+- [x] Added native Media Foundation H.264 recording sink from the host frame path.
+- [x] Added native Virtual Output using a named Windows shared-memory frame surface with a stable header + BGRA payload.
+- [x] Added native NDI Stream sender through dynamic NDI SDK loading.
+- [x] Added native OMT Stream sender through dynamic libomt loading.
+- [x] Record + Virtual + Stream can be enabled independently through environment configuration.
+- [x] Output submission is fed from the same native frame selected for the D3D11 host in this runtime pass.
+- [ ] The final Composition/Slice GPU frame is not yet the source of these sinks; they currently consume the acquired native BGRA frame.
+- [ ] ASIO callback -> Audio Engine remains the next SDK-dependent native audio step.
