@@ -14,6 +14,7 @@ import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Slice } from "../domain/slice.js";
+import type { Scene } from "../domain/scene.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
@@ -93,6 +94,7 @@ export function App() {
     return engine;
   }, []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const [librarySearch, setLibrarySearch] = useState("");
   const [slices, setSlices] = useState<Slice[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
@@ -392,7 +394,11 @@ export function App() {
     groups: [],
     layers: decks.flatMap((deck) => deck.layers),
     slices,
-    scenes: [],
+    scenes: [
+      { id: "scene-display-1", name: "Display 1", compositionId: "default", target: { kind: "display", displayId: "display-1" }, enabled: true },
+      { id: "scene-display-2", name: "Display 2", compositionId: "default", target: { kind: "display", displayId: "display-2" }, enabled: true },
+      { id: "scene-production", name: "Production", compositionId: "default", target: { kind: "production", record: true, stream: true, virtual: true }, enabled: true }
+    ] as readonly Scene[],
     sources: libraryEngine.list(),
     outputs: outputEngine.list()
   });
@@ -411,15 +417,25 @@ export function App() {
   const loadProject = (file: File) => {
     file.text().then((text) => {
       const snapshot = parseProject(text);
-      setDecks(snapshot.decks as Deck[]);
+      const loadedDecks = snapshot.decks as Deck[];
+      setDecks(loadedDecks);
+      deckRuntime.replaceAll(loadedDecks);
+      programEngine.clear("default");
       setSlices([...snapshot.slices]);
       libraryEngine.replaceAll(snapshot.sources);
       setLibraryItems([...snapshot.sources]);
+      setLibrarySearch("");
+      if (snapshot.outputs.length > 0) outputEngine.replaceAll(snapshot.outputs);
+      setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
+      setRuntimeRevision((value) => value + 1);
+      setOutputRevision((value) => value + 1);
       setProjectMessage("Project loaded.");
     }).catch((error) => {
       setProjectMessage(error instanceof Error ? error.message : "Project load failed.");
     });
   };
+
+  const filteredLibraryItems = libraryItems.filter((item) => item.name.toLowerCase().includes(librarySearch.trim().toLowerCase()));
 
   const outputState = outputEngine.getState("media-output");
   const mediaSettings = outputState.target.media!;
@@ -481,7 +497,7 @@ export function App() {
       >
         <aside className="library panel">
           <div className="panel-title"><span>LIBRARY</span></div>
-          <div className="search">Search media…</div>
+          <input className="search" value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search media…" />
           <div
             className="library-dropzone"
             onDragOver={(event) => event.preventDefault()}
