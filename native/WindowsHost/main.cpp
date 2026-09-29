@@ -172,22 +172,22 @@ class HttpControlServer {
     } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
       const auto s = audioMixer_->stats();
       std::ostringstream body;
-      body << "{\\"processedFrames\\":" << s.processedFrames
-           << ",\\"underrunFrames\\":" << s.underrunFrames
-           << ",\\"sampleRate\\":" << s.sampleRate
-           << ",\\"channels\\":" << s.channels
-           << ",\\"masterGain\\":" << s.masterGain << "}";
+      body << "{\"processedFrames\":" << s.processedFrames
+           << ",\"underrunFrames\":" << s.underrunFrames
+           << ",\"sampleRate\":" << s.sampleRate
+           << ",\"channels\":" << s.channels
+           << ",\"masterGain\":" << s.masterGain << "}";
       sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /audio/mixer/master", 0) == 0) {
       const auto q = requestLine.find("gain=");
       if (q == std::string::npos) {
-        sendResponse(client, "{\\"ok\\":false,\\"message\\":\\"gain is required\\"}", "400 Bad Request");
+        sendResponse(client, "{\"ok\":false,\"message\":\"gain is required\"}", "400 Bad Request");
       } else {
         try {
           audioMixer_->setMasterGain(std::stof(requestLine.substr(q + 5)));
-          sendResponse(client, "{\\"ok\\":true}");
+          sendResponse(client, "{\"ok\":true}");
         } catch (...) {
-          sendResponse(client, "{\\"ok\\":false,\\"message\\":\\"invalid gain\\"}", "400 Bad Request");
+          sendResponse(client, "{\"ok\":false,\"message\":\"invalid gain\"}", "400 Bad Request");
         }
       }
     } else if (requestLine.rfind("GET /network/discover", 0) == 0) {
