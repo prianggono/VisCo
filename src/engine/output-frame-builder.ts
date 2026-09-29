@@ -24,8 +24,12 @@ export function createOutputFrame(
     throw new Error("Output frame number must be a non-negative integer.");
   }
 
+  const selectedSlices = scene.sliceIds === undefined
+    ? slices
+    : slices.filter((slice) => scene.sliceIds!.includes(slice.id));
+
   const layerIds = program.layers
-    .filter((layer) => slices.length === 0 || slices.some((slice) => slice.layerIds.includes(layer.id)))
+    .filter((layer) => selectedSlices.length === 0 || selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
     .map((layer) => layer.id);
 
   return {
@@ -38,7 +42,7 @@ export function createOutputFrame(
     },
     sceneId: scene.id,
     layerIds,
-    slices: slices.map((slice) => ({
+    slices: selectedSlices.map((slice) => ({
       id: slice.id,
       layerIds: [...slice.layerIds],
       transform: { ...slice.transform },
