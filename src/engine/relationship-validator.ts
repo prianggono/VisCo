@@ -57,7 +57,6 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     }
   }
   for (const group of graph.groups) for (const layerId of group.layerIds) if (!layerIds.has(layerId)) errors.push(`Group "${group.id}" references missing layer "${layerId}".`);
-  for (const slice of graph.slices) for (const layerId of slice.layerIds) if (!layerIds.has(layerId)) errors.push(`Slice "${slice.id}" references missing layer "${layerId}".`);
   for (const scene of graph.scenes ?? []) {
     if (!compositionIds.has(scene.compositionId)) errors.push(`Scene "${scene.id}" references missing composition "${scene.compositionId}".`);
     if (scene.target.kind === "display" && !scene.target.displayId.trim()) errors.push(`Scene "${scene.id}" requires a display target.`);
