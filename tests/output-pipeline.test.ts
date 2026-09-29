@@ -30,7 +30,7 @@ const slices = [{
   id: "slice-1",
   name: "Screen A",
   transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
-  layerIds: ["layer-1"],
+  layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }],
   locked: false
 }];
 
