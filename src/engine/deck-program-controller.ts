@@ -15,6 +15,10 @@ export class DeckProgramController {
     private readonly outputEngine?: OutputEngine
   ) {}
 
+  setMasterLevel(deckId: string, level: number): DeckRuntimeState {
+    return this.deckRuntime.setMasterLevel(deckId, level);
+  }
+
   preview(deck: Deck, layerId: string): DeckRuntimeState {
     return this.deckRuntime.previewLayer(deck, layerId);
   }
