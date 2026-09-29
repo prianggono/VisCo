@@ -54,7 +54,21 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
     }
   }
-  for (const group of graph.groups) for (const layerId of group.layerIds) if (!layerIds.has(layerId)) errors.push(`Group "${group.id}" references missing layer "${layerId}".`);
+  for (const group of graph.groups) {
+    const ownerComposition = graph.compositions.find((composition) => composition.groupIds.includes(group.id));
+    for (const layerId of group.layerIds) {
+      if (!layerIds.has(layerId)) {
+        errors.push(`Group "${group.id}" references missing layer "${layerId}".`);
+        continue;
+      }
+      if (ownerComposition) {
+        const ownerDeck = graph.decks.find((deck) => deck.layers.some((layer) => layer.id === layerId));
+        if (ownerDeck && !ownerComposition.deckIds.includes(ownerDeck.id)) {
+          errors.push(`Group "${group.id}" references layer "${layerId}" outside composition "${ownerComposition.id}".`);
+        }
+      }
+    }
+  }
   for (const slice of graph.slices) {
     const ownerComposition = graph.compositions.find((composition) => composition.sliceIds.includes(slice.id));
     for (const ref of slice.layerRefs) {
@@ -75,7 +89,16 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     if (!compositionIds.has(scene.compositionId)) errors.push(`Scene "${scene.id}" references missing composition "${scene.compositionId}".`);
     if (scene.target.kind === "display" && !scene.target.displayId.trim()) errors.push(`Scene "${scene.id}" requires a display target.`);
     if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) errors.push(`Production Scene "${scene.id}" must enable at least one production output.`);
-    for (const sliceId of scene.sliceIds ?? []) if (!sliceIds.has(sliceId)) errors.push(`Scene "${scene.id}" references missing slice "${sliceId}".`);
+    for (const sliceId of scene.sliceIds ?? []) {
+      if (!sliceIds.has(sliceId)) {
+        errors.push(`Scene "${scene.id}" references missing slice "${sliceId}".`);
+        continue;
+      }
+      const ownerComposition = graph.compositions.find((composition) => composition.sliceIds.includes(sliceId));
+      if (ownerComposition && ownerComposition.id !== scene.compositionId) {
+        errors.push(`Scene "${scene.id}" references slice "${sliceId}" outside composition "${scene.compositionId}".`);
+      }
+    }
   }
   return { valid: errors.length === 0, errors };
 }
