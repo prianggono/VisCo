@@ -50,3 +50,5 @@ export type { VirtualOutputConfig, VirtualOutputStatus, VirtualOutputBridge } fr
 
 export * from "./native/network-frame-source.js";
 export * from "./native/media-decoder.js";
+
+export * from "./native/native-host-http.js";
