@@ -44,6 +44,7 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     if (!compositionIds.has(scene.compositionId)) errors.push(`Scene "${scene.id}" references missing composition "${scene.compositionId}".`);
     if (scene.target.kind === "display" && !scene.target.displayId.trim()) errors.push(`Scene "${scene.id}" requires a display target.`);
     if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) errors.push(`Production Scene "${scene.id}" must enable at least one production output.`);
+    for (const sliceId of scene.sliceIds ?? []) if (!sliceIds.has(sliceId)) errors.push(`Scene "${scene.id}" references missing slice "${sliceId}".`);
   }
   return { valid: errors.length === 0, errors };
 }
