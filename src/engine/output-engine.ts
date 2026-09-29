@@ -1,4 +1,5 @@
 import type { DeckLayerRef } from "../domain/deck.js";
+import type { Scene } from "../domain/scene.js";
 import type {
   MediaOutputKind,
   OutputTarget,
@@ -101,6 +102,23 @@ export class OutputEngine {
         (state.target.compositionId === undefined || state.target.compositionId === compositionId)
       )
       .map(state => this.route(state.target.id, currentLayer));
+  }
+
+  /** Route the current Program source only to the outputs selected by an active Scene. */
+  syncFromScene(scene: Scene, source: DeckLayerRef): readonly OutputState[] {
+    if (!scene.enabled) throw new Error(`Scene "${scene.id}" is disabled.`);
+    if (scene.target.kind === "display") {
+      const target = this.requireTarget(scene.target.displayId);
+      if (target.kind !== "display") throw new Error(`Scene "${scene.id}" targets non-display output "${target.id}".`);
+      if (!target.enabled) return [];
+      return [this.route(target.id, source)];
+    }
+
+    const target = this.requireTarget("production");
+    if (target.kind !== "media" || !target.media) throw new Error(`Scene "${scene.id}" requires the production media output.`);
+    if (!target.enabled) return [];
+    const mediaEnabled = target.media.streaming || target.media.recording || target.media.virtual;
+    return mediaEnabled ? [this.route(target.id, source)] : [];
   }
 
   stop(targetId: string): OutputState {
