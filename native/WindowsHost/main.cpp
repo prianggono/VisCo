@@ -216,8 +216,20 @@ public:
 };
 
 static LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
+  if(msg==WM_KEYDOWN && w==VK_ESCAPE){ PostQuitMessage(0); return 0; }
   if(msg==WM_DESTROY){ PostQuitMessage(0); return 0; }
   return DefWindowProc(hwnd,msg,w,l);
+}
+
+static std::vector<RECT> enumerateMonitorRects() {
+  std::vector<RECT> rects;
+  EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR monitor, HDC, LPRECT rect, LPARAM data)->BOOL {
+    auto* list = reinterpret_cast<std::vector<RECT>*>(data);
+    MONITORINFO info{}; info.cbSize=sizeof(info);
+    if(GetMonitorInfoW(monitor,&info)) list->push_back(info.rcMonitor);
+    return TRUE;
+  }, reinterpret_cast<LPARAM>(&rects));
+  return rects;
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
@@ -226,14 +238,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const wchar_t* cls=L"VisCoNativeHost";
     WNDCLASSW wc{}; wc.lpfnWndProc=windowProc; wc.hInstance=instance; wc.lpszClassName=cls;
     RegisterClassW(&wc);
-    HWND hwnd=CreateWindowExW(0,cls,L"VisCo Native Host",WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT,CW_USEDEFAULT,1280,720,nullptr,nullptr,instance,nullptr);
+    const auto monitors = enumerateMonitorRects();
+    const bool physicalOutput = monitors.size() >= 2;
+    const RECT outputRect = physicalOutput ? monitors[1] : RECT{CW_USEDEFAULT,CW_USEDEFAULT,1280,720};
+    const DWORD style = physicalOutput ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+    const int outputWidth = physicalOutput ? (outputRect.right-outputRect.left) : 1280;
+    const int outputHeight = physicalOutput ? (outputRect.bottom-outputRect.top) : 720;
+    HWND hwnd=CreateWindowExW(physicalOutput ? WS_EX_TOPMOST : 0,cls,L"VisCo Native Host",style,
+      physicalOutput ? outputRect.left : CW_USEDEFAULT,
+      physicalOutput ? outputRect.top : CW_USEDEFAULT,
+      outputWidth,outputHeight,nullptr,nullptr,instance,nullptr);
     if(!hwnd) throw std::runtime_error("CreateWindowEx failed");
-    ShowWindow(hwnd,show);
+    ShowWindow(hwnd, physicalOutput ? SW_SHOW : show);
 
     MediaFoundationHost media;
     D3D11Host renderer;
-    renderer.initialize(hwnd,1280,720);
+    renderer.initialize(hwnd,static_cast<UINT>(outputWidth),static_cast<UINT>(outputHeight));
     WasapiHost audio;
     const auto cameras=media.enumerateVideoDevices();
     const auto audioDevices=audio.enumerate();
