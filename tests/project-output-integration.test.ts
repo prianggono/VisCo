@@ -7,7 +7,7 @@ import { toD3D11RenderFrame } from "../src/engine/d3d11-output-adapter.js";
 import type { Deck } from "../src/domain/deck.js";
 import type { Scene } from "../src/domain/scene.js";
 
-const layer = { id: "layer-1", name: "Layer 1", order: 0, sliceIds: ["slice-1"] };
+const layer = { id: "layer-1", name: "Layer 1", order: 0 };
 const deck: Deck = {
   id: "deck-1",
   name: "Deck 1",
