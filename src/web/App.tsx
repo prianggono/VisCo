@@ -11,6 +11,7 @@ import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import { TriggerEngine, type TriggerAction } from "../engine/trigger-engine.js";
 import { SceneRuntime } from "../engine/scene-runtime.js";
+import { resolveAdvancedOutput } from "../engine/advanced-output.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
@@ -508,8 +509,12 @@ export function App() {
   const activateScene = (sceneId: string) => {
     try {
       const state = sceneRuntime.activate(sceneId);
+      const scene = sceneRuntime.getActive(state.compositionId);
       const program = programEngine.getState(state.compositionId);
-      if (program.source) outputEngine.syncFromScene(sceneRuntime.getActive(state.compositionId)!, program.source);
+      const composition = buildProjectSnapshot().compositions.find((item) => item.id === state.compositionId);
+      if (!scene || !composition) throw new Error(`Scene "${sceneId}" has no matching composition.`);
+      resolveAdvancedOutput(scene, composition, outputEngine.list(), slices);
+      if (program.source) outputEngine.syncFromScene(scene, program.source);
       setActiveSceneId(sceneId);
       setOutputRevision((value) => value + 1);
       setProjectMessage("Scene " + sceneId + " active.");
@@ -524,16 +529,30 @@ export function App() {
     outputEngine.setEnabled(targetId, enabled);
     if (enabled) {
       const program = programEngine.getState("default");
-      if (program.source) {
-        outputEngine.syncFromProgram(program.source, program.compositionId);
-        outputEngine.syncFromDeck(program.source.deckId, program.source);
+      const scene = sceneRuntime.getActive(program.compositionId);
+      if (program.source && scene) {
+        try {
+          outputEngine.syncFromScene(scene, program.source);
+        } catch (error) {
+          setProjectMessage(error instanceof Error ? error.message : "Output routing failed.");
+        }
       }
     }
     setOutputRevision((value) => value + 1);
   };
 
   const toggleMediaFeature = (feature: "stream" | "record" | "virtual") => {
-    outputEngine.setMediaFeature("production", feature, !mediaSettings[feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual"]);
+    const key = feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual";
+    outputEngine.setMediaFeature("production", feature, !mediaSettings[key]);
+    const program = programEngine.getState("default");
+    const scene = sceneRuntime.getActive(program.compositionId);
+    if (program.source && scene?.target.kind === "production") {
+      try {
+        outputEngine.syncFromScene(scene, program.source);
+      } catch (error) {
+        setProjectMessage(error instanceof Error ? error.message : "Production routing failed.");
+      }
+    }
     setOutputRevision((value) => value + 1);
   };
 
