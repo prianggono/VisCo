@@ -52,6 +52,25 @@ export function createOutputFrame(
       .filter((ref) => programLayerIds.has(ref.layerId) && ref.deckId === program.source?.deckId)
       .map((ref) => ref.layerId))
   )];
+  const selectedLayerIds = new Set(layerIds);
+  const layers = program.layers
+    .filter((layer) => selectedLayerIds.has(layer.id))
+    .map((layer, index) => {
+      const t = layer.transform;
+      return {
+        id: layer.id,
+        sourceId: layer.sourceId ?? null,
+        x: t?.x ?? 0,
+        y: t?.y ?? 0,
+        width: format.width,
+        height: format.height,
+        rotation: t?.rotation ?? 0,
+        scaleX: t?.scaleX ?? 1,
+        scaleY: t?.scaleY ?? 1,
+        opacity: t?.opacity ?? 1,
+        order: layer.order ?? index
+      };
+    });
 
   return {
     source: {
@@ -63,6 +82,7 @@ export function createOutputFrame(
     },
     sceneId: scene.id,
     layerIds,
+    layers,
     slices: selectedSlices.map((slice) => ({
       id: slice.id,
       layerRefs: slice.layerRefs.map((ref) => ({ ...ref })),
