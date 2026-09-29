@@ -6,6 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <cstdlib>
 
 namespace {
 using OMTReceive = long long;
