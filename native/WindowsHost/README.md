@@ -26,3 +26,25 @@ The Windows host exposes a loopback HTTP control endpoint on 127.0.0.1:47821 for
 Video classification is performed by the Windows Media Foundation device category, not by React or device-name heuristics. The UI never guesses whether a device is a camera or capture card.
 
 The current host provides native discovery and Art-Net transport plus the D3D11/MF/WASAPI runtime boundary. NDI, OMT and ASIO remain external-SDK adapters and are intentionally not faked as implemented when their SDKs are absent.
+
+
+## Live native frame path
+
+The Windows host now contains a real capture-to-render vertical slice:
+
+`Media Foundation capture device -> IMFSourceReader (RGB32) -> native frame buffer -> D3D11 texture/shader -> swap chain`.
+
+The first detected video device is started automatically at 1280x720/30 FPS. The control API can switch capture with:
+
+- `GET /capture/start?device=win-video-N`
+- `GET /capture/stop`
+- `GET /runtime`
+
+A local MJPEG preview is exposed at `http://127.0.0.1:47822/preview.mjpg` for the web Preview/Program monitors. This HTTP/MJPEG path is a development/bridge path; the production render path remains native D3D11.
+
+Media Foundation Source Reader is used from an already-created capture media source, which is the Windows-supported pattern for capture devices. The reader is configured for RGB32 and requested frame size/rate, with a resilient fallback when a device rejects the exact mode.
+
+NDI, OMT, and ASIO are **runtime-discovered, not bundled**. The native host probes their runtime libraries and exposes availability through `/runtime`. Protocol-specific ABI bindings remain an adapter boundary and are only activated when the corresponding SDK/runtime is installed; no proprietary SDK is copied into VisCo.
+
+For OMT, the expected native runtime is the official `libomt` family (with `libvmx` for VMX codec support). For NDI, the host probes the Processing.NDI runtime DLL. For ASIO, the host probes an installed ASIO runtime DLL. Environment variables `VISCO_NDI_DLL`, `VISCO_OMT_DLL`, and `VISCO_ASIO_DLL` can override library discovery.
+
