@@ -130,7 +130,8 @@ NativeOutputRuntime::~NativeOutputRuntime(){stop();}
 void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT height, UINT fps){
   try{
     if(path.empty()) throw std::runtime_error("Record path is empty.");
-    stop();
+    if(impl_->writer){ impl_->writer->Finalize(); impl_->writer.Reset(); }
+    recording_=false;
     impl_->width=width; impl_->height=height; impl_->fps=fps;
     ComPtr<IMFAttributes> attrs;
     requireHr(MFCreateAttributes(&attrs,1),"Record attributes failed");
@@ -165,7 +166,9 @@ void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT 
 
 void NativeOutputRuntime::startVirtual(const std::string& mappingName, UINT width, UINT height, UINT fps){
   try{
-    stop();
+    if(impl_->mapped){ UnmapViewOfFile(impl_->mapped); impl_->mapped=nullptr; }
+    if(impl_->mapping){ CloseHandle(impl_->mapping); impl_->mapping=nullptr; }
+    virtualOutput_=false;
     impl_->width=width; impl_->height=height; impl_->fps=fps;
     const size_t frameBytes=static_cast<size_t>(width)*height*4;
     impl_->mappingSize=sizeof(VirtualHeader)+frameBytes;
@@ -233,7 +236,6 @@ void NativeOutputRuntime::submit(const std::shared_ptr<const NativeVideoFrame>& 
 void NativeOutputRuntime::stop(){
   if(!impl_)return;
   if(recording_&&impl_->writer){impl_->writer->Finalize();impl_->writer.Reset();}
-  if(mapped){} 
   if(impl_->mapped){UnmapViewOfFile(impl_->mapped);impl_->mapped=nullptr;}
   if(impl_->mapping){CloseHandle(impl_->mapping);impl_->mapping=nullptr;}
   if(impl_->omtSender){impl_->omt.destroy(impl_->omtSender);impl_->omtSender=nullptr;}
