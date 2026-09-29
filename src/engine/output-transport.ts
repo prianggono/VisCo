@@ -27,15 +27,19 @@ export class OutputTransportRegistry {
 
   async send(frame: OutputFrame): Promise<readonly { id: string; ok: boolean; error?: string }[]> {
     const results: { id: string; ok: boolean; error?: string }[] = [];
-    for (const transport of this.transports.values()) {
+    const sends = [...this.transports.values()].map(async (transport) => {
       try {
         await transport.send(frame);
-        results.push({ id: transport.id, ok: true });
+        return { id: transport.id, ok: true as const };
       } catch (error) {
-        results.push({ id: transport.id, ok: false, error: error instanceof Error ? error.message : "Output transport failed." });
+        return {
+          id: transport.id,
+          ok: false as const,
+          error: error instanceof Error ? error.message : "Output transport failed."
+        };
       }
-    }
-    return results;
+    });
+    return Promise.all(sends);
   }
 
   get(id: string): OutputTransport | null { return this.transports.get(id) ?? null; }
