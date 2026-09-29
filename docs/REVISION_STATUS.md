@@ -93,3 +93,16 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [ ] Project file/UI view-layout persistence and the remaining Trigger/Advanced/Slice visual editor adapters still need the application-level wiring.
 - [ ] License verification/enforcement/watermark remains intentionally excluded.
 - CI is running for the latest runtime-contract test commit; completion is recorded only after GitHub reports the final result.
+
+
+## Native runtime boundary pass — 2026-09-29
+
+- [x] Hardened D3D11 runtime lifecycle and capability/frame validation.
+- [x] Added Windows media output boundary for stream/record.
+- [x] Added Virtual Output boundary using the shared OutputFrame/Scene composition.
+- [x] Added Windows video runtime lifecycle for camera and USB capture.
+- [x] Added native media decoder lifecycle boundary for Media Foundation/FFmpeg backends.
+- [x] Added native network frame boundary covering NDI, OMT and IP Camera without protocol logic in React.
+- [x] Added regression tests for all new native boundaries.
+- [ ] Actual Windows-native host implementations still require the native host layer; the TypeScript boundaries deliberately do not fake GPU/device/protocol behavior.
+- [ ] License work remains excluded.
