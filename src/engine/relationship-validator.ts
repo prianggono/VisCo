@@ -49,14 +49,28 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     for (const sliceId of composition.sliceIds) if (!sliceIds.has(sliceId)) errors.push(`Composition "${composition.id}" references missing slice "${sliceId}".`);
   }
   for (const deck of graph.decks) {
-    if (deck.compositionId !== undefined && !compositionIds.has(deck.compositionId)) errors.push(`Deck "${deck.id}" references missing composition "${deck.compositionId}".`);
     for (const layer of deck.layers) {
       if (!layerIds.has(layer.id)) errors.push(`Deck "${deck.id}" contains unregistered layer "${layer.id}".`);
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
-      for (const sliceId of layer.sliceIds ?? []) if (!sliceIds.has(sliceId)) errors.push(`Layer "${layer.id}" references missing slice "${sliceId}".`);
     }
   }
   for (const group of graph.groups) for (const layerId of group.layerIds) if (!layerIds.has(layerId)) errors.push(`Group "${group.id}" references missing layer "${layerId}".`);
+  for (const slice of graph.slices) {
+    const ownerComposition = graph.compositions.find((composition) => composition.sliceIds.includes(slice.id));
+    for (const ref of slice.layerRefs) {
+      const deck = graph.decks.find((candidate) => candidate.id === ref.deckId);
+      if (!deck) {
+        errors.push(`Slice "${slice.id}" references missing deck "${ref.deckId}".`);
+        continue;
+      }
+      if (!deck.layers.some((layer) => layer.id === ref.layerId)) {
+        errors.push(`Slice "${slice.id}" references missing layer "${ref.layerId}" in deck "${ref.deckId}".`);
+      }
+      if (ownerComposition && !ownerComposition.deckIds.includes(ref.deckId)) {
+        errors.push(`Slice "${slice.id}" references deck "${ref.deckId}" outside composition "${ownerComposition.id}".`);
+      }
+    }
+  }
   for (const scene of graph.scenes ?? []) {
     if (!compositionIds.has(scene.compositionId)) errors.push(`Scene "${scene.id}" references missing composition "${scene.compositionId}".`);
     if (scene.target.kind === "display" && !scene.target.displayId.trim()) errors.push(`Scene "${scene.id}" requires a display target.`);
