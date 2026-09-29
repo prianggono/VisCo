@@ -28,6 +28,19 @@ struct NativeVideoFrame {
   std::vector<unsigned char> bgra;
 };
 
+struct NativeRenderLayer {
+  std::shared_ptr<const NativeVideoFrame> frame;
+  float x = 0.0f;
+  float y = 0.0f;
+  float width = 1.0f;
+  float height = 1.0f;
+  float rotation = 0.0f;
+  float scaleX = 1.0f;
+  float scaleY = 1.0f;
+  float opacity = 1.0f;
+  int order = 0;
+};
+
 class MediaFoundationHost {
 public:
   MediaFoundationHost();
@@ -62,6 +75,7 @@ class D3D11Host {
 public:
   void initialize(HWND hwnd, UINT width, UINT height);
   std::shared_ptr<const NativeVideoFrame> render(const std::shared_ptr<const NativeVideoFrame>& frame);
+  std::shared_ptr<const NativeVideoFrame> renderComposition(const std::vector<NativeRenderLayer>& layers);
   std::shared_ptr<const NativeVideoFrame> latestFinal() const;
   void resizeTarget(UINT width, UINT height);
 private:
