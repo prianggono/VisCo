@@ -29,7 +29,9 @@ export function createOutputFrame(
     : slices.filter((slice) => scene.sliceIds!.includes(slice.id));
 
   const layerIds = program.layers
-    .filter((layer) => selectedSlices.length === 0 || selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
+    .filter((layer) => scene.sliceIds === undefined
+      ? (selectedSlices.length === 0 || selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
+      : selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
     .map((layer) => layer.id);
 
   return {
