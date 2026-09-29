@@ -108,6 +108,14 @@ export class OutputEngine {
   /** Route the current Program source only to the outputs selected by an active Scene. */
   syncFromScene(scene: Scene, source: DeckLayerRef): readonly OutputState[] {
     if (!scene.enabled) throw new Error(`Scene "${scene.id}" is disabled.`);
+
+    // Scene is the routing authority. Clear other canonical outputs first so
+    // switching Scene cannot leave a previous display/production route active.
+    for (const state of this.states.values()) {
+      if (state.active && state.target.enabled) {
+        this.states.set(state.target.id, { ...state, active: false });
+      }
+    }
     if (scene.target.kind === "display") {
       const target = this.requireTarget(scene.target.displayId);
       if (target.compositionId !== undefined && target.compositionId !== scene.compositionId) {
