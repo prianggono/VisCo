@@ -135,7 +135,16 @@ export function App() {
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    deckProgramController.program(deck, layerId);
+    deckProgramController.program(deck, layerId, { syncOutputs: false });
+    const scene = sceneRuntime.getActive(deck.compositionId ?? "default");
+    const program = programEngine.getState(deck.compositionId ?? "default");
+    if (scene && program.source) {
+      try {
+        outputEngine.syncFromScene(scene, program.source);
+      } catch (error) {
+        setProjectMessage(error instanceof Error ? error.message : "Program output routing failed.");
+      }
+    }
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
   };
