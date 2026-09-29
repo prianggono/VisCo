@@ -25,6 +25,24 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
   const sliceIds = new Set(graph.slices.map((item) => item.id));
   const sourceIds = new Set((graph.sources ?? []).map((item) => item.id));
 
+  const collections: readonly [string, readonly { readonly id: string }[]][] = [
+    ["composition", graph.compositions],
+    ["deck", graph.decks],
+    ["group", graph.groups],
+    ["layer", graph.layers],
+    ["slice", graph.slices],
+    ["source", graph.sources ?? []],
+    ["scene", graph.scenes ?? []]
+  ];
+  for (const [label, items] of collections) {
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (!item.id.trim()) errors.push(`${label} id cannot be empty.`);
+      else if (seen.has(item.id)) errors.push(`Duplicate ${label} id "${item.id}".`);
+      else seen.add(item.id);
+    }
+  }
+
   for (const composition of graph.compositions) {
     for (const deckId of composition.deckIds) if (!deckIds.has(deckId)) errors.push(`Composition "${composition.id}" references missing deck "${deckId}".`);
     for (const groupId of composition.groupIds) if (!groupIds.has(groupId)) errors.push(`Composition "${composition.id}" references missing group "${groupId}".`);
