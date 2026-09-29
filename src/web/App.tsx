@@ -451,11 +451,7 @@ export function App() {
     groups: [],
     layers: decks.flatMap((deck) => deck.layers),
     slices,
-    scenes: [
-      { id: "scene-display-1", name: "Display 1", compositionId: "default", target: { kind: "display", displayId: "display-1" }, enabled: true },
-      { id: "scene-display-2", name: "Display 2", compositionId: "default", target: { kind: "display", displayId: "display-2" }, enabled: true },
-      { id: "scene-production", name: "Production", compositionId: "default", target: { kind: "production", record: true, stream: true, virtual: true }, enabled: true }
-    ] as readonly Scene[],
+    scenes: sceneRuntime.list(),
     sources: libraryEngine.list(),
     outputs: outputEngine.list()
   });
@@ -482,9 +478,17 @@ export function App() {
       libraryEngine.replaceAll(snapshot.sources);
       setLibraryItems([...snapshot.sources]);
       setLibrarySearch("");
-      if (snapshot.outputs.length > 0) outputEngine.replaceAll(snapshot.outputs);
-      sceneRuntime.replaceAll(snapshot.scenes.length > 0 ? snapshot.scenes : defaultScenes);
-      setActiveSceneId((snapshot.scenes.find((scene) => scene.enabled)?.id ?? "scene-display-1"));
+      const persistedOutputs = snapshot.outputs.length > 0 ? snapshot.outputs : outputEngine.list();
+      const persistedById = new Map(persistedOutputs.map((output) => [output.id, output]));
+      const canonicalOutputs = outputEngine.list().map((output) => persistedById.get(output.id) ?? output);
+      const extraOutputs = persistedOutputs.filter((output) => !canonicalOutputs.some((canonical) => canonical.id === output.id));
+      outputEngine.replaceAll([...canonicalOutputs, ...extraOutputs]);
+      const restoredScenes = snapshot.scenes.length > 0 ? snapshot.scenes : defaultScenes;
+      sceneRuntime.replaceAll(restoredScenes);
+      const restoredSceneId = restoredScenes.find((scene) => scene.enabled)?.id ?? restoredScenes[0]?.id ?? "scene-display-1";
+      setActiveSceneId(restoredSceneId);
+      if (restoredScenes.some((scene) => scene.id === restoredSceneId && scene.enabled)) sceneRuntime.activate(restoredSceneId);
+      audioEngine.replaceAll(loadedDecks.filter((deck) => deck.kind === "audio").map((deck) => deck.id));
       setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
       setRuntimeRevision((value) => value + 1);
       setOutputRevision((value) => value + 1);
@@ -502,8 +506,11 @@ export function App() {
 
   const activateScene = (sceneId: string) => {
     try {
-      sceneRuntime.activate(sceneId);
+      const state = sceneRuntime.activate(sceneId);
+      const program = programEngine.getState(state.compositionId);
+      if (program.source) outputEngine.syncFromScene(sceneRuntime.getActive(state.compositionId)!, program.source);
       setActiveSceneId(sceneId);
+      setOutputRevision((value) => value + 1);
       setProjectMessage("Scene " + sceneId + " active.");
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Scene activation failed.");
@@ -525,7 +532,7 @@ export function App() {
   };
 
   const toggleMediaFeature = (feature: "stream" | "record" | "virtual") => {
-    outputEngine.setMediaFeature("media-output", feature, !mediaSettings[feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual"]);
+    outputEngine.setMediaFeature("production", feature, !mediaSettings[feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual"]);
     setOutputRevision((value) => value + 1);
   };
 
