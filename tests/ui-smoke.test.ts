@@ -56,4 +56,7 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await page.getByRole("button", { name: "STREAM", exact: true }).click();
   await page.getByRole("button", { name: "RECORD", exact: true }).click();
   await page.getByRole("button", { name: "VIRTUAL OUT", exact: true }).click();
+  await page.getByTitle("Stream settings").click();
+  await expect(page.getByText("STREAM SETTINGS", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "CLOSE", exact: true }).click();
 });
