@@ -335,7 +335,16 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::render(const std::shared_ptr<
   finalFrame->timestampUs = frame ? frame->timestampUs : 0;
 
   swap_->Present(0,0);
+  {
+    std::lock_guard<std::mutex> lock(finalMutex_);
+    latestFinal_ = finalFrame;
+  }
   return finalFrame;
+}
+
+std::shared_ptr<const NativeVideoFrame> D3D11Host::latestFinal() const {
+  std::lock_guard<std::mutex> lock(finalMutex_);
+  return latestFinal_;
 }
 
 MjpegPreviewServer::~MjpegPreviewServer() {
@@ -417,7 +426,7 @@ void MjpegPreviewServer::streamClient(SOCKET client) {
   if(!sendAll(client,headers.data(),headers.size())){closesocket(client);return;}
   UINT64 last=0;
   while(running_) {
-    auto frame=capture_.latest();
+    auto frame=renderer_.latestFinal();
     if(frame && frame->timestampUs!=last) {
       try {
         auto jpeg=encodeJpeg(*frame);
