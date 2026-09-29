@@ -21,7 +21,7 @@ public:
   NetworkFrameRuntime();
   ~NetworkFrameRuntime();
 
-  bool available(NetworkProtocol protocol) const;
+  bool available(NetworkProtocol protocol);
   std::vector<NetworkSourceInfo> discover(NetworkProtocol protocol);
   void start(NetworkProtocol protocol, const std::string& source);
   void stop();
