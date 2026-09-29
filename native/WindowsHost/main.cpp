@@ -212,7 +212,7 @@ class HttpControlServer {
       std::string kind = q == std::string::npos ? "" : requestLine.substr(q + 5);
       const auto amp = kind.find('&'); if (amp != std::string::npos) kind.resize(amp);
       if (kind == "camera" || kind == "video-capture" || kind == "desktop-capture") {
-        const devices = media_->enumerateVideoDeviceInfo();
+        const auto devices = media_->enumerateVideoDeviceInfo();
         std::ostringstream body; body << "{\"devices\":[";
         bool first = true;
         for (size_t i=0;i<devices.size();++i) {
