@@ -48,3 +48,26 @@ NDI, OMT, and ASIO are **runtime-discovered, not bundled**. The native host prob
 
 For OMT, the expected native runtime is the official `libomt` family (with `libvmx` for VMX codec support). For NDI, the host probes the Processing.NDI runtime DLL. For ASIO, the host probes an installed ASIO runtime DLL. Environment variables `VISCO_NDI_DLL`, `VISCO_OMT_DLL`, and `VISCO_ASIO_DLL` can override library discovery.
 
+
+
+## Native network frame acquisition
+
+The Windows host now has a real native network receive path for NDI and OMT. The receiver produces the same `NativeVideoFrame` used by the D3D11 renderer; React/TypeScript does not implement protocol logic.
+
+Environment startup:
+
+- `VISCO_NETWORK_PROTOCOL=ndi` or `omt`
+- `VISCO_NETWORK_SOURCE=<NDI source name or OMT address>`
+
+HTTP control endpoints on loopback port 47821:
+
+- `GET /network/discover?protocol=ndi`
+- `GET /network/discover?protocol=omt`
+- `GET /network/start?protocol=ndi&source=<source>`
+- `GET /network/start?protocol=omt&source=<address>`
+- `GET /network/stop`
+- `GET /network/status`
+
+If the requested SDK/runtime is not installed, the network receiver stays offline and the host can continue using Media Foundation capture. No missing SDK is treated as a fatal application condition.
+
+The D3D11 host is paced at the project's 30 FPS default. The network receiver itself does not force 60 FPS or create an independent render loop.
