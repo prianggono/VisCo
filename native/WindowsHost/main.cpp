@@ -389,8 +389,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
       const auto networkFrame = network.latest();
       const auto frame = network.running() ? networkFrame : capture.latest();
-      renderer.render(frame);
-      outputs.submit(frame, outputFrameNumber++);
+      const auto finalFrame = renderer.render(frame);
+      outputs.submit(finalFrame, outputFrameNumber++);
       Sleep(33);
     }
     if (SUCCEEDED(co)) CoUninitialize();
