@@ -99,6 +99,7 @@ export function App() {
   const [discoveryServer, setDiscoveryServer] = useState("");
   const [ipCameraUri, setIpCameraUri] = useState("");
   const [openProperty, setOpenProperty] = useState("General");
+  const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
 
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
@@ -637,7 +638,7 @@ export function App() {
                   </div>}
                   {item === "Audio" && <><label>Volume<input type="range" min="0" max="100" defaultValue="100" /></label><label>Pan<input type="range" min="-100" max="100" defaultValue="0" /></label></>}
                   {item === "Trigger" && <div className="property-empty">No triggers assigned to this layer.</div>}
-                  {item === "Slice" && <div className="property-buttons"><button>Add Slice</button><button>Reset Slice</button></div>}
+                  {item === "Slice" && <><SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} /><div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"}</div><div className="property-buttons"><button>Add Slice</button><button>Reset Slice</button></div></>}
                   {item === "Advanced" && <div className="property-empty">Advanced layer options.</div>}
                 </div>
               )}
