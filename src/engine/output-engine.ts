@@ -124,7 +124,10 @@ export class OutputEngine {
       throw new Error(`Scene "${scene.id}" and production output belong to different compositions.`);
     }
     if (!target.enabled) return [];
-    const mediaEnabled = target.media.streaming || target.media.recording || target.media.virtual;
+    const mediaEnabled =
+      (scene.target.record && target.media.recording) ||
+      (scene.target.stream && target.media.streaming) ||
+      (scene.target.virtual && target.media.virtual);
     return mediaEnabled ? [this.route(target.id, source)] : [];
   }
 
