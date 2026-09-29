@@ -14,6 +14,10 @@ export interface ProgramState {
 export class ProgramEngine {
   private readonly states = new Map<string, ProgramState>();
 
+  clear(compositionId = "default"): void {
+    this.states.delete(compositionId);
+  }
+
   getState(compositionId = "default"): ProgramState {
     return this.states.get(compositionId) ?? {
       compositionId, source: null, layer: null, layers: [], transition: null
