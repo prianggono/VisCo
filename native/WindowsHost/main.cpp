@@ -1,3 +1,4 @@
+#include "audio-mixer-runtime.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -101,6 +102,7 @@ class HttpControlServer {
   NetworkFrameRuntime* network_ = nullptr;
   visco_asio::AsioAudioRuntime* asio_ = nullptr;
   visco_asio::AudioEngine* audioEngine_ = nullptr;
+  visco_audio::AudioMixer* audioMixer_ = nullptr;
   HWND asioWindow_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
@@ -167,6 +169,27 @@ class HttpControlServer {
            << ",\"droppedFrames\":" << s.droppedFrames << ",\"overruns\":" << s.overruns
            << ",\"availableFrames\":" << (audioEngine_ ? audioEngine_->availableFrames() : 0)
            << "}"; sendResponse(client, body.str());
+    } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
+      const auto s = audioMixer_->stats();
+      std::ostringstream body;
+      body << "{\\"processedFrames\\":" << s.processedFrames
+           << ",\\"underrunFrames\\":" << s.underrunFrames
+           << ",\\"sampleRate\\":" << s.sampleRate
+           << ",\\"channels\\":" << s.channels
+           << ",\\"masterGain\\":" << s.masterGain << "}";
+      sendResponse(client, body.str());
+    } else if (requestLine.rfind("GET /audio/mixer/master", 0) == 0) {
+      const auto q = requestLine.find("gain=");
+      if (q == std::string::npos) {
+        sendResponse(client, "{\\"ok\\":false,\\"message\\":\\"gain is required\\"}", "400 Bad Request");
+      } else {
+        try {
+          audioMixer_->setMasterGain(std::stof(requestLine.substr(q + 5)));
+          sendResponse(client, "{\\"ok\\":true}");
+        } catch (...) {
+          sendResponse(client, "{\\"ok\\":false,\\"message\\":\\"invalid gain\\"}", "400 Bad Request");
+        }
+      }
     } else if (requestLine.rfind("GET /network/discover", 0) == 0) {
       const auto p = requestLine.find("protocol=");
       const std::string protocol = p == std::string::npos ? "" : requestLine.substr(p + 9);
@@ -281,8 +304,8 @@ class HttpControlServer {
   }
 
 public:
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, HWND asioWindow, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; asioWindow_ = asioWindow;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -353,6 +376,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     NativeOutputRuntime outputs;
     visco_asio::AudioEngine audioEngine(48000, 2, 96000);
     visco_asio::AsioAudioRuntime asio(audioEngine);
+    visco_audio::AudioMixer audioMixer(audioEngine, 48000, 2);
     const char* asioDriver = std::getenv("VISCO_ASIO_DRIVER");
     if (asioDriver && *asioDriver) {
       if (!asio.start(asioDriver, hwnd, 2)) std::cerr << "ASIO offline: " << asio.error() << "\n";
@@ -379,7 +403,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
 
     HttpControlServer http;
-    http.start(media, audio, capture, runtimes, network, asio, audioEngine, hwnd);
+    http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
