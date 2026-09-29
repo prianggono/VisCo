@@ -12,7 +12,7 @@ const composition = {
 };
 
 const slices = [
-  { id: "slice-1", name: "Screen A", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, locked: false },
+  { id: "slice-1", name: "Screen A", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }], locked: false },
   { id: "slice-2", name: "Screen B", transform: { x: 960, y: 0, width: 960, height: 1080, rotation: 0 }, layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }], locked: false }
 ];
 
