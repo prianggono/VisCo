@@ -144,6 +144,9 @@ export function App() {
   const [openProperty, setOpenProperty] = useState("General");
   const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
 
+  const compositionIdForDeck = (deckId: string): string =>
+    compositions.find((composition) => composition.deckIds.includes(deckId))?.id ?? "default";
+
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck) return;
@@ -155,9 +158,10 @@ export function App() {
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    deckProgramController.program(deck, layerId, { syncOutputs: false });
-    const scene = sceneRuntime.getActive(deck.compositionId ?? "default");
-    const program = programEngine.getState(deck.compositionId ?? "default");
+    const compositionId = compositionIdForDeck(deck.id);
+    deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
+    const scene = sceneRuntime.getActive(compositionId);
+    const program = programEngine.getState(compositionId);
     if (scene && program.source) {
       try {
         outputEngine.syncFromScene(scene, program.source);
