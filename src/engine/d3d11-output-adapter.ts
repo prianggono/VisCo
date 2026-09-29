@@ -14,7 +14,7 @@ export function toD3D11RenderFrame(frame: OutputFrame): D3D11RenderFrame {
     ...(frame.slices ? {
       slices: frame.slices.map((slice) => ({
         id: slice.id,
-        layerIds: [...slice.layerIds],
+        layerRefs: slice.layerRefs.map((ref) => ({ ...ref })),
         transform: { ...slice.transform },
         ...(slice.mapping ? {
           mapping: {
