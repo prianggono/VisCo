@@ -62,9 +62,10 @@ export function App() {
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
   const outputEngine = useMemo(() => {
     const engine = new OutputEngine();
-    engine.register({ id: "fullscreen", kind: "display", enabled: true });
+    engine.register({ id: "display-1", kind: "display", enabled: true, compositionId: "default" });
+    engine.register({ id: "display-2", kind: "display", enabled: true, compositionId: "default" });
     engine.register({
-      id: "media-output",
+      id: "production",
       kind: "media",
       enabled: true,
       media: { compositionId: "default", resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false }
@@ -237,9 +238,9 @@ export function App() {
     } else if (type === "set-master") {
       action = { type: "set-master", deckId: selectedDeck.id, level: 100 };
     } else if (type === "set-output-enabled") {
-      action = { type: "set-output-enabled", outputId: "fullscreen", enabled: true };
+      action = { type: "set-output-enabled", outputId: "display-1", enabled: true };
     } else if (type === "set-media-feature") {
-      action = { type: "set-media-feature", outputId: "media-output", feature: "stream", enabled: true };
+      action = { type: "set-media-feature", outputId: "production", feature: "stream", enabled: true };
     } else {
       const first = selectedDeck.layers[0];
       action = { type: "sequence", actions: first ? [{ type: "program", target: { deckId: selectedDeck.id, layerId: first.id } }] : [] };
@@ -495,9 +496,9 @@ export function App() {
 
   const filteredLibraryItems = libraryItems.filter((item) => item.name.toLowerCase().includes(librarySearch.trim().toLowerCase()));
 
-  const outputState = outputEngine.getState("media-output");
+  const outputState = outputEngine.getState("production");
   const mediaSettings = outputState.target.media!;
-  const fullscreenState = outputEngine.getState("fullscreen");
+  const fullscreenState = outputEngine.getState("display-1");
 
   const activateScene = (sceneId: string) => {
     try {
