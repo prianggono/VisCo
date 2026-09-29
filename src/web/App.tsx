@@ -17,7 +17,8 @@ import { GroupEngine } from "../engine/group-engine.js";
 import { SliceCanvas } from "./SliceCanvas.js";
 import type { Group } from "../domain/group.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
-import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
+import { DeviceDiscoveryEngine, NativeDeviceDiscoveryProvider } from "../engine/device-discovery.js";
+import { NativeHostHttpBridge } from "../native/native-host-http.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
 import type { Slice } from "../domain/slice.js";
@@ -119,10 +120,13 @@ export function App() {
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const groupEngine = useMemo(() => new GroupEngine(), []);
+  const nativeHost = useMemo(() => new NativeHostHttpBridge(), []);
   const deviceDiscovery = useMemo(() => {
     const engine = new DeviceDiscoveryEngine();
+    engine.register(new NativeDeviceDiscoveryProvider(nativeHost));
     return engine;
-  }, []);
+  }, [nativeHost]);
+  const [nativeHostState, setNativeHostState] = useState<"checking" | "online" | "offline">("checking");
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [librarySearch, setLibrarySearch] = useState("");
   const [slices, setSlices] = useState<Slice[]>([{
@@ -409,6 +413,13 @@ export function App() {
     if (!discoverable) return;
     setDiscoveryBusy(true);
     setDiscoveryMessage("");
+    const host = await nativeHost.status();
+    setNativeHostState(host.available ? "online" : "offline");
+    if (!host.available) {
+      setDiscoveryMessage("Native Windows Host tidak terhubung. Jalankan visco-native-host.exe terlebih dahulu.");
+      setDiscoveryBusy(false);
+      return;
+    }
     const result = await deviceDiscovery.discover({
       kind: selected as "camera" | "video-capture" | "ndi" | "omt" | "desktop-capture",
       ...(discoveryServer.trim() ? { discoveryServer: discoveryServer.trim() } : {})
@@ -1028,7 +1039,7 @@ export function App() {
                               {(selected.kind === "ndi" || selected.kind === "omt") && <input value={discoveryServer} onChange={(event) => setDiscoveryServer(event.target.value)} placeholder={selected.kind === "omt" ? "Discovery Server host:6399 (optional)" : "NDI Discovery Server host:5959 (optional)"} />}
                               <button className="input-browse" onClick={discoverDevices} disabled={discoveryBusy}>{discoveryBusy ? "DISCOVERING…" : "DISCOVER DEVICES"}</button>
                             </div>
-                            <div className="input-config-note">{discoveryMessage || "Discovery is handled by the native device adapter. Camera/Webcam and USB Video Capture devices are discovered by the Windows native adapter; NDI/OMT/Desktop Capture use their respective native adapters."}</div>
+                            <div className="input-config-note">{discoveryMessage || `Native Host: ${nativeHostState.toUpperCase()} · Windows native discovery aktif untuk Camera/Webcam dan Video Capture.`}</div>
                             {discoveredDevices.length > 0 && <div className="device-list">{discoveredDevices.map((device) => <button className="device-list-item" key={device.id} onClick={() => addDiscoveredDevice(device)}><span><strong>{device.name}</strong><small>{device.kind} · {device.address ?? device.uri ?? device.transport}</small></span><b>ADD</b></button>)}</div>}
                           </div>}
                           {selected.kind === "ip-camera" && <div className="device-discovery-config">
