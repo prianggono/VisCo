@@ -17,6 +17,11 @@ export interface LayerPlayback {
   readonly speed: number;
 }
 
+export interface LayerAudio {
+  readonly volume: number;
+  readonly pan: number;
+}
+
 export interface Layer {
   readonly id: string;
   readonly name: string;
@@ -24,6 +29,7 @@ export interface Layer {
   readonly sliceIds?: readonly string[];
   readonly transform?: LayerTransform;
   readonly playback?: LayerPlayback;
+  readonly audio?: LayerAudio;
   readonly blendMode?: string;
   readonly order?: number;
 }
