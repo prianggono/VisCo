@@ -16,6 +16,10 @@
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
+#include <thread>
+#include <atomic>
+#include <sstream>
+#include <cctype>
 
 using Microsoft::WRL::ComPtr;
 
@@ -142,6 +146,115 @@ public:
   }
 };
 
+static std::string jsonEscape(const std::wstring& input) {
+  std::string out;
+  for (wchar_t ch : input) {
+    if (ch == L'\\') out += "\\\\";
+    else if (ch == L'"') out += "\\\"";
+    else if (ch >= 32 && ch < 127) out.push_back(static_cast<char>(ch));
+    else out += "?";
+  }
+  return out;
+}
+
+class HttpControlServer {
+  SOCKET listener_ = INVALID_SOCKET;
+  std::atomic<bool> running_{false};
+  std::thread thread_;
+  MediaFoundationHost* media_ = nullptr;
+  WasapiHost* audio_ = nullptr;
+
+  static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
+    std::ostringstream response;
+    response << "HTTP/1.1 " << status << "\r\n"
+             << "Content-Type: application/json; charset=utf-8\r\n"
+             << "Access-Control-Allow-Origin: *\r\n"
+             << "Access-Control-Allow-Headers: Content-Type\r\n"
+             << "Cache-Control: no-store\r\n"
+             << "Content-Length: " << body.size() << "\r\n\r\n" << body;
+    const auto text = response.str();
+    send(client, text.data(), static_cast<int>(text.size()), 0);
+  }
+
+  void handle(SOCKET client) {
+    char buffer[8192]{};
+    const int received = recv(client, buffer, sizeof(buffer)-1, 0);
+    if (received <= 0) { closesocket(client); return; }
+    std::string request(buffer, received);
+    const auto lineEnd = request.find("\r\n");
+    const std::string requestLine = request.substr(0, lineEnd);
+    if (requestLine.rfind("OPTIONS ", 0) == 0) {
+      sendResponse(client, "{}", "204 No Content");
+    } else if (requestLine.rfind("GET /health", 0) == 0) {
+      sendResponse(client, R"({"available":true,"version":"native-host-1","backend":"d3d11","capture":"media-foundation","audio":"wasapi","led":"art-net"})");
+    } else if (requestLine.rfind("GET /devices", 0) == 0) {
+      const auto q = requestLine.find("kind=");
+      std::string kind = q == std::string::npos ? "" : requestLine.substr(q + 5);
+      const auto amp = kind.find('&'); if (amp != std::string::npos) kind.resize(amp);
+      if (kind == "camera" || kind == "video-capture" || kind == "desktop-capture") {
+        const auto devices = media_->enumerateVideoDevices();
+        std::ostringstream body; body << "{\"devices\":[";
+        for (size_t i=0;i<devices.size();++i) {
+          if (i) body << ",";
+          const std::string name = jsonEscape(devices[i]);
+          const std::string id = "win-video-" + std::to_string(i);
+          body << "{\"id\":\"" << id << "\",\"name\":\"" << name
+               << "\",\"kind\":\"" << (kind == "video-capture" ? "video-capture" : "camera")
+               << "\",\"transport\":\"local\",\"metadata\":{\"backend\":\"media-foundation\",\"nativeIndex\":" << i << "}}";
+        }
+        body << "]}";
+        sendResponse(client, body.str());
+      } else if (kind == "audio-input") {
+        const auto devices = audio_->enumerate();
+        std::ostringstream body; body << "{\"devices\":[";
+        for (size_t i=0;i<devices.size();++i) {
+          if (i) body << ",";
+          body << "{\"id\":\"wasapi-" << i << "\",\"name\":\"Audio Capture "
+               << i << "\",\"kind\":\"audio-input\",\"transport\":\"local\"}";
+        }
+        body << "]}";
+        sendResponse(client, body.str());
+      } else {
+        sendResponse(client, R"({"devices":[],"message":"Protocol-specific native adapter is not bundled in this host."})");
+      }
+    } else {
+      sendResponse(client, R"({"message":"Not found"})", "404 Not Found");
+    }
+    closesocket(client);
+  }
+
+  void loop() {
+    while (running_) {
+      sockaddr_in clientAddr{}; int clientLen = sizeof(clientAddr);
+      SOCKET client = accept(listener_, reinterpret_cast<sockaddr*>(&clientAddr), &clientLen);
+      if (client != INVALID_SOCKET) handle(client);
+      else Sleep(10);
+    }
+  }
+
+public:
+  void start(MediaFoundationHost& media, WasapiHost& audio, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio;
+    WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
+    listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
+    BOOL reuse = TRUE; setsockopt(listener_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+    u_long nonBlocking = 1; ioctlsocket(listener_, FIONBIO, &nonBlocking);
+    sockaddr_in address{}; address.sin_family=AF_INET; address.sin_addr.s_addr=htonl(INADDR_LOOPBACK); address.sin_port=htons(port);
+    if (bind(listener_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 || listen(listener_, 8) != 0)
+      throw std::runtime_error("Native HTTP bind/listen failed");
+    running_ = true;
+    thread_ = std::thread([this]{ loop(); });
+  }
+
+  ~HttpControlServer() {
+    running_ = false;
+    if (listener_ != INVALID_SOCKET) { closesocket(listener_); listener_ = INVALID_SOCKET; }
+    if (thread_.joinable()) thread_.join();
+    WSACleanup();
+  }
+};
+
 static LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
   if(msg==WM_DESTROY){ PostQuitMessage(0); return 0; }
   return DefWindowProc(hwnd,msg,w,l);
@@ -163,6 +276,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     WasapiHost audio;
     const auto cameras=media.enumerateVideoDevices();
     const auto audioDevices=audio.enumerate();
+    HttpControlServer http;
+    http.start(media, audio);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
