@@ -134,7 +134,7 @@ public:
     packet[8]=0x00; packet[9]=0x50; // OpDmx little-endian
     packet[10]=0; packet[11]=14; packet[12]=0; packet[13]=0;
     packet[14]=(universe & 0xff); packet[15]=(universe >> 8);
-    packet[16]=(static_cast<unsigned char>(dmx.size()) >> 8);
+    packet[16]=static_cast<unsigned char>((dmx.size() >> 8) & 0xff);
     packet[17]=(static_cast<unsigned char>(dmx.size()) & 0xff);
     std::copy(dmx.begin(), dmx.end(), packet.begin()+18);
     sendto(socket_, reinterpret_cast<const char*>(packet.data()), static_cast<int>(packet.size()), 0,
