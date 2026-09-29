@@ -82,3 +82,14 @@ Core domain/engine contracts are internally aligned across Source → Layer → 
 The current repository has not been verified by a successful CI run after the latest direct commits; GitHub returned no workflow runs for the latest checked commit. Therefore this document does not claim build/test success.
 
 Supabase is used as the VisCo history/decision backup. A backup should capture this audit conclusion, current decisions, unresolved native implementation queue, and the exact GitHub commit being backed up.
+
+
+## Audit continuation — 2026-09-29 (runtime/UI pass)
+
+- [x] Added canonical Layer audio state (volume/pan) and connected the Properties → Audio controls to Layer state.
+- [x] Added functional Slice creation/reset from the selected Layer and connected rectangle geometry editing to Slice state.
+- [x] Added regression coverage for output transport isolation, resilient frame-source recovery, media compatibility caching, control mappings, source playback, Art-Net boundaries, and HDMI display separation.
+- [ ] Native Windows implementations remain pending: real media decode, capture/network frame acquisition, D3D11 rendering, native Slice mapping, Virtual Out, stream encoder, recorder, Zoom, MIDI/Shortcut runtime, real device/file health, and Windows packaging.
+- [ ] Project file/UI view-layout persistence and the remaining Trigger/Advanced/Slice visual editor adapters still need the application-level wiring.
+- [ ] License verification/enforcement/watermark remains intentionally excluded.
+- CI is running for the latest runtime-contract test commit; completion is recorded only after GitHub reports the final result.
