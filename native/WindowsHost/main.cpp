@@ -6,6 +6,8 @@
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
+#include <ks.h>
+#include <ksmedia.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 #include <winsock2.h>
@@ -83,21 +85,39 @@ public:
   MediaFoundationHost() { check(MFStartup(MF_VERSION, MFSTARTUP_FULL), "MFStartup failed"); }
   ~MediaFoundationHost() { MFShutdown(); }
 
-  std::vector<std::wstring> enumerateVideoDevices() {
+  struct VideoDeviceInfo { std::wstring name; std::wstring symbolicLink; bool camera; };
+
+  std::vector<VideoDeviceInfo> enumerateVideoDeviceInfo() {
     ComPtr<IMFAttributes> attrs;
     check(MFCreateAttributes(&attrs, 1), "MFCreateAttributes failed");
     check(attrs->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID), "MF device attrs failed");
     IMFActivate** devices = nullptr; UINT32 count = 0;
     check(MFEnumDeviceSources(attrs.Get(), &devices, &count), "MFEnumDeviceSources failed");
-    std::vector<std::wstring> result;
+    std::vector<VideoDeviceInfo> result;
     for (UINT32 i=0;i<count;i++) {
-      WCHAR* name = nullptr; UINT32 length = 0;
-      if (SUCCEEDED(devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &length))) {
-        result.emplace_back(name, length); CoTaskMemFree(name);
+      WCHAR* name = nullptr; UINT32 nameLength = 0;
+      WCHAR* link = nullptr; UINT32 linkLength = 0;
+      GUID category{};
+      const HRESULT catHr = devices[i]->GetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_CATEGORY, &category);
+      if (SUCCEEDED(devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &nameLength))) {
+        devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &link, &linkLength);
+        result.push_back({
+          std::wstring(name, nameLength),
+          link ? std::wstring(link, linkLength) : L"",
+          SUCCEEDED(catHr) && IsEqualGUID(category, KSCATEGORY_VIDEO_CAMERA)
+        });
       }
+      if (name) CoTaskMemFree(name);
+      if (link) CoTaskMemFree(link);
       devices[i]->Release();
     }
     CoTaskMemFree(devices);
+    return result;
+  }
+
+  std::vector<std::wstring> enumerateVideoDevices() {
+    std::vector<std::wstring> result;
+    for (const auto& item : enumerateVideoDeviceInfo()) result.push_back(item.name);
     return result;
   }
 };
@@ -192,15 +212,20 @@ class HttpControlServer {
       std::string kind = q == std::string::npos ? "" : requestLine.substr(q + 5);
       const auto amp = kind.find('&'); if (amp != std::string::npos) kind.resize(amp);
       if (kind == "camera" || kind == "video-capture" || kind == "desktop-capture") {
-        const auto devices = media_->enumerateVideoDevices();
-        std::ostringstream body; body << "{\"devices\":[";
+        const devices = media_->enumerateVideoDeviceInfo();
+        std::ostringstream body; body << "{\\"devices\\":[";
+        bool first = true;
         for (size_t i=0;i<devices.size();++i) {
-          if (i) body << ",";
-          const std::string name = jsonEscape(devices[i]);
-          const std::string id = "win-video-" + std::to_string(i);
-          body << "{\"id\":\"" << id << "\",\"name\":\"" << name
-               << "\",\"kind\":\"" << (kind == "video-capture" ? "video-capture" : "camera")
-               << "\",\"transport\":\"local\",\"metadata\":{\"backend\":\"media-foundation\",\"nativeIndex\":" << i << "}}";
+          const bool matches = (kind == "camera" && devices[i].camera) ||
+                               (kind == "video-capture" && !devices[i].camera);
+          if (!matches) continue;
+          if (!first) body << ",";
+          first = false;
+          const std::string name = jsonEscape(devices[i].name);
+          const std::string link = jsonEscape(devices[i].symbolicLink);
+          body << "{\\"id\\":\\"win-video-" << i << "\\",\\"name\\":\\"" << name
+               << "\\",\\"kind\\":\\"" << (devices[i].camera ? "camera" : "video-capture")
+               << "\\",\\"transport\\":\\"local\\",\\"metadata\\":{\\"backend\\":\\"media-foundation\\",\\"symbolicLink\\":\\"" << link << "\\"}}";
         }
         body << "]}";
         sendResponse(client, body.str());
