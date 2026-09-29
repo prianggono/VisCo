@@ -261,7 +261,7 @@ void D3D11Host::ensureVideoTexture(UINT width, UINT height) {
   videoWidth_=width; videoHeight_=height;
 }
 
-void D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
+std::shared_ptr<const NativeVideoFrame> D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
   if (frame) {
     ensureVideoTexture(frame->width, frame->height);
     D3D11_MAPPED_SUBRESOURCE mapped{};
@@ -274,7 +274,7 @@ void D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
       context_->Unmap(videoTexture_.Get(), 0);
     }
   }
-  if (!target_) return;
+  if (!target_) return nullptr;
   context_->OMSetRenderTargets(1, target_.GetAddressOf(), nullptr);
   D3D11_VIEWPORT viewport{};
   ComPtr<ID3D11Resource> backResource;
@@ -285,7 +285,7 @@ void D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
   viewport.MinDepth=0; viewport.MaxDepth=1;
   context_->RSSetViewports(1, &viewport);
   const float clear[4]={0,0,0,1}; context_->ClearRenderTargetView(target_.Get(), clear);
-  if (!videoView_) { swap_->Present(0,0); return; }
+  if (!videoView_) { swap_->Present(0,0); return nullptr; }
   UINT stride=0, offset=0;
   context_->IASetVertexBuffers(0,0,nullptr,&stride,&offset);
   context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -296,7 +296,49 @@ void D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
   context_->Draw(3,0);
   ID3D11ShaderResourceView* nullSrv=nullptr;
   context_->PSSetShaderResources(0,1,&nullSrv);
-  swap_->Present(1,0);
+
+  // The backbuffer is the canonical final GPU frame. Read it back once so
+  // Record/Virtual/NDI/OMT can consume exactly the pixels shown on Program.
+  ComPtr<ID3D11Resource> backResource;
+  target_->GetResource(&backResource);
+  ComPtr<ID3D11Texture2D> backTexture;
+  requireHr(backResource.As(&backTexture), "Backbuffer texture query failed");
+  D3D11_TEXTURE2D_DESC backDesc{};
+  backTexture->GetDesc(&backDesc);
+  if (readbackTexture_) {
+    D3D11_TEXTURE2D_DESC existing{};
+    readbackTexture_->GetDesc(&existing);
+    if (existing.Width != backDesc.Width || existing.Height != backDesc.Height) readbackTexture_.Reset();
+  }
+  if (!readbackTexture_) {
+    readbackTexture_.Reset();
+  }
+  if (!readbackTexture_) {
+    D3D11_TEXTURE2D_DESC staging = backDesc;
+    staging.Usage = D3D11_USAGE_STAGING;
+    staging.BindFlags = 0;
+    staging.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    staging.MiscFlags = 0;
+    requireHr(device_->CreateTexture2D(&staging, nullptr, &readbackTexture_), "Final frame staging texture failed");
+  }
+  context_->CopyResource(readbackTexture_.Get(), backTexture.Get());
+  D3D11_MAPPED_SUBRESOURCE mapped{};
+  requireHr(context_->Map(readbackTexture_.Get(), 0, D3D11_MAP_READ, 0, &mapped), "Final frame readback failed");
+  auto finalFrame = std::make_shared<NativeVideoFrame>();
+  finalFrame->width = backDesc.Width;
+  finalFrame->height = backDesc.Height;
+  finalFrame->bgra.resize(static_cast<size_t>(finalFrame->width) * finalFrame->height * 4);
+  const size_t rowBytes = static_cast<size_t>(finalFrame->width) * 4;
+  for (UINT y = 0; y < finalFrame->height; ++y) {
+    std::memcpy(finalFrame->bgra.data() + static_cast<size_t>(y) * rowBytes,
+                static_cast<const unsigned char*>(mapped.pData) + static_cast<size_t>(y) * mapped.RowPitch,
+                rowBytes);
+  }
+  context_->Unmap(readbackTexture_.Get(), 0);
+  finalFrame->timestampUs = frame ? frame->timestampUs : 0;
+
+  swap_->Present(0,0);
+  return finalFrame;
 }
 
 MjpegPreviewServer::~MjpegPreviewServer() {
