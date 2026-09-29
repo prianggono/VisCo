@@ -54,3 +54,5 @@ export * from "./native/media-decoder.js";
 export * from "./native/native-host-http.js";
 export * from "./native/asio-runtime.js";
 export * from "./engine/output-frame-bus.js";
+export * from "./engine/runtime-coordinator.js";
+export * from "./native/native-render-state.js";
