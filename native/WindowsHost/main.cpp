@@ -31,44 +31,20 @@ static void check(HRESULT hr, const char* what) {
   if (FAILED(hr)) throw std::runtime_error(what);
 }
 
-class MediaFoundationHost {
+class WasapiHost {
 public:
-  MediaFoundationHost() { check(MFStartup(MF_VERSION, MFSTARTUP_FULL), "MFStartup failed"); }
-  ~MediaFoundationHost() { MFShutdown(); }
-
-  struct VideoDeviceInfo { std::wstring name; std::wstring symbolicLink; bool camera; };
-
-  std::vector<VideoDeviceInfo> enumerateVideoDeviceInfo() {
-    ComPtr<IMFAttributes> attrs;
-    check(MFCreateAttributes(&attrs, 1), "MFCreateAttributes failed");
-    check(attrs->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID), "MF device attrs failed");
-    IMFActivate** devices = nullptr; UINT32 count = 0;
-    check(MFEnumDeviceSources(attrs.Get(), &devices, &count), "MFEnumDeviceSources failed");
-    std::vector<VideoDeviceInfo> result;
-    for (UINT32 i=0;i<count;i++) {
-      WCHAR* name = nullptr; UINT32 nameLength = 0;
-      WCHAR* link = nullptr; UINT32 linkLength = 0;
-      GUID category{};
-      const HRESULT catHr = devices[i]->GetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_CATEGORY, &category);
-      if (SUCCEEDED(devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &name, &nameLength))) {
-        devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &link, &linkLength);
-        result.push_back({
-          std::wstring(name, nameLength),
-          link ? std::wstring(link, linkLength) : L"",
-          SUCCEEDED(catHr) && IsEqualGUID(category, KSCATEGORY_VIDEO_CAMERA)
-        });
-      }
-      if (name) CoTaskMemFree(name);
-      if (link) CoTaskMemFree(link);
-      devices[i]->Release();
-    }
-    CoTaskMemFree(devices);
-    return result;
-  }
-
-  std::vector<std::wstring> enumerateVideoDevices() {
+  std::vector<std::wstring> enumerate() {
+    ComPtr<IMMDeviceEnumerator> enumerator;
+    check(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator)), "MMDeviceEnumerator failed");
+    ComPtr<IMMDeviceCollection> collection;
+    check(enumerator->EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE, &collection), "EnumAudioEndpoints failed");
+    UINT count=0; collection->GetCount(&count);
     std::vector<std::wstring> result;
-    for (const auto& item : enumerateVideoDeviceInfo()) result.push_back(item.name);
+    for(UINT i=0;i<count;i++){
+      ComPtr<IMMDevice> device; collection->Item(i,&device);
+      LPWSTR id=nullptr; device->GetId(&id);
+      if(id){ result.emplace_back(id); CoTaskMemFree(id); }
+    }
     return result;
   }
 };
