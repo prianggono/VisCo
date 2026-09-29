@@ -89,6 +89,8 @@ private:
   ComPtr<ID3D11Texture2D> readbackTexture_;
   ComPtr<ID3D11VertexShader> vertexShader_;
   ComPtr<ID3D11PixelShader> pixelShader_;
+  ComPtr<ID3D11Buffer> transformBuffer_;
+  ComPtr<ID3D11BlendState> blendState_;
   mutable std::mutex finalMutex_;
   std::shared_ptr<const NativeVideoFrame> latestFinal_;
   UINT videoWidth_ = 0;
