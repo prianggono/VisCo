@@ -7,6 +7,11 @@ export class LibraryEngine {
     initial.forEach((source) => this.add(source));
   }
 
+  replaceAll(sources: readonly Source[]): void {
+    this.sources.clear();
+    sources.forEach((source) => this.add(source));
+  }
+
   add(source: Source): Source {
     if (this.sources.has(source.id)) {
       throw new Error(`Source "${source.id}" is already registered.`);
