@@ -50,9 +50,8 @@ export class DeckProgramController {
 
   getState(deck: Deck, compositionId?: string): DeckProgramControllerState;
   getState(deckId: string, compositionId?: string): DeckProgramControllerState;
-  getState(deckOrId: Deck | string): DeckProgramControllerState {
+  getState(deckOrId: Deck | string, compositionId = "default"): DeckProgramControllerState {
     const deckId = typeof deckOrId === "string" ? deckOrId : deckOrId.id;
-    const compositionId = arguments.length > 1 ? (arguments[1] as string) : "default";
     return {
       deck: this.deckRuntime.getState(deckId),
       program: this.programEngine.getState(compositionId)
