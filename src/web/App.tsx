@@ -66,7 +66,7 @@ export function App() {
   const [compositions, setCompositions] = useState<Composition[]>([{
     id: "default", name: "Default Composition",
     format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
-    deckIds: initialDecks.map((deck) => deck.id), groupIds: [], sliceIds: [], locked: false
+    deckIds: initialDecks.map((deck) => deck.id), groupIds: [], sliceIds: ["slice-default"], locked: false
   }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
   const [groups, setGroups] = useState<Group[]>([]);
@@ -124,7 +124,14 @@ export function App() {
   }, []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [librarySearch, setLibrarySearch] = useState("");
-  const [slices, setSlices] = useState<Slice[]>([]);
+  const [slices, setSlices] = useState<Slice[]>([{
+    id: "slice-default",
+    name: "Full Composition",
+    transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
+    mapping: { mode: "rectangle", snapToGrid: true, gridSize: 16 },
+    layerRefs: initialDecks.flatMap((deck) => deck.layers.map((layer) => ({ deckId: deck.id, layerId: layer.id }))),
+    locked: false
+  }]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
