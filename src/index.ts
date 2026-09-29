@@ -43,3 +43,6 @@ export * from "./native/artnet-led-output.js";
 export * from "./native/windows-video-runtime.js";
 export * from "./native/media-output.js";
 export * from "./native/virtual-output.js";
+
+export * from "./native/network-frame-source.js";
+export * from "./native/media-decoder.js";
