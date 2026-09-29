@@ -10,7 +10,11 @@ describe("RuntimeCoordinator", () => {
       dispose: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
     };
-    const runtime = new RuntimeCoordinator(renderer as never);
+    const nativeRenderState = {
+      bindRenderSource: vi.fn(async () => undefined),
+      setRenderLayers: vi.fn(async () => undefined),
+    };
+    const runtime = new RuntimeCoordinator(renderer as never, { nativeRenderState });
     expect(runtime.getStats().running).toBe(false);
     await runtime.start();
     runtime.setContext(
@@ -23,5 +27,6 @@ describe("RuntimeCoordinator", () => {
     await runtime.stop();
     expect(renderer.initialize).toHaveBeenCalledTimes(1);
     expect(renderer.dispose).toHaveBeenCalledTimes(1);
+    expect(nativeRenderState.setRenderLayers).toHaveBeenCalled();
   });
 });
