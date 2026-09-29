@@ -23,5 +23,7 @@ export interface Scene {
   readonly name: string;
   readonly compositionId: string;
   readonly target: SceneTarget;
+  /** Optional Advanced Output slice selection. Omitted means all composition slices. */
+  readonly sliceIds?: readonly string[];
   readonly enabled: boolean;
 }
