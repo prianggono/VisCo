@@ -1,15 +1,11 @@
-import type { Deck, DeckLayerRef } from "../domain/deck.js";
+import type { Deck } from "../domain/deck.js";
+import type { TriggerAction } from "../domain/trigger.js";
 import { DeckProgramController } from "./deck-program-controller.js";
 import type { ProgramState } from "./program-engine.js";
 import { OutputEngine } from "./output-engine.js";
 import { assertValidTriggerAction } from "./trigger-validator.js";
 
-export type TriggerAction =
-  | { readonly type: "program"; readonly target: DeckLayerRef }
-  | { readonly type: "sequence"; readonly actions: readonly TriggerAction[] }
-  | { readonly type: "set-output-enabled"; readonly outputId: string; readonly enabled: boolean }
-  | { readonly type: "set-media-feature"; readonly outputId: string; readonly feature: "stream" | "record" | "virtual"; readonly enabled: boolean }
-  | { readonly type: "set-master"; readonly deckId: string; readonly level: number };
+export type { TriggerAction } from "../domain/trigger.js";
 
 export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; }
 
