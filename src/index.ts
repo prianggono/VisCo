@@ -21,6 +21,7 @@ export * from "./engine/compositor.js";
 export * from "./engine/media-pipeline.js";
 export * from "./engine/media-compatibility-cache.js";
 export * from "./engine/project-persistence.js";
+export * from "./engine/project-runtime.js";
 export * from "./engine/library-engine.js";
 export * from "./engine/health-check.js";
 export * from "./engine/runtime-health.js";
