@@ -2,6 +2,7 @@ import type { SourceKind } from "./source.js";
 
 export type DeviceKind =
   | "camera"
+  | "audio-input"
   | "video-capture"
   | "ndi"
   | "omt"
@@ -54,6 +55,8 @@ export function sourceKindForDevice(kind: DeviceKind): SourceKind {
       return "desktop-capture";
     case "camera":
       return "camera";
+    case "audio-input":
+      return "audio-input";
     case "video-capture":
       return "video-capture";
     default:
