@@ -88,15 +88,18 @@ export function App() {
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const triggerEngine = useMemo(() => new TriggerEngine(), []);
-  const sceneRuntime = useMemo(() => new SceneRuntime(), []);
-  const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
-  const [showAddDeck, setShowAddDeck] = useState(false);
   const defaultScenes: readonly Scene[] = [
     { id: "scene-display-1", name: "Display 1", compositionId: "default", target: { kind: "display", displayId: "display-1" }, enabled: true },
     { id: "scene-display-2", name: "Display 2", compositionId: "default", target: { kind: "display", displayId: "display-2" }, enabled: true },
     { id: "scene-production", name: "Production", compositionId: "default", target: { kind: "production", record: true, stream: true, virtual: true }, enabled: true }
   ];
-  sceneRuntime.replaceAll(defaultScenes);
+  const sceneRuntime = useMemo(() => {
+    const runtime = new SceneRuntime();
+    runtime.replaceAll(defaultScenes);
+    return runtime;
+  }, []);
+  const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
+  const [showAddDeck, setShowAddDeck] = useState(false);
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
