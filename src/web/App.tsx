@@ -144,6 +144,8 @@ export function App() {
   const [discoveryBusy, setDiscoveryBusy] = useState(false);
   const [discoveryMessage, setDiscoveryMessage] = useState("");
   const [discoveryServer, setDiscoveryServer] = useState("");
+  const [audioDevices, setAudioDevices] = useState<readonly DiscoveredDevice[]>([]);
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState("");
   const [ipCameraUri, setIpCameraUri] = useState("");
   const [openProperty, setOpenProperty] = useState("General");
   const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
@@ -431,6 +433,17 @@ export function App() {
 
   const addDiscoveredDevice = (device: DiscoveredDevice) => {
     addInternalInput(sourceKindForDevice(device.kind), device);
+  };
+
+  const discoverAudioDevices = async () => {
+    const host = await nativeHost.status();
+    setNativeHostState(host.available ? "online" : "offline");
+    if (!host.available) {
+      setDiscoveryMessage("Native Windows Host tidak terhubung.");
+      return;
+    }
+    const devices = await nativeHost.discover({ kind: "audio-input" });
+    setAudioDevices(devices);
   };
 
   const addManualIpCamera = () => {
@@ -1048,7 +1061,17 @@ export function App() {
                             <label>Latency<select defaultValue="low"><option value="low">Low Latency</option></select></label>
                             <button className="input-browse" onClick={addManualIpCamera} disabled={!ipCameraUri.trim()}>ADD IP CAMERA</button>
                           </div>}
-                          {selected.kind === "audio-input" && <><label>Device<select defaultValue=""><option value="">Detect audio devices</option></select></label><label>Channels<select defaultValue="stereo"><option value="mono">Mono</option><option value="stereo">Stereo</option></select></label></>}
+                          {selected.kind === "audio-input" && <div className="device-discovery-config">
+  <div className="discovery-toolbar">
+    <select value={selectedAudioDevice} onChange={(event) => setSelectedAudioDevice(event.target.value)}>
+      <option value="">Select audio input</option>
+      {audioDevices.map((device) => <option key={device.id} value={device.id}>{device.name}</option>)}
+    </select>
+    <button className="input-browse" onClick={discoverAudioDevices}>DETECT AUDIO</button>
+  </div>
+  <label>Channels<select defaultValue="stereo"><option value="mono">Mono</option><option value="stereo">Stereo</option></select></label>
+  <div className="input-config-note">Windows capture uses WASAPI here; ASIO remains the preferred low-latency backend when the native ASIO adapter is installed.</div>
+</div>}
                           {["colour","timer","title","composition","video-delay"].includes(selected.kind) && <div className="input-config-note">This is an internal VisCo source. Create it first, then configure its detailed properties from the Properties panel.</div>}
                           {selected.kind === "audio-input" && <div className="input-config-note">Audio device routing remains owned by the Audio Engine; this selector only defines the input source.</div>}
                         </div>
