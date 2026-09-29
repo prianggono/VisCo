@@ -124,3 +124,16 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [ ] Native Windows host implementations remain pending and are not simulated by TypeScript.
 - [ ] CI success is not claimed: GitHub connector returned no workflow runs for the latest direct commit during this audit.
 - [ ] License verification/enforcement/watermark remains intentionally excluded.
+
+
+## Application wiring pass — 2026-09-29
+
+- [x] React UI Save/Open project actions now use the canonical Project Snapshot serializer/parser.
+- [x] Project Load synchronizes Decks, Slices and LibraryEngine state.
+- [x] LibraryEngine supports atomic replace-all for project loading.
+- [x] Trigger Engine now supports a validated Deck Master level action through DeckProgramController.
+- [x] Trigger validation covers missing Deck and Master range.
+- [x] Existing 30 FPS, Preview/Program, Scene, Slice, Output and native boundary decisions remain unchanged.
+- [ ] Trigger property panel still needs a visual trigger editor; current UI placeholder is intentionally not replaced with fake persistence.
+- [ ] Advanced Output UI still needs a complete Scene/Display/Production editor.
+- [ ] Latest direct GitHub commit has no workflow run visible through the connector; CI PASS remains unverified.
