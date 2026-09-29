@@ -227,16 +227,18 @@ export function App() {
       name: `Slice ${slices.length + 1}`,
       transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
       mapping: { mode: "rectangle", snapToGrid: true, gridSize: 16 },
+      layerRefs: [{ deckId: selectedLayer.deckId, layerId: selectedLayerModel.id }],
       locked: false
     };
     setSlices((current) => [...current, slice]);
-    updateSelectedLayer({ sliceIds: [...(selectedLayerModel.sliceIds ?? []), sliceId] });
   };
 
   const resetSelectedLayerSlices = () => {
     if (!selectedLayerModel) return;
-    // Detach the Layer's Slice references only. A Slice may be shared by other Layers.
-    updateSelectedLayer({ sliceIds: [] });
+    setSlices((current) => current.map((slice) => ({
+      ...slice,
+      layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel.id))
+    })));
   };
 
   const updateSelectedPlayback = (patch: Partial<NonNullable<Layer["playback"]>>) => {
@@ -893,7 +895,7 @@ export function App() {
   </>;
 })()}
                   {item === "Slice" && (() => {
-                    const selectedSlices = slices.filter((slice) => (selectedLayerModel?.sliceIds ?? []).includes(slice.id));
+                    const selectedSlices = slices.filter((slice) => slice.layerRefs.some((ref) => ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel?.id));
                     const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
                     return <>
                       <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
