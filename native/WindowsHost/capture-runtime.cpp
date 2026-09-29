@@ -133,36 +133,47 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
       requireHr(buffer->Lock(&data, &maxLen, &currentLen), "Media buffer lock failed");
 
       UINT frameWidth = width, frameHeight = height;
-      LONG stride = static_cast<LONG>(frameWidth * 4);
+      LONG defaultStride = static_cast<LONG>(frameWidth * 4);
       ComPtr<IMFMediaType> currentType;
       if (SUCCEEDED(reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType))) {
         MFGetAttributeSize(currentType.Get(), MF_MT_FRAME_SIZE, &frameWidth, &frameHeight);
         UINT32 rawStride = 0;
         if (SUCCEEDED(currentType->GetUINT32(MF_MT_DEFAULT_STRIDE, &rawStride))) {
-          stride = static_cast<LONG>(rawStride);
+          defaultStride = static_cast<LONG>(rawStride);
         }
       }
+
+      // Prefer the actual 2-D surface pitch when the buffer exposes it.
+      // If only IMFMediaBuffer is available, reproduce Microsoft's negative-stride
+      // scanline-0 convention before copying into VisCo's canonical top-down BGRA.
+      BYTE* scanline0 = data;
+      LONG stride = defaultStride;
+      ComPtr<IMF2DBuffer> buffer2d;
+      bool locked2d = SUCCEEDED(buffer.As(&buffer2d)) && SUCCEEDED(buffer2d->Lock2D(&scanline0, &stride));
+      if (!locked2d && stride < 0) {
+        scanline0 = data + static_cast<size_t>(-stride) * (frameHeight - 1);
+      }
+
       const size_t rowBytes = static_cast<size_t>(frameWidth) * 4;
+      const size_t absStride = static_cast<size_t>(stride < 0 ? -stride : stride);
       const size_t required = rowBytes * frameHeight;
-      const size_t availableStride = static_cast<size_t>(stride < 0 ? -stride : stride);
-      if (currentLen >= availableStride * frameHeight && availableStride >= rowBytes) {
+      if (absStride >= rowBytes && currentLen >= absStride * frameHeight) {
         auto frame = std::make_shared<NativeVideoFrame>();
         frame->width = frameWidth;
         frame->height = frameHeight;
         frame->timestampUs = sampleTimeUs(sample);
         frame->bgra.resize(required);
         for (UINT y=0; y<frameHeight; ++y) {
-          const UINT srcY = stride < 0 ? (frameHeight - 1 - y) : y;
-          memcpy(frame->bgra.data() + static_cast<size_t>(y) * rowBytes,
-                 data + static_cast<size_t>(srcY) * availableStride,
-                 rowBytes);
+          const BYTE* sourceRow = scanline0 + static_cast<ptrdiff_t>(y) * stride;
+          memcpy(frame->bgra.data() + static_cast<size_t>(y) * rowBytes, sourceRow, rowBytes);
         }
         {
           std::lock_guard<std::mutex> lock(mutex_);
           latest_ = std::move(frame);
         }
       }
-      buffer->Unlock();
+      if (locked2d) buffer2d->Unlock2D();
+
     }
     source->Shutdown();
   } catch (const std::exception& ex) {
