@@ -8,7 +8,7 @@ export interface OutputFrameSource {
 
 export interface OutputFrameSlice {
   readonly id: string;
-  readonly layerIds: readonly string[];
+  readonly layerRefs: readonly { readonly deckId: string; readonly layerId: string }[];
   readonly transform: {
     readonly x: number;
     readonly y: number;
