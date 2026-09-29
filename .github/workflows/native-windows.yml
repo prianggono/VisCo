@@ -1,0 +1,15 @@
+name: VisCo Native Windows CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  native-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S native/WindowsHost -B build/native
+      - name: Build
+        run: cmake --build build/native --config Release
