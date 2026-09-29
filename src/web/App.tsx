@@ -452,6 +452,7 @@ export function App() {
     nativeHost.status().then(async (status) => {
       setNativeHostState(status.available ? "online" : "offline");
       if (status.available) {
+        setNativeCaptureDevice("auto");
         try { setRuntimeAdapters(await nativeHost.runtimeAdapters()); } catch { setRuntimeAdapters([]); }
       }
     });
