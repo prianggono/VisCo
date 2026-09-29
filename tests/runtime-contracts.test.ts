@@ -6,6 +6,7 @@ import { ControlMappingEngine } from "../src/engine/control-mapping.js";
 import { SourcePlaybackEngine } from "../src/engine/source-playback.js";
 import { createArtNetFrame, ArtNetLedOutput, type ArtNetLedOutputBridge } from "../src/native/artnet-led-output.js";
 import { WindowsDisplayOutput, type WindowsDisplayOutputBridge } from "../src/native/windows-display-output.js";
+import { D3D11RendererRuntime, type D3D11RendererBridge } from "../src/native/d3d11-renderer.js";
 
 describe("runtime contracts", () => {
   it("isolates a failed output transport", async () => {
@@ -77,6 +78,24 @@ describe("runtime contracts", () => {
     await output.send(createArtNetFrame(0, new Uint8Array(512)));
     expect(sent).toBe(true);
     expect(() => output.send(createArtNetFrame(0, new Uint8Array(513)))).toThrow();
+  });
+
+  it("guards the D3D11 native renderer boundary", async () => {
+    let rendered = false;
+    const bridge: D3D11RendererBridge = {
+      async initialize() { return { backend: "d3d11", maxTextureSize: 8192, supportsVideo: true, supportsCompute: true }; },
+      async render() { rendered = true; },
+      async resize() {},
+      async flush() {},
+      async dispose() {}
+    };
+    const runtime = new D3D11RendererRuntime(bridge);
+    await expect(runtime.render({ width: 1920, height: 1080, fps: 30, layerIds: [] })).rejects.toThrow();
+    await runtime.initialize();
+    await runtime.render({ width: 1920, height: 1080, fps: 30, layerIds: ["layer-1"] });
+    expect(rendered).toBe(true);
+    await expect(runtime.render({ width: 9000, height: 1080, fps: 30, layerIds: [] })).rejects.toThrow();
+    await runtime.dispose();
   });
 
   it("keeps HDMI output as a separate display transport", async () => {
