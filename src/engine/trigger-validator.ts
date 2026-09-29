@@ -1,5 +1,6 @@
 import { findLayer } from "../domain/deck.js";
-import type { TriggerAction, TriggerContext } from "./trigger-engine.js";
+import type { TriggerAction } from "../domain/trigger.js";
+import type { TriggerContext } from "./trigger-engine.js";
 
 export type TriggerIssueSeverity = "error";
 export interface TriggerIssue {
