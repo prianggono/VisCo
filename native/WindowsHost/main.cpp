@@ -213,7 +213,7 @@ class HttpControlServer {
       const auto amp = kind.find('&'); if (amp != std::string::npos) kind.resize(amp);
       if (kind == "camera" || kind == "video-capture" || kind == "desktop-capture") {
         const devices = media_->enumerateVideoDeviceInfo();
-        std::ostringstream body; body << "{\\"devices\\":[";
+        std::ostringstream body; body << "{\"devices\":[";
         bool first = true;
         for (size_t i=0;i<devices.size();++i) {
           const bool matches = (kind == "camera" && devices[i].camera) ||
@@ -223,9 +223,9 @@ class HttpControlServer {
           first = false;
           const std::string name = jsonEscape(devices[i].name);
           const std::string link = jsonEscape(devices[i].symbolicLink);
-          body << "{\\"id\\":\\"win-video-" << i << "\\",\\"name\\":\\"" << name
-               << "\\",\\"kind\\":\\"" << (devices[i].camera ? "camera" : "video-capture")
-               << "\\",\\"transport\\":\\"local\\",\\"metadata\\":{\\"backend\\":\\"media-foundation\\",\\"symbolicLink\\":\\"" << link << "\\"}}";
+          body << "{\"id\":\"win-video-" << i << "\",\"name\":\"" << name
+               << "\",\"kind\":\"" << (devices[i].camera ? "camera" : "video-capture")
+               << "\",\"transport\":\"local\",\"metadata\":{\"backend\":\"media-foundation\",\"symbolicLink\":\"" << link << "\"}}";
         }
         body << "]}";
         sendResponse(client, body.str());
