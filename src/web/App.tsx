@@ -12,6 +12,7 @@ import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
+import type { Slice } from "../domain/slice.js";
 import type { Source, SourceKind } from "../domain/source.js";
 type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
@@ -90,6 +91,7 @@ export function App() {
     return engine;
   }, []);
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const [slices, setSlices] = useState<Slice[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
@@ -162,6 +164,39 @@ export function App() {
     libraryEngine.update({ ...source, list: { ...(source.list ?? { itemIds: [], shuffle: false, playOut: true, autoNext: true, autoFirst: false, loop: false, interlaced: false }), ...patch } });
     setLibraryItems([...libraryEngine.list()]);
     setRuntimeRevision((value) => value + 1);
+  };
+
+  const updateSelectedAudio = (patch: Partial<NonNullable<Layer["audio"]>>) => {
+    if (!selectedLayerModel) return;
+    updateSelectedLayer({
+      audio: {
+        volume: selectedLayerModel.audio?.volume ?? 100,
+        pan: selectedLayerModel.audio?.pan ?? 0,
+        ...patch
+      }
+    });
+  };
+
+  const addSliceToSelectedLayer = () => {
+    if (!selectedLayerModel) return;
+    const sliceId = `slice-${Date.now()}`;
+    const slice: Slice = {
+      id: sliceId,
+      name: `Slice ${slices.length + 1}`,
+      transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
+      mapping: { mode: "rectangle", snapToGrid: true, gridSize: 16 },
+      layerIds: [selectedLayerModel.id],
+      locked: false
+    };
+    setSlices((current) => [...current, slice]);
+    updateSelectedLayer({ sliceIds: [...(selectedLayerModel.sliceIds ?? []), sliceId] });
+  };
+
+  const resetSelectedLayerSlices = () => {
+    if (!selectedLayerModel) return;
+    const selectedIds = new Set(selectedLayerModel.sliceIds ?? []);
+    setSlices((current) => current.filter((slice) => !selectedIds.has(slice.id)));
+    updateSelectedLayer({ sliceIds: [] });
   };
 
   const updateSelectedPlayback = (patch: Partial<NonNullable<Layer["playback"]>>) => {
@@ -636,9 +671,15 @@ export function App() {
                     <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
                     <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
                   </div>}
-                  {item === "Audio" && <><label>Volume<input type="range" min="0" max="100" defaultValue="100" /></label><label>Pan<input type="range" min="-100" max="100" defaultValue="0" /></label></>}
+                  {item === "Audio" && (() => {
+                    const audio = selectedLayerModel?.audio ?? { volume: 100, pan: 0 };
+                    return <><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
+                  })()}
                   {item === "Trigger" && <div className="property-empty">No triggers assigned to this layer.</div>}
-                  {item === "Slice" && <><SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} /><div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"}</div><div className="property-buttons"><button>Add Slice</button><button>Reset Slice</button></div></>}
+                  {item === "Slice" && (() => {
+                    const selectedSlices = slices.filter((slice) => (selectedLayerModel?.sliceIds ?? []).includes(slice.id));
+                    return <><SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} /><div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div><div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>{selectedSlices.map((slice) => <div className="property-grid" key={slice.id}><label>Width<input type="number" min="1" value={slice.transform.width} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, width: Number(event.target.value) } } : item))} /></label><label>Height<input type="number" min="1" value={slice.transform.height} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, height: Number(event.target.value) } } : item))} /></label><label>X<input type="number" value={slice.transform.x} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, x: Number(event.target.value) } } : item))} /></label><label>Y<input type="number" value={slice.transform.y} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, y: Number(event.target.value) } } : item))} /></label></div>)}</>;
+                  })()}
                   {item === "Advanced" && <div className="property-empty">Advanced layer options.</div>}
                 </div>
               )}
