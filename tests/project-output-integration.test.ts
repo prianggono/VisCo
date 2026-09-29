@@ -3,6 +3,7 @@ import { ProjectRuntime, projectSnapshotFromCollections } from "../src/engine/pr
 import { compositeProgramForOutput } from "../src/engine/output-compositor.js";
 import { createOutputFrame } from "../src/engine/output-frame-builder.js";
 import { OutputEngine } from "../src/engine/output-engine.js";
+import { toD3D11RenderFrame } from "../src/engine/d3d11-output-adapter.js";
 import type { Deck } from "../src/domain/deck.js";
 import type { Scene } from "../src/domain/scene.js";
 
@@ -91,5 +92,7 @@ describe("project/output integration", () => {
     expect(frame.layerIds).toEqual(["layer-1"]);
     expect(frame.slices?.[0]?.id).toBe("slice-1");
     expect(frame.slices?.[0]?.transform.width).toBe(1920);
+    const renderFrame = toD3D11RenderFrame(frame);
+    expect(renderFrame.slices?.[0]?.id).toBe("slice-1");
   });
 });
