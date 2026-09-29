@@ -1,4 +1,5 @@
 import type { Source } from "./source.js";
+import type { TriggerAction } from "./trigger.js";
 
 export interface LayerTransform {
   readonly x: number;
@@ -32,4 +33,6 @@ export interface Layer {
   readonly audio?: LayerAudio;
   readonly blendMode?: string;
   readonly order?: number;
+  /** Trigger actions are persisted with the Layer; duplicate/copy actions are allowed. */
+  readonly triggers?: readonly TriggerAction[];
 }
