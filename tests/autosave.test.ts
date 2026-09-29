@@ -5,6 +5,6 @@ describe("AutosaveController", () => {
     const save=vi.fn();
     const a=new AutosaveController({save},1000);
     await a.flush(1); expect(save).not.toHaveBeenCalled();
-    a.markDirty(); await a.flush(2); expect(save).toHaveBeenCalledWith(2);
+    a.markDirty(2); await a.flush(); expect(save).toHaveBeenCalledWith(2);
   });
 });
