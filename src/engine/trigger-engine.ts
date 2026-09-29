@@ -42,7 +42,7 @@ export class TriggerEngine {
       case "set-master": {
         const deck = context.decks.get(action.deckId);
         if (!deck) throw new Error(`Deck "${action.deckId}" does not exist.`);
-        context.controller["deckRuntime"].setMasterLevel(action.deckId, action.level);
+        context.controller.setMasterLevel(action.deckId, action.level);
         return fallback ?? context.controller.getProgramState();
       }
     }
