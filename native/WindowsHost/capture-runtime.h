@@ -62,6 +62,7 @@ class D3D11Host {
 public:
   void initialize(HWND hwnd, UINT width, UINT height);
   std::shared_ptr<const NativeVideoFrame> render(const std::shared_ptr<const NativeVideoFrame>& frame);
+  std::shared_ptr<const NativeVideoFrame> latestFinal() const;
   void resizeTarget(UINT width, UINT height);
 private:
   ComPtr<ID3D11Device> device_;
@@ -74,6 +75,8 @@ private:
   ComPtr<ID3D11Texture2D> readbackTexture_;
   ComPtr<ID3D11VertexShader> vertexShader_;
   ComPtr<ID3D11PixelShader> pixelShader_;
+  mutable std::mutex finalMutex_;
+  std::shared_ptr<const NativeVideoFrame> latestFinal_;
   UINT videoWidth_ = 0;
   UINT videoHeight_ = 0;
   void ensureVideoTexture(UINT width, UINT height);
@@ -82,13 +85,13 @@ private:
 
 class MjpegPreviewServer {
 public:
-  explicit MjpegPreviewServer(MediaCaptureHost& capture) : capture_(capture) {}
+  explicit MjpegPreviewServer(D3D11Host& renderer) : renderer_(renderer) {}
   ~MjpegPreviewServer();
   void start(unsigned short port = 47822);
 private:
   void loop();
   void streamClient(SOCKET client);
-  MediaCaptureHost& capture_;
+  D3D11Host& renderer_;
   SOCKET listener_ = INVALID_SOCKET;
   std::atomic<bool> running_{false};
   std::thread thread_;
