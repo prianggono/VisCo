@@ -1,4 +1,5 @@
 #include "runtime-adapters.h"
+#include "asio-audio-runtime.h"
 #include <cstdlib>
 #include <sstream>
 
@@ -15,7 +16,9 @@ static std::string jsonEscapeRuntime(const std::string& s) {
 RuntimeAdapterRegistry::RuntimeAdapterRegistry() {
   statuses_.push_back(probe("NDI", {"Processing.NDI.Lib.x64.dll","Processing.NDI.Lib.dll","Processing.NDI.Lib.x86.dll"}, "VISCO_NDI_DLL"));
   statuses_.push_back(probe("OMT", {"libomt.dll","libvmx.dll"}, "VISCO_OMT_DLL"));
-  statuses_.push_back(probe("ASIO", {"asio.dll","ASIO.dll"}, "VISCO_ASIO_DLL"));
+  const auto asioDrivers = visco_asio::AsioAudioRuntime::enumerateDrivers();
+  statuses_.push_back({"ASIO", !asioDrivers.empty(), asioDrivers.empty() ? "" : asioDrivers.front().clsid,
+    asioDrivers.empty() ? "No ASIO driver is registered." : "ASIO driver registry detected; native callback adapter is available."});
 }
 
 RuntimeAdapterRegistry::~RuntimeAdapterRegistry() {
