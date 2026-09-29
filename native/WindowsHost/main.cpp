@@ -22,8 +22,10 @@
 #include <atomic>
 #include <sstream>
 #include <cctype>
+#include <cstdlib>
 #include "capture-runtime.h"
 #include "runtime-adapters.h"
+#include "network-frame-runtime.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -94,6 +96,7 @@ class HttpControlServer {
   WasapiHost* audio_ = nullptr;
   MediaCaptureHost* capture_ = nullptr;
   RuntimeAdapterRegistry* runtimes_ = nullptr;
+  NetworkFrameRuntime* network_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
     std::ostringstream response;
@@ -120,6 +123,47 @@ class HttpControlServer {
       sendResponse(client, R"({"available":true,"version":"native-host-1","backend":"d3d11","capture":"media-foundation","audio":"wasapi","led":"art-net"})");
     } else if (requestLine.rfind("GET /runtime", 0) == 0) {
       sendResponse(client, runtimes_ ? runtimes_->json() : R"({"adapters":[]})");
+    } else if (requestLine.rfind("GET /network/discover", 0) == 0) {
+      const auto p = requestLine.find("protocol=");
+      const std::string protocol = p == std::string::npos ? "" : requestLine.substr(p + 9);
+      const NetworkProtocol kind = protocol == "ndi" ? NetworkProtocol::NDI : protocol == "omt" ? NetworkProtocol::OMT : NetworkProtocol::None;
+      if (kind == NetworkProtocol::None) {
+        sendResponse(client, R"({"devices":[],"message":"protocol must be ndi or omt"})", "400 Bad Request");
+      } else {
+        const auto sources = network_->discover(kind);
+        std::ostringstream body; body << "{\"devices\":[";
+        for (size_t i=0;i<sources.size();++i) {
+          if(i) body << ",";
+          body << "{\"id\":\"" << sources[i].id << "\",\"name\":\"" << sources[i].name
+               << "\",\"kind\":\"" << (kind==NetworkProtocol::NDI ? "ndi" : "omt")
+               << "\",\"transport\":\"network\",\"address\":\"" << sources[i].address << "\"}";
+        }
+        body << "]}"; sendResponse(client, body.str());
+      }
+    } else if (requestLine.rfind("GET /network/start", 0) == 0) {
+      const auto pp = requestLine.find("protocol=");
+      const auto ss = requestLine.find("source=");
+      const auto protocolEnd = pp == std::string::npos ? std::string::npos : requestLine.find('&', pp);
+      const std::string protocol = pp == std::string::npos ? "" : requestLine.substr(pp + 9, protocolEnd == std::string::npos ? std::string::npos : protocolEnd - (pp + 9));
+      const std::string source = ss == std::string::npos ? "" : requestLine.substr(ss + 7);
+      const NetworkProtocol kind = protocol == "ndi" ? NetworkProtocol::NDI : protocol == "omt" ? NetworkProtocol::OMT : NetworkProtocol::None;
+      try {
+        if(kind == NetworkProtocol::None || source.empty()) throw std::runtime_error("Network protocol and source are required.");
+        network_->start(kind, source);
+        sendResponse(client, std::string(R"({"ok":true,"running":true,"protocol":")") +
+          (kind==NetworkProtocol::NDI ? "ndi" : "omt") + R"(","source":")" + source + R"("})");
+      } catch(const std::exception& ex) {
+        sendResponse(client, std::string(R"({"ok":false,"message":")") + ex.what() + R"("})", "500 Internal Server Error");
+      }
+    } else if (requestLine.rfind("GET /network/stop", 0) == 0) {
+      network_->stop();
+      sendResponse(client, R"({"ok":true,"running":false})");
+    } else if (requestLine.rfind("GET /network/status", 0) == 0) {
+      std::ostringstream body;
+      body << "{\"running\":" << (network_->running() ? "true" : "false")
+           << ",\"protocol\":\"" << (network_->protocol()==NetworkProtocol::NDI ? "ndi" : network_->protocol()==NetworkProtocol::OMT ? "omt" : "none")
+           << "\",\"error\":\"" << network_->error() << "\"}";
+      sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /capture/start", 0) == 0) {
       const q = requestLine.find("device=");
       std::string id = q == std::string::npos ? "" : requestLine.substr(q + 7);
@@ -193,8 +237,8 @@ class HttpControlServer {
   }
 
 public:
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -261,18 +305,27 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     MjpegPreviewServer preview(capture);
     preview.start(47822);
     RuntimeAdapterRegistry runtimes;
+    NetworkFrameRuntime network;
+    const char* envProtocol = std::getenv("VISCO_NETWORK_PROTOCOL");
+    const char* envSource = std::getenv("VISCO_NETWORK_SOURCE");
+    if (envProtocol && envSource && *envProtocol && *envSource) {
+      try {
+        network.start(std::string(envProtocol) == "ndi" ? NetworkProtocol::NDI : NetworkProtocol::OMT, envSource);
+      } catch (const std::exception& ex) { std::cerr << "Network source offline: " << ex.what() << "\n"; }
+    }
     if (!media.enumerateVideoDeviceInfo().empty()) {
       capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
     }
     HttpControlServer http;
-    http.start(media, audio, capture, runtimes);
+    http.start(media, audio, capture, runtimes, network);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
     MSG msg{};
     while(msg.message != WM_QUIT) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
-      renderer.render(capture.latest());
+      const auto networkFrame = network.latest();
+      renderer.render(network.running() ? networkFrame : capture.latest());
       Sleep(33);
     }
     if (SUCCEEDED(co)) CoUninitialize();
