@@ -132,6 +132,18 @@ describe("runtime contracts", () => {
     expect(decoder.getStatus().opened).toBe(false);
   });
 
+
+  it("protects referenced library media and supports search/sort", async () => {
+    const { LibraryEngine } = await import("../src/engine/library-engine.js");
+    const library = new LibraryEngine([{ id: "b", name: "Beta", kind: "video" }, { id: "a", name: "Alpha", kind: "image" }]);
+    expect(library.search("alp").map((item) => item.id)).toEqual(["a"]);
+    expect(library.sort("name").map((item) => item.id)).toEqual(["a", "b"]);
+    expect(library.canRemove("a", [{ id: "layer-1", name: "Layer", sourceId: "a" }])).toBe(false);
+    expect(() => library.removeIfUnused("a", [{ id: "layer-1", name: "Layer", sourceId: "a" }])).toThrow(/still used/);
+    library.removeIfUnused("a", []);
+    expect(library.has("a")).toBe(false);
+  });
+
   it("keeps NDI, OMT and IP camera behind one native network boundary", async () => {
     const bridge: NetworkFrameSourceBridge = {
       async probe() { return { available: true }; },
