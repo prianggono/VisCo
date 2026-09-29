@@ -223,6 +223,7 @@ cbuffer Transform : register(b0) {
   float4 rotation;  // radians, unused yzw
   float4 scaleOpacity; // scaleX, scaleY, opacity, outputWidth
   float4 outputSize; // outputWidth, outputHeight, unused, unused
+  float4 crop;       // left, top, right, bottom normalized
 };
 struct VSOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
 VSOut vs(uint id : SV_VertexID) {
@@ -236,7 +237,7 @@ VSOut vs(uint id : SV_VertexID) {
   float2 pixel = center + local;
   float2 ndc = float2(pixel.x / outputSize.x * 2.0 - 1.0,
                        1.0 - pixel.y / outputSize.y * 2.0);
-  VSOut o; o.pos=float4(ndc,0,1); o.uv=uv[id]; return o;
+  VSOut o; o.pos=float4(ndc,0,1); o.uv=float2(lerp(crop.x, 1.0-crop.z, uv[id].x), lerp(crop.y, 1.0-crop.w, uv[id].y)); return o;
 }
 Texture2D tex0 : register(t0);
 SamplerState samp0 : register(s0);
@@ -253,7 +254,7 @@ float4 ps(VSOut input) : SV_Target {
   requireHr(device_->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader_), "Pixel shader creation failed");
 
   D3D11_BUFFER_DESC cb{};
-  cb.ByteWidth = 64;
+  cb.ByteWidth = 80;
   cb.Usage = D3D11_USAGE_DYNAMIC;
   cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
   cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -409,7 +410,7 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::renderComposition(const std::
   context_->PSSetSamplers(0,1,sampler_.GetAddressOf());
   context_->OMSetBlendState(blendState_.Get(), nullptr, 0xffffffffu);
 
-  struct CB { float rect[4]; float rotation[4]; float scaleOpacity[4]; float outputSize[4]; } cb{};
+  struct CB { float rect[4]; float rotation[4]; float scaleOpacity[4]; float outputSize[4]; float crop[4]; } cb{};
   cb.outputSize[0] = static_cast<float>(backDesc.Width);
   cb.outputSize[1] = static_cast<float>(backDesc.Height);
 
@@ -426,6 +427,7 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::renderComposition(const std::
     cb.rect[0]=layer.x; cb.rect[1]=layer.y; cb.rect[2]=layer.width; cb.rect[3]=layer.height;
     cb.rotation[0]=layer.rotation * 3.14159265358979323846f / 180.0f;
     cb.scaleOpacity[0]=layer.scaleX; cb.scaleOpacity[1]=layer.scaleY; cb.scaleOpacity[2]=layer.opacity;
+    cb.crop[0]=std::clamp(layer.cropLeft,0.0f,1.0f); cb.crop[1]=std::clamp(layer.cropTop,0.0f,1.0f); cb.crop[2]=std::clamp(layer.cropRight,0.0f,1.0f); cb.crop[3]=std::clamp(layer.cropBottom,0.0f,1.0f);
     context_->Map(transformBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&mapped);
     memcpy(mapped.pData,&cb,sizeof(cb));
     context_->Unmap(transformBuffer_.Get(),0);
