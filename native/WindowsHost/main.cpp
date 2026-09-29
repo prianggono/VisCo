@@ -220,13 +220,18 @@ class HttpControlServer {
           if (item.empty()) continue;
           std::stringstream fields(item); std::string f; std::vector<std::string> v;
           while (std::getline(fields, f, '|')) v.push_back(f);
-          if (v.size() != 11) throw std::runtime_error("Invalid render layer descriptor.");
+          if (v.size() != 16) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
           layer.sourceId = v[1];
           layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
           layer.x=std::stof(v[2]); layer.y=std::stof(v[3]); layer.width=std::stof(v[4]); layer.height=std::stof(v[5]);
           layer.rotation=std::stof(v[6]); layer.scaleX=std::stof(v[7]); layer.scaleY=std::stof(v[8]);
           layer.opacity=std::stof(v[9]); layer.order=std::stoi(v[10]);
+          if (!v[11].empty()) layer.cropLeft=std::stof(v[11]);
+          if (!v[12].empty()) layer.cropTop=std::stof(v[12]);
+          if (!v[13].empty()) layer.cropRight=std::stof(v[13]);
+          if (!v[14].empty()) layer.cropBottom=std::stof(v[14]);
+          layer.sliceId=v[15];
           parsed.push_back(std::move(layer));
         }
         { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
