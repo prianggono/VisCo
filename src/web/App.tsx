@@ -613,16 +613,26 @@ export function App() {
 
   const openOutputSettings = (kind: "stream" | "record" | "display") => setOutputSettings(kind);
 
-  const applyOutputSettings = (patch: Record<string, unknown>) => {
+  const applyOutputSettings = (patch: { resolution?: [number, number]; fps?: number; codec?: string; bitrate?: number | "auto" }) => {
     try {
       if (outputSettings === "display") {
         setProjectMessage("Fullscreen uses the active Scene and Windows display target.");
-      } else {
-        const media = outputEngine.getState("production").target.media;
-        if (!media) return;
-        outputEngine.updateMediaSettings("production", patch as Partial<NonNullable<typeof media>>);
-        setOutputRevision((value) => value + 1);
+        return;
       }
+      const media = outputEngine.getState("production").target.media;
+      if (!media) return;
+      const next: Partial<typeof media> = { ...patch };
+      if (patch.codec !== undefined || patch.bitrate !== undefined) {
+        if (outputSettings === "stream") {
+          next.stream = { ...(media.stream ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", server: "", key: "" }), ...patch };
+        } else {
+          next.record = { ...(media.record ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", segmentMinutes: 60, targetFolder: "" }), ...patch };
+        }
+        delete next.codec;
+        delete next.bitrate;
+      }
+      outputEngine.updateMediaSettings("production", next);
+      setOutputRevision((value) => value + 1);
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Output settings update failed.");
     }
@@ -1035,8 +1045,8 @@ export function App() {
             <div className="property-grid">
               <label>Resolution<select defaultValue="1920x1080" onChange={(event) => { const [w,h]=event.target.value.split("x").map(Number); applyOutputSettings({ resolution: [w,h] as [number,number] }); }}><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="3840x2160">3840 × 2160</option></select></label>
               <label>FPS<select defaultValue={String(mediaSettings.fps)} onChange={(event) => applyOutputSettings({ fps: Number(event.target.value) })}><option value="30">30</option><option value="25">25</option><option value="24">24</option><option value="60">60</option></select></label>
-              {outputSettings !== "display" && <label>Codec<select defaultValue={outputSettings === "stream" ? mediaSettings.stream?.codec ?? "h264" : mediaSettings.record?.codec ?? "h264"}><option value="h264">H.264</option><option value="hevc">HEVC / H.265</option></select></label>}
-              {outputSettings !== "display" && <label>Bitrate<select defaultValue="auto"><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
+              {outputSettings !== "display" && <label>Codec<select defaultValue={outputSettings === "stream" ? mediaSettings.stream?.codec ?? "h264" : mediaSettings.record?.codec ?? "h264"} onChange={(event) => applyOutputSettings({ codec: event.target.value })}><option value="h264">H.264</option><option value="hevc">HEVC / H.265</option></select></label>}
+              {outputSettings !== "display" && <label>Bitrate<select defaultValue="auto" onChange={(event) => applyOutputSettings({ bitrate: event.target.value === "auto" ? "auto" : Number(event.target.value) })}><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
             </div>
             <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
           </div>
