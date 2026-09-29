@@ -61,7 +61,7 @@ private:
 class D3D11Host {
 public:
   void initialize(HWND hwnd, UINT width, UINT height);
-  void render(const std::shared_ptr<const NativeVideoFrame>& frame);
+  std::shared_ptr<const NativeVideoFrame> render(const std::shared_ptr<const NativeVideoFrame>& frame);
   void resizeTarget(UINT width, UINT height);
 private:
   ComPtr<ID3D11Device> device_;
@@ -71,6 +71,7 @@ private:
   ComPtr<ID3D11Texture2D> videoTexture_;
   ComPtr<ID3D11ShaderResourceView> videoView_;
   ComPtr<ID3D11SamplerState> sampler_;
+  ComPtr<ID3D11Texture2D> readbackTexture_;
   ComPtr<ID3D11VertexShader> vertexShader_;
   ComPtr<ID3D11PixelShader> pixelShader_;
   UINT videoWidth_ = 0;
