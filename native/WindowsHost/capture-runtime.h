@@ -27,7 +27,15 @@ struct NativeVideoFrame {
   std::vector<unsigned char> bgra;
 };
 
-class MediaFoundationHost;
+class MediaFoundationHost {
+public:
+  MediaFoundationHost();
+  ~MediaFoundationHost();
+  struct VideoDeviceInfo { std::wstring name; std::wstring symbolicLink; bool camera; };
+  std::vector<VideoDeviceInfo> enumerateVideoDeviceInfo();
+  std::vector<std::wstring> enumerateVideoDevices();
+  ComPtr<IMFMediaSource> createSource(const std::wstring& symbolicLink);
+};
 
 class MediaCaptureHost {
 public:
