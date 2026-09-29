@@ -1,5 +1,7 @@
 #pragma once
 #include <windows.h>
+#include <unknwn.h>
+#include <objbase.h>
 #include <atomic>
 #include <cstdint>
 #include <mutex>
