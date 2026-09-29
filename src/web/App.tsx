@@ -753,7 +753,7 @@ export function App() {
                   </div>
 
                   <div className="layer-strip">
-                    {deck.layers.map((layer, index) => {
+                    {deck.layers.filter((layer) => !groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))).map((layer, index) => {
                       const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
                       const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
                       const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
