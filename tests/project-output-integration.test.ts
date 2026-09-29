@@ -7,7 +7,7 @@ import { toD3D11RenderFrame } from "../src/engine/d3d11-output-adapter.js";
 import type { Deck } from "../src/domain/deck.js";
 import type { Scene } from "../src/domain/scene.js";
 
-const layer = { id: "layer-1", name: "Layer 1", order: 0 };
+const layer = { id: "layer-1", name: "Layer 1", order: 0, sliceIds: ["slice-1"] };
 const deck: Deck = {
   id: "deck-1",
   name: "Deck 1",
@@ -72,7 +72,7 @@ describe("project/output integration", () => {
       transition: deck.transition
     };
     const frame = createOutputFrame(program, selectedScene, { width: 1920, height: 1080, fps: 30 }, 1, [
-      { id: "slice-1", name: "Slice 1", transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }, layerIds: ["layer-1"], locked: false },
+      { id: "slice-1", name: "Slice 1", transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }, locked: false },
       { id: "slice-2", name: "Slice 2", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerIds: ["layer-1"], locked: false }
     ]);
     expect(frame.slices?.map((slice) => slice.id)).toEqual(["slice-2"]);
