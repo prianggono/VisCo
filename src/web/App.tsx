@@ -118,6 +118,7 @@ export function App() {
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
+  const [outputSettings, setOutputSettings] = useState<"stream" | "record" | "display" | null>(null);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const groupEngine = useMemo(() => new GroupEngine(), []);
   const nativeHost = useMemo(() => new NativeHostHttpBridge(), []);
@@ -610,6 +611,23 @@ export function App() {
     setOutputRevision((value) => value + 1);
   };
 
+  const openOutputSettings = (kind: "stream" | "record" | "display") => setOutputSettings(kind);
+
+  const applyOutputSettings = (patch: Record<string, unknown>) => {
+    try {
+      if (outputSettings === "display") {
+        setProjectMessage("Fullscreen uses the active Scene and Windows display target.");
+      } else {
+        const media = outputEngine.getState("production").target.media;
+        if (!media) return;
+        outputEngine.updateMediaSettings("production", patch as Partial<NonNullable<typeof media>>);
+        setOutputRevision((value) => value + 1);
+      }
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Output settings update failed.");
+    }
+  };
+
   const toggleMediaFeature = (feature: "stream" | "record" | "virtual") => {
     const key = feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual";
     outputEngine.setMediaFeature("production", feature, !mediaSettings[key]);
@@ -970,15 +988,15 @@ export function App() {
         <div className="output-group">
           <div className="output-control">
             <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("display-1")}>FULLSCREEN</button>
-            <button className="output-gear" title="Fullscreen settings">⚙</button>
+            <button className="output-gear" title="Fullscreen settings" onClick={() => openOutputSettings("display")}>⚙</button>
           </div>
           <div className="output-control">
             <button className={mediaSettings.streaming ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("stream")}>STREAM</button>
-            <button className="output-gear" title="Stream settings">⚙</button>
+            <button className="output-gear" title="Stream settings" onClick={() => openOutputSettings("stream")}>⚙</button>
           </div>
           <div className="output-control">
             <button className={mediaSettings.recording ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("record")}>RECORD</button>
-            <button className="output-gear" title="Record settings">⚙</button>
+            <button className="output-gear" title="Record settings" onClick={() => openOutputSettings("record")}>⚙</button>
           </div>
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
@@ -1010,6 +1028,20 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {outputSettings && (
+        <div className="modal-backdrop" onClick={() => setOutputSettings(null)}>
+          <div className="add-input-modal output-settings-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>{outputSettings.toUpperCase()} SETTINGS</strong><span>Encoder and output configuration. The active Scene remains the routing authority.</span></div><button onClick={() => setOutputSettings(null)}>×</button></div>
+            <div className="property-grid">
+              <label>Resolution<select defaultValue="1920x1080" onChange={(event) => { const [w,h]=event.target.value.split("x").map(Number); applyOutputSettings({ resolution: [w,h] as [number,number] }); }}><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="3840x2160">3840 × 2160</option></select></label>
+              <label>FPS<select defaultValue={String(mediaSettings.fps)} onChange={(event) => applyOutputSettings({ fps: Number(event.target.value) })}><option value="30">30</option><option value="25">25</option><option value="24">24</option><option value="60">60</option></select></label>
+              {outputSettings !== "display" && <label>Codec<select defaultValue={outputSettings === "stream" ? mediaSettings.stream?.codec ?? "h264" : mediaSettings.record?.codec ?? "h264"}><option value="h264">H.264</option><option value="hevc">HEVC / H.265</option></select></label>}
+              {outputSettings !== "display" && <label>Bitrate<select defaultValue="auto"><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
       {showAddInput && (
         <div className="modal-backdrop" onClick={() => setShowAddInput(false)}>
           <div className="add-input-modal input-select-modal" onClick={(event) => event.stopPropagation()}>
