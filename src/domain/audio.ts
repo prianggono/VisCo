@@ -123,6 +123,17 @@ export class AudioEngine {
     return state;
   }
 
+  /** Replace project audio deck state atomically when opening a project. */
+  replaceAll(deckIds: readonly string[]): void {
+    const next = new Map<string, AudioDeckState>();
+    for (const deckId of deckIds) {
+      if (next.has(deckId)) throw new Error(`Audio deck "${deckId}" is duplicated.`);
+      next.set(deckId, { deckId, enabled: true, level: 100, layerId: null });
+    }
+    this.decks.clear();
+    for (const [id, state] of next) this.decks.set(id, state);
+  }
+
   setEnabled(deckId: string, enabled: boolean): AudioDeckState {
     const state = this.require(deckId);
     const next = { ...state, enabled };
