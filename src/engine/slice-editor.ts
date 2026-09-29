@@ -67,7 +67,16 @@ export function patchSliceTransform(slice: Slice, patch: Partial<SliceTransform>
 
 export function patchSliceMapping(slice: Slice, patch: Partial<SliceMapping>): Slice {
   if (slice.locked) throw new Error(`Slice "${slice.id}" is locked.`);
-  const mapping = { ...(slice.mapping ?? { mode: "rectangle" as const }), ...patch };
+  let mapping = { ...(slice.mapping ?? { mode: "rectangle" as const }), ...patch };
+  const defaultPoints = [
+    { x: slice.transform.x, y: slice.transform.y },
+    { x: slice.transform.x + slice.transform.width, y: slice.transform.y },
+    { x: slice.transform.x + slice.transform.width, y: slice.transform.y + slice.transform.height },
+    { x: slice.transform.x, y: slice.transform.y + slice.transform.height }
+  ];
+  if ((mapping.mode === "corner-pin" || mapping.mode === "polygon") && (mapping.points?.length ?? 0) === 0) {
+    mapping = { ...mapping, points: defaultPoints };
+  }
   if (mapping.mode === "corner-pin" && (mapping.points?.length ?? 0) !== 4) {
     throw new Error("Corner-pin mapping requires exactly 4 points.");
   }
