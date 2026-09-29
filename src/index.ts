@@ -34,6 +34,7 @@ export * from "./engine/license-engine.js";
 export * from "./engine/relationship-validator.js";
 export * from "./engine/scene-runtime.js";
 export * from "./engine/output-frame.js";
+export * from "./engine/output-frame-builder.js";
 export * from "./ui/layer-interaction.js";
 
 export * from "./native/windows-video-device.js";
