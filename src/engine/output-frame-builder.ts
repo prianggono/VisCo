@@ -28,6 +28,23 @@ export function createOutputFrame(
     ? slices
     : slices.filter((slice) => scene.sliceIds!.includes(slice.id));
 
+  for (const slice of selectedSlices) {
+    const values = [
+      slice.transform.x, slice.transform.y, slice.transform.width, slice.transform.height,
+      slice.transform.rotation, slice.transform.scaleX, slice.transform.scaleY,
+      slice.transform.cropLeft, slice.transform.cropTop, slice.transform.cropRight, slice.transform.cropBottom
+    ].filter((value): value is number => value !== undefined);
+    if (values.some((value) => !Number.isFinite(value))) {
+      throw new Error(`Slice "${slice.id}" contains invalid transform values.`);
+    }
+    if (slice.transform.width <= 0 || slice.transform.height <= 0) {
+      throw new Error(`Slice "${slice.id}" must have positive dimensions.`);
+    }
+    if (slice.mapping?.points?.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+      throw new Error(`Slice "${slice.id}" contains invalid mapping points.`);
+    }
+  }
+
   const layerIds = program.layers
     .filter((layer) => scene.sliceIds === undefined
       ? (selectedSlices.length === 0 || selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
