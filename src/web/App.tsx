@@ -13,6 +13,9 @@ import { TriggerEngine, type TriggerAction } from "../engine/trigger-engine.js";
 import { SceneRuntime } from "../engine/scene-runtime.js";
 import { resolveAdvancedOutput } from "../engine/advanced-output.js";
 import { addSlicePoint, moveSlicePoint, removeSlicePoint, patchSliceMapping } from "../engine/slice-editor.js";
+import { GroupEngine } from "../engine/group-engine.js";
+import { SliceCanvas } from "./SliceCanvas.js";
+import type { Group } from "../domain/group.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
@@ -66,6 +69,7 @@ export function App() {
     deckIds: initialDecks.map((deck) => deck.id), groupIds: [], sliceIds: [], locked: false
   }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
+  const [groups, setGroups] = useState<Group[]>([]);
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
   const outputEngine = useMemo(() => {
@@ -113,6 +117,7 @@ export function App() {
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
+  const groupEngine = useMemo(() => new GroupEngine(), []);
   const deviceDiscovery = useMemo(() => {
     const engine = new DeviceDiscoveryEngine();
     return engine;
@@ -292,6 +297,20 @@ export function App() {
     updateSelectedLayer({ transform });
   };
 
+  const createGroupFromSelectedLayer = () => {
+    if (!selectedLayerModel) return;
+    const groupId = `group-${Date.now()}`;
+    const group = groupEngine.create(groupId, `Group ${groups.length + 1}`, [selectedLayerModel.id]);
+    setGroups([...groupEngine.list()]);
+    setCompositions((current) => current.map((composition) => composition.id === "default" ? { ...composition, groupIds: [...new Set([...composition.groupIds, group.id])] } : composition));
+    setProjectMessage(`Group ${group.name} created.`);
+  };
+
+  const toggleSelectedGroup = (groupId: string) => {
+    groupEngine.toggleCollapsed(groupId);
+    setGroups([...groupEngine.list()]);
+  };
+
   const updateSelectedScale = (axis: "scaleX" | "scaleY", value: number) => {
     if (!selectedLayerModel) return;
     const transform = setLayerScale(selectedLayerModel.transform, axis, value);
@@ -460,7 +479,7 @@ export function App() {
       ? { ...composition, deckIds: decks.map((deck) => deck.id), sliceIds: slices.map((slice) => slice.id) }
       : composition),
     decks,
-    groups: [],
+    groups,
     layers: decks.flatMap((deck) => deck.layers),
     slices,
     scenes: sceneRuntime.list(),
@@ -488,6 +507,8 @@ export function App() {
       deckRuntime.replaceAll(loadedDecks);
       programEngine.clear("default");
       setSlices([...snapshot.slices]);
+      setGroups([...snapshot.groups]);
+      groupEngine.replaceAll(snapshot.groups);
       libraryEngine.replaceAll(snapshot.sources);
       setLibraryItems([...snapshot.sources]);
       setLibrarySearch("");
@@ -837,11 +858,11 @@ export function App() {
                       />
                     </label>
                   </div>}
-                  {item === "Layering" && <div className="property-grid">
+                  {item === "Layering" && <><div className="property-grid">
                     <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
                     <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
                     <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
-                  </div>}
+                  </div><div className="property-buttons"><button onClick={createGroupFromSelectedLayer}>+ Group Selected Layer</button>{groups.filter((group) => group.layerIds.includes(selectedLayerModel?.id ?? "")).map((group) => <button key={group.id} onClick={() => toggleSelectedGroup(group.id)}>{group.collapsed ? "Expand" : "Collapse"} {group.name}</button>)}</div></>}
                   {item === "Audio" && (() => {
                     const audio = selectedLayerModel?.audio ?? { volume: 100, pan: 0 };
                     return <><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
@@ -879,6 +900,7 @@ export function App() {
                     return <>
                       <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
                       <div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div>
+                      {selectedSlices[0] && <SliceCanvas slice={selectedSlices[0]} onMovePoint={(index, point) => updateSlice(selectedSlices[0].id, (current) => moveSlicePoint(current, index, point))} onAddPoint={(point) => updateSlice(selectedSlices[0].id, (current) => addSlicePoint(current, point))} onRemovePoint={(index) => updateSlice(selectedSlices[0].id, (current) => removeSlicePoint(current, index))} />}
                       <div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>
                       {selectedSlices.map((slice) => <div key={slice.id}>
                         <div className="property-grid">
@@ -910,7 +932,7 @@ export function App() {
       <footer className="media-bar">
         <div className="output-group">
           <div className="output-control">
-            <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("fullscreen")}>FULLSCREEN</button>
+            <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("display-1")}>FULLSCREEN</button>
             <button className="output-gear" title="Fullscreen settings">⚙</button>
           </div>
           <div className="output-control">
