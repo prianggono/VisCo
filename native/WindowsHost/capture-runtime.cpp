@@ -169,7 +169,7 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
         auto frame = std::make_shared<NativeVideoFrame>();
         frame->width = frameWidth;
         frame->height = frameHeight;
-        frame->timestampUs = sampleTimeUs(sample);
+        frame->timestampUs = sampleTimeUs(sample.Get());
         frame->bgra.resize(required);
         for (UINT y=0; y<frameHeight; ++y) {
           const BYTE* sourceRow = scanline0 + static_cast<ptrdiff_t>(y) * stride;
@@ -340,10 +340,10 @@ bool MjpegPreviewServer::sendAll(SOCKET client,const void* data,size_t size) {
 std::vector<unsigned char> MjpegPreviewServer::encodeJpeg(const NativeVideoFrame& frame) {
   ComPtr<IWICBitmap> bitmap;
   requireHr(wic_->CreateBitmapFromMemory(frame.width,frame.height,GUID_WICPixelFormat32bppBGRA,
-    frame.width*4, static_cast<UINT>(frame.bgra.size()), frame.bgra.data(), &bitmap), "WIC bitmap failed");
+    frame.width*4, static_cast<UINT>(frame.bgra.size()), const_cast<BYTE*>(frame.bgra.data()), &bitmap), "WIC bitmap failed");
   ComPtr<IWICStream> stream;
   requireHr(wic_->CreateStream(&stream), "WIC stream failed");
-  requireHr(stream->InitializeFromMemory(frame.bgra.data(), static_cast<DWORD>(frame.bgra.size())), "WIC memory stream failed");
+  requireHr(stream->InitializeFromMemory(const_cast<BYTE*>(frame.bgra.data()), static_cast<DWORD>(frame.bgra.size())), "WIC memory stream failed");
   ComPtr<IWICBitmapEncoder> encoder;
   requireHr(wic_->CreateEncoder(GUID_ContainerFormatJpeg,nullptr,&encoder), "JPEG encoder failed");
   ComPtr<IWICStream> output;
