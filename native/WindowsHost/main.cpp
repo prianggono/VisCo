@@ -26,6 +26,7 @@
 #include "capture-runtime.h"
 #include "runtime-adapters.h"
 #include "network-frame-runtime.h"
+#include "output-runtime.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -306,6 +307,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     preview.start(47822);
     RuntimeAdapterRegistry runtimes;
     NetworkFrameRuntime network;
+    NativeOutputRuntime outputs;
     const char* envProtocol = std::getenv("VISCO_NETWORK_PROTOCOL");
     const char* envSource = std::getenv("VISCO_NETWORK_SOURCE");
     if (envProtocol && envSource && *envProtocol && *envSource) {
@@ -316,16 +318,30 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (!media.enumerateVideoDeviceInfo().empty()) {
       capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
     }
+    const char* recordPath = std::getenv("VISCO_RECORD_PATH");
+    if (recordPath && *recordPath) outputs.startRecord(recordPath, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
+    const char* virtualName = std::getenv("VISCO_VIRTUAL_OUTPUT");
+    if (virtualName && *virtualName) outputs.startVirtual(virtualName, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
+    const char* streamProtocol = std::getenv("VISCO_STREAM_PROTOCOL");
+    const char* streamName = std::getenv("VISCO_STREAM_NAME");
+    if (streamProtocol && streamName && *streamProtocol && *streamName) {
+      outputs.startStream(std::string(streamProtocol) == "ndi" ? NativeStreamProtocol::NDI : NativeStreamProtocol::OMT,
+                          streamName, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
+    }
+
     HttpControlServer http;
     http.start(media, audio, capture, runtimes, network);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
     MSG msg{};
+    UINT64 outputFrameNumber = 0;
     while(msg.message != WM_QUIT) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
       const auto networkFrame = network.latest();
-      renderer.render(network.running() ? networkFrame : capture.latest());
+      const auto frame = network.running() ? networkFrame : capture.latest();
+      renderer.render(frame);
+      outputs.submit(frame, outputFrameNumber++);
       Sleep(33);
     }
     if (SUCCEEDED(co)) CoUninitialize();
