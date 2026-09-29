@@ -6,6 +6,7 @@ import { ProgramEngine } from "../engine/program-engine.js";
 import { DeckProgramController } from "../engine/deck-program-controller.js";
 import { AudioEngine } from "../domain/audio.js";
 import { AudioOutputRouter } from "../engine/audio-output-router.js";
+import { useSliceEditorTool, SliceEditorToolbar } from "./SliceEditorToolbar.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
