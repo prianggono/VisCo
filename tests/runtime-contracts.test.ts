@@ -7,6 +7,8 @@ import { SourcePlaybackEngine } from "../src/engine/source-playback.js";
 import { createArtNetFrame, ArtNetLedOutput, type ArtNetLedOutputBridge } from "../src/native/artnet-led-output.js";
 import { WindowsDisplayOutput, type WindowsDisplayOutputBridge } from "../src/native/windows-display-output.js";
 import { D3D11RendererRuntime, type D3D11RendererBridge } from "../src/native/d3d11-renderer.js";
+import { WindowsMediaOutput, type MediaOutputBridge } from "../src/native/media-output.js";
+import { VirtualOutput, type VirtualOutputBridge } from "../src/native/virtual-output.js";
 
 describe("runtime contracts", () => {
   it("isolates a failed output transport", async () => {
@@ -96,6 +98,31 @@ describe("runtime contracts", () => {
     expect(rendered).toBe(true);
     await expect(runtime.render({ width: 9000, height: 1080, fps: 30, layerIds: [] })).rejects.toThrow();
     await runtime.dispose();
+  });
+
+  it("validates stream/record/virtual media output configuration", async () => {
+    let submitted = false;
+    const bridge: MediaOutputBridge = {
+      async connect() {}, async disconnect() {},
+      async submit() { submitted = true; },
+      getStatus: () => ({ connected: true, running: true, frames: 1, error: null })
+    };
+    const output = new WindowsMediaOutput({ id: "stream", kind: "stream", width: 1920, height: 1080, fps: 30, destination: "rtmp://example" }, bridge);
+    await output.submit({ width: 1920, height: 1080, frameNumber: 1, compositionId: "comp-1" });
+    expect(submitted).toBe(true);
+    expect(() => new WindowsMediaOutput({ id: "", kind: "record", width: 1920, height: 1080, fps: 30 }, bridge)).toThrow();
+  });
+
+  it("keeps virtual output separate from physical display output", async () => {
+    let submitted = false;
+    const bridge: VirtualOutputBridge = {
+      async connect() {}, async disconnect() {},
+      async submit() { submitted = true; },
+      getStatus: () => ({ connected: true, running: true, error: null })
+    };
+    const output = new VirtualOutput({ id: "virtual", name: "VisCo Virtual", width: 1280, height: 720, fps: 30 }, bridge);
+    await output.submit({ source: { compositionId: "comp-1", width: 1280, height: 720, fps: 30, frameNumber: 1 }, sceneId: "scene-3", layerIds: [] });
+    expect(submitted).toBe(true);
   });
 
   it("keeps HDMI output as a separate display transport", async () => {
