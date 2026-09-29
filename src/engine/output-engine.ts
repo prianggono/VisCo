@@ -62,6 +62,16 @@ export class OutputEngine {
     return updated;
   }
 
+  updateMediaSettings(targetId: string, patch: Partial<MediaOutputSettings>): OutputTarget {
+    const target = this.requireTarget(targetId);
+    if (target.kind !== "media" || !target.media) throw new Error(`Output "${target.id}" is not a media output.`);
+    const media: MediaOutputSettings = { ...target.media, ...patch };
+    const updated: OutputTarget = { ...target, media };
+    this.targets.set(targetId, updated);
+    this.states.set(targetId, { ...this.requireState(targetId), target: updated });
+    return updated;
+  }
+
   setMediaFeature(targetId: string, feature: MediaOutputKind, enabled: boolean): OutputTarget {
     const target = this.requireTarget(targetId);
     if (target.kind !== "media" || !target.media) {
