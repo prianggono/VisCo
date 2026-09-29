@@ -5,6 +5,7 @@ import type { ProgramState } from "./program-engine.js";
 import { FrameClock } from "./frame-clock.js";
 import { OutputPipeline } from "./output-pipeline.js";
 import type { D3D11RenderFrame, D3D11RendererRuntime } from "../native/d3d11-renderer.js";
+import { OutputFrameBus } from "./output-frame-bus.js";
 
 export interface RuntimeCoordinatorConfig { readonly fps?: number; }
 export interface RuntimeCoordinatorSnapshot {
@@ -17,6 +18,7 @@ export interface RuntimeCoordinatorSnapshot {
 export class RuntimeCoordinator {
   private readonly clock: FrameClock;
   private readonly pipeline = new OutputPipeline();
+  private readonly outputBus = new OutputFrameBus();
   private running = false;
   private renderedFrames = 0;
   private failedFrames = 0;
@@ -39,7 +41,9 @@ export class RuntimeCoordinator {
       const context = this.context;
       if (!context) return;
       try {
-        const frame = this.pipeline.nextD3D11Frame(context.program, context.scene, context.composition, context.slices);
+        const outputFrame = this.pipeline.nextFrame(context.program, context.scene, context.composition, context.slices);
+        await this.outputBus.publish(outputFrame);
+        const frame = { ...outputFrame, width: outputFrame.source.width, height: outputFrame.source.height, fps: outputFrame.source.fps, layerIds: outputFrame.layerIds, slices: outputFrame.slices } as D3D11RenderFrame;
         this.lastFrame = { ...frame, frameNumber } as D3D11RenderFrame & { frameNumber?: number };
         await this.renderer.render(frame);
         this.renderedFrames += 1;
@@ -56,6 +60,10 @@ export class RuntimeCoordinator {
     await this.renderer.dispose();
     this.running = false;
   }
+
+  subscribeOutput(subscriber: import("./output-frame-bus.js").OutputFrameSubscriber): void { this.outputBus.subscribe(subscriber); }
+  unsubscribeOutput(id: string): void { this.outputBus.unsubscribe(id); }
+  getOutputBusStats(): import("./output-frame-bus.js").OutputFrameBusStats { return this.outputBus.getStats(); }
 
   getLastFrame(): D3D11RenderFrame | null { return this.lastFrame; }
   getStats(): RuntimeCoordinatorSnapshot {
