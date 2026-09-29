@@ -31,7 +31,5 @@ export interface Slice {
   readonly name: string;
   readonly transform: SliceTransform;
   readonly mapping?: SliceMapping;
-  /** Layer assignments are references only; Slice owns no duplicated Layer state. */
-  readonly layerIds: readonly string[];
   readonly locked: boolean;
 }
