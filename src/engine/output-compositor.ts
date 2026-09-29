@@ -14,12 +14,13 @@ export interface CompositedOutput {
  */
 export function compositeProgramForOutput(program: ProgramState): CompositedOutput | null {
   if (!program.source) return null;
-  const layer = compositeProgram(program);
-  if (!layer) return null;
+  const layers = compositeProgram(program);
+  const activeLayer = layers.find((item) => item.layerId === program.source.layerId) ?? layers[0];
+  if (!activeLayer) return null;
 
   return {
     source: program.source,
     compositionId: program.compositionId,
-    layer
+    layer: activeLayer
   };
 }
