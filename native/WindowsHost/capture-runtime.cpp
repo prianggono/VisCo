@@ -311,9 +311,6 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::render(const std::shared_ptr<
     if (existing.Width != backDesc.Width || existing.Height != backDesc.Height) readbackTexture_.Reset();
   }
   if (!readbackTexture_) {
-    readbackTexture_.Reset();
-  }
-  if (!readbackTexture_) {
     D3D11_TEXTURE2D_DESC staging = backDesc;
     staging.Usage = D3D11_USAGE_STAGING;
     staging.BindFlags = 0;
