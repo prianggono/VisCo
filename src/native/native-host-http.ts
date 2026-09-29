@@ -13,6 +13,20 @@ export interface NativeCaptureStatus {
   readonly message?: string;
 }
 
+export interface NativeNetworkSource {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: "ndi" | "omt";
+  readonly transport: "network";
+  readonly address: string;
+}
+
+export interface NativeNetworkStatus {
+  readonly running: boolean;
+  readonly protocol: "none" | "ndi" | "omt";
+  readonly error: string;
+}
+
 export interface NativeRuntimeAdapterStatus {
   readonly name: "NDI" | "OMT" | "ASIO";
   readonly available: boolean;
@@ -52,6 +66,30 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
   async stopCapture(): Promise<NativeCaptureStatus> {
     const response = await fetch(`${this.baseUrl}/capture/stop`, { cache: "no-store" });
     return await response.json() as NativeCaptureStatus;
+  }
+
+  async discoverNetwork(protocol: "ndi" | "omt"): Promise<readonly NativeNetworkSource[]> {
+    const response = await fetch(`${this.baseUrl}/network/discover?protocol=${encodeURIComponent(protocol)}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Native network discovery failed (${response.status}).`);
+    const payload = await response.json() as { devices?: NativeNetworkSource[]; message?: string };
+    if (!Array.isArray(payload.devices)) throw new Error(payload.message ?? "Invalid native network discovery response.");
+    return payload.devices;
+  }
+
+  async startNetwork(protocol: "ndi" | "omt", source: string): Promise<{ readonly ok: boolean; readonly running: boolean; readonly protocol?: string; readonly source?: string; readonly message?: string }> {
+    const response = await fetch(`${this.baseUrl}/network/start?protocol=${encodeURIComponent(protocol)}&source=${encodeURIComponent(source)}`, { cache: "no-store" });
+    return await response.json() as { ok: boolean; running: boolean; protocol?: string; source?: string; message?: string };
+  }
+
+  async stopNetwork(): Promise<{ readonly ok: boolean; readonly running: boolean }> {
+    const response = await fetch(`${this.baseUrl}/network/stop`, { cache: "no-store" });
+    return await response.json() as { ok: boolean; running: boolean };
+  }
+
+  async networkStatus(): Promise<NativeNetworkStatus> {
+    const response = await fetch(`${this.baseUrl}/network/status`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Native network status failed (${response.status}).`);
+    return await response.json() as NativeNetworkStatus;
   }
 
   async runtimeAdapters(): Promise<readonly NativeRuntimeAdapterStatus[]> {
