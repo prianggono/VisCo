@@ -71,3 +71,15 @@ HTTP control endpoints on loopback port 47821:
 If the requested SDK/runtime is not installed, the network receiver stays offline and the host can continue using Media Foundation capture. No missing SDK is treated as a fatal application condition.
 
 The D3D11 host is paced at the project's 30 FPS default. The network receiver itself does not force 60 FPS or create an independent render loop.
+
+
+## Native output configuration
+
+Optional environment variables:
+
+- `VISCO_RECORD_PATH=C:\\path\\output.mp4` enables Media Foundation H.264 recording.
+- `VISCO_VIRTUAL_OUTPUT=VisCoVirtualOut` enables the named shared-memory Virtual Output.
+- `VISCO_STREAM_PROTOCOL=ndi` or `omt`.
+- `VISCO_STREAM_NAME=VisCo Program` selects the NDI source name or OMT sender name.
+
+These outputs share the host's selected native BGRA frame and use the 30 FPS default.
