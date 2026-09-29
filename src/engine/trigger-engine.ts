@@ -7,7 +7,7 @@ import { assertValidTriggerAction } from "./trigger-validator.js";
 
 export type { TriggerAction } from "../domain/trigger.js";
 
-export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; }
+export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; readonly compositionIdForDeck?: (deckId: string) => string; }
 
 export class TriggerEngine {
   execute(action: TriggerAction, context: TriggerContext): ProgramState {
@@ -26,7 +26,7 @@ export class TriggerEngine {
       case "program":{
         const deck=context.decks.get(action.target.deckId);
         if(!deck) throw new Error(`Deck "${action.target.deckId}" does not exist.`);
-        return context.controller.program(deck,action.target.layerId,{syncOutputs:false}).program;
+        return context.controller.program(deck,action.target.layerId,{syncOutputs:false,compositionId: context.compositionIdForDeck?.(deck.id) ?? "default"}).program;
       }
       case "sequence": return this.executeSequence(action.actions,context);
       case "set-output-enabled":
