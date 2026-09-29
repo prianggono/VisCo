@@ -6,7 +6,11 @@ test("VisCo UI smoke: startup and primary controls render", async ({ page }) => 
   await expect(page.getByText("PREVIEW", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("PROGRAM", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("LIBRARY", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("SCENE", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("PROPERTIES", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "FULLSCREEN", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "STREAM", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "RECORD", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "VIRTUAL OUT", exact: true })).toBeVisible();
 });
 
 test("VisCo UI smoke: no uncaught page errors on startup", async ({ page }) => {
@@ -15,4 +19,36 @@ test("VisCo UI smoke: no uncaught page errors on startup", async ({ page }) => {
   page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
   expect(errors).toEqual([]);
+});
+
+test("VisCo UI E2E: deck, program, group, slice, scene and output controls", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
+
+  // Preview and Program
+  await page.getByRole("button", { name: "Layer 2", exact: true }).first().click();
+  await expect(page.locator(".preview-name").first()).toContainText("Layer 2");
+  await page.locator(".layer-box").first().click();
+  await expect(page.locator(".program-badge").first()).toHaveText("PROGRAM");
+
+  // Add and collapse a Group around the selected layer.
+  await page.getByRole("button", { name: "Layering", exact: true }).click();
+  await page.getByRole("button", { name: "+ Group Selected Layer", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Collapse Group 1/ })).toBeVisible();
+  await page.getByRole("button", { name: /Collapse Group 1/ }).click();
+  await expect(page.getByRole("button", { name: /Expand Group 1/ })).toBeVisible();
+
+  // Slice editor: create a slice and exercise mapping mode.
+  await page.getByRole("button", { name: "Slice", exact: true }).click();
+  await page.getByRole("button", { name: "Add Slice", exact: true }).click();
+  await expect(page.locator("select").filter({ has: page.locator("option") }).first()).toHaveValue("rectangle");
+  await page.locator("select").first().selectOption("corner-pin");
+  await expect(page.locator("select").first()).toHaveValue("corner-pin");
+
+  // Scene routing and output controls.
+  await page.getByRole("button", { name: "SCENE 2", exact: true }).click();
+  await expect(page.getByRole("button", { name: "SCENE 2", exact: true })).toHaveClass(/enabled/);
+  await page.getByRole("button", { name: "FULLSCREEN", exact: true }).click();
+  await page.getByRole("button", { name: "STREAM", exact: true }).click();
+  await page.getByRole("button", { name: "RECORD", exact: true }).click();
+  await page.getByRole("button", { name: "VIRTUAL OUT", exact: true }).click();
 });
