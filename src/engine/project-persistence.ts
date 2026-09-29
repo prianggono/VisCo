@@ -70,6 +70,12 @@ export function parseProject(serialized: string): ProjectSnapshot {
     return { ...slice, layerRefs };
   });
 
+  const migratedDecks = (value.decks as readonly unknown[]).map((entry) => {
+    const raw = entry as Record<string, unknown>;
+    const { compositionId: _legacyCompositionId, ...deck } = raw;
+    return deck;
+  });
+
   const migratedLayers = (value.layers as readonly unknown[]).map((entry) => {
     const raw = entry as Record<string, unknown>;
     const { sliceIds: _legacySliceIds, ...layer } = raw;
@@ -79,7 +85,7 @@ export function parseProject(serialized: string): ProjectSnapshot {
   return {
     version: 1,
     compositions: value.compositions!,
-    decks: value.decks!,
+    decks: migratedDecks as unknown as readonly Deck[],
     groups: value.groups!,
     layers: migratedLayers as unknown as readonly Layer[],
     slices: migratedSlices as unknown as readonly Slice[],
