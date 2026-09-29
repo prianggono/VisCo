@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { LibraryEngine } from "../engine/library-engine.js";
 import { DeckRuntime } from "../engine/deck-runtime.js";
 import { OutputEngine } from "../engine/output-engine.js";
@@ -128,6 +128,9 @@ export function App() {
     return engine;
   }, [nativeHost]);
   const [nativeHostState, setNativeHostState] = useState<"checking" | "online" | "offline">("checking");
+  const [nativeCaptureDevice, setNativeCaptureDevice] = useState("");
+  const [runtimeAdapters, setRuntimeAdapters] = useState<readonly { name: "NDI" | "OMT" | "ASIO"; available: boolean; library: string; message: string }[]>([]);
+  const nativePreviewUrl = "http://127.0.0.1:47822/preview.mjpg";
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [librarySearch, setLibrarySearch] = useState("");
   const [slices, setSlices] = useState<Slice[]>([{
@@ -432,9 +435,27 @@ export function App() {
     setDiscoveryBusy(false);
   };
 
-  const addDiscoveredDevice = (device: DiscoveredDevice) => {
+  const addDiscoveredDevice = async (device: DiscoveredDevice) => {
     addInternalInput(sourceKindForDevice(device.kind), device);
+    if (device.kind === "camera" || device.kind === "video-capture") {
+      try {
+        const capture = await nativeHost.startCapture(device.id);
+        if (capture.ok) setNativeCaptureDevice(device.id);
+        else setDiscoveryMessage(capture.message ?? "Native capture start failed.");
+      } catch (error) {
+        setDiscoveryMessage(error instanceof Error ? error.message : "Native capture start failed.");
+      }
+    }
   };
+
+  useEffect(() => {
+    nativeHost.status().then(async (status) => {
+      setNativeHostState(status.available ? "online" : "offline");
+      if (status.available) {
+        try { setRuntimeAdapters(await nativeHost.runtimeAdapters()); } catch { setRuntimeAdapters([]); }
+      }
+    });
+  }, [nativeHost]);
 
   const discoverAudioDevices = async () => {
     const host = await nativeHost.status();
@@ -735,21 +756,25 @@ export function App() {
             <div className="monitor">
               <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{getPreviewRef().deckId} / {getPreviewRef().layerId}</span></div>
               <div className="preview-canvas">
-                {(() => {
-                  const ref = getPreviewRef();
-                  const deck = decks.find((item) => item.id === ref.deckId);
-                  const layer = deck?.layers.find((item) => item.id === ref.layerId);
-                  return layer ? <span style={compositeLayer(layer).style}>PREVIEW</span> : <span>PREVIEW</span>;
-                })()}
+                {nativeHostState === "online" && nativeCaptureDevice
+                  ? <img src={nativePreviewUrl} alt="VisCo native preview" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                  : (() => {
+                    const ref = getPreviewRef();
+                    const deck = decks.find((item) => item.id === ref.deckId);
+                    const layer = deck?.layers.find((item) => item.id === ref.layerId);
+                    return layer ? <span style={compositeLayer(layer).style}>PREVIEW</span> : <span>PREVIEW</span>;
+                  })()}
               </div>
             </div>
             <div className="monitor program-monitor">
               <div className="monitor-head"><span>PROGRAM</span><span className="on-air">ON AIR</span></div>
               <div className="program-canvas">
-                {(() => {
-                  const program = programEngine.getState("default");
-                  const composed = compositeProgram(program); return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
-                })()}
+                {nativeHostState === "online" && nativeCaptureDevice
+                  ? <img src={nativePreviewUrl} alt="VisCo native program" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                  : (() => {
+                    const program = programEngine.getState("default");
+                    const composed = compositeProgram(program); return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
+                  })()}
               </div>
             </div>
           </div>
