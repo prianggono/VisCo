@@ -137,3 +137,21 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [ ] Trigger property panel still needs a visual trigger editor; current UI placeholder is intentionally not replaced with fake persistence.
 - [ ] Advanced Output UI still needs a complete Scene/Display/Production editor.
 - [ ] Latest direct GitHub commit has no workflow run visible through the connector; CI PASS remains unverified.
+
+
+## Native frame path implementation — 2026-09-30
+
+- [x] Added native Windows NDI runtime loading with dynamic SDK binding.
+- [x] Added native Windows OMT runtime loading with dynamic libomt binding.
+- [x] Added NDI source discovery endpoint through the native host.
+- [x] Added OMT source discovery endpoint through the native host.
+- [x] Added NDI/OMT receive loops producing the canonical BGRA `NativeVideoFrame`.
+- [x] Connected the network `NativeVideoFrame` path directly into the existing D3D11 renderer.
+- [x] Added environment-controlled startup: `VISCO_NETWORK_PROTOCOL` + `VISCO_NETWORK_SOURCE`.
+- [x] Added native HTTP controls: `/network/discover`, `/network/start`, `/network/stop`, `/network/status`.
+- [x] Preserved 30 FPS host pacing and offline-safe fallback to local Media Foundation capture.
+- [ ] ASIO driver callback binding is still SDK/driver dependent and is not faked.
+- [ ] D3D11 multi-layer Composition/Slice GPU compositing is still separate from the single-frame native acquisition path.
+- [ ] Native Record/Stream/Virtual Output sinks still need to consume the same rendered GPU frame.
+- [ ] Native end-to-end Preview/Program control from the TypeScript application into the Windows host still needs the desktop transport bridge.
+- [ ] This change has not yet been validated by a completed Windows GitHub Actions run.
