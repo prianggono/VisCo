@@ -111,6 +111,23 @@ export class OutputEngine {
 
   getState(targetId: string): OutputState { return this.requireState(targetId); }
   list(): readonly OutputTarget[] { return [...this.targets.values()]; }
+
+  /** Replace persisted output targets when a project is opened. */
+  replaceAll(targets: readonly OutputTarget[]): void {
+    const nextTargets = new Map<string, OutputTarget>();
+    const nextStates = new Map<string, OutputState>();
+    for (const target of targets) {
+      if (nextTargets.has(target.id)) throw new Error(`Output "${target.id}" is duplicated.`);
+      if (target.kind === "media" && !target.media) throw new Error(`Media output "${target.id}" requires media settings.`);
+      if (target.kind === "display" && target.media) throw new Error(`Display output "${target.id}" cannot have media settings.`);
+      nextTargets.set(target.id, target);
+      nextStates.set(target.id, { target, source: null, active: target.enabled });
+    }
+    this.targets.clear();
+    this.states.clear();
+    for (const [id, target] of nextTargets) this.targets.set(id, target);
+    for (const [id, state] of nextStates) this.states.set(id, state);
+  }
   getActiveStates(): readonly OutputState[] { return [...this.states.values()].filter(state => state.active); }
 
   private requireTarget(targetId: string): OutputTarget {
