@@ -337,6 +337,7 @@ std::vector<unsigned char> MjpegPreviewServer::encodeJpeg(const NativeVideoFrame
 }
 
 void MjpegPreviewServer::streamClient(SOCKET client) {
+  const HRESULT co = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   const std::string headers="HTTP/1.1 200 OK\r\nContent-Type: multipart/x-mixed-replace; boundary=viscoframe\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n";
   if(!sendAll(client,headers.data(),headers.size())){closesocket(client);return;}
   UINT64 last=0;
@@ -354,4 +355,5 @@ void MjpegPreviewServer::streamClient(SOCKET client) {
     } else Sleep(5);
   }
   closesocket(client);
+  if (SUCCEEDED(co)) CoUninitialize();
 }
