@@ -122,12 +122,26 @@ class HttpControlServer {
   std::vector<NativeRenderLayer> renderLayers_;
   visco_native::SourceRegistry* sources_ = nullptr;
 
+  static std::string urlDecode(const std::string& value) {
+    std::string out;
+    for (size_t i=0; i<value.size(); ++i) {
+      if (value[i] == '%' && i + 2 < value.size()) {
+        const auto hex = [](char c)->int { if(c>='0'&&c<='9') return c-'0'; if(c>='a'&&c<='f') return c-'a'+10; if(c>='A'&&c<='F') return c-'A'+10; return -1; };
+        const int a=hex(value[i+1]), b=hex(value[i+2]);
+        if(a>=0 && b>=0) { out.push_back(static_cast<char>((a<<4)|b)); i+=2; continue; }
+      }
+      if (value[i] == '+') out.push_back(' ');
+      else out.push_back(value[i]);
+    }
+    return out;
+  }
+
   static std::string queryValue(const std::string& requestLine, const std::string& key) {
     const auto q = requestLine.find(key + "=");
     if (q == std::string::npos) return {};
     auto value = requestLine.substr(q + key.size() + 1);
     const auto amp = value.find("&"); if (amp != std::string::npos) value.resize(amp);
-    return value;
+    return urlDecode(value);
   }
 
   std::vector<NativeRenderLayer> renderLayersSnapshot() {
