@@ -8,7 +8,8 @@ export type TriggerAction =
   | { readonly type: "program"; readonly target: DeckLayerRef }
   | { readonly type: "sequence"; readonly actions: readonly TriggerAction[] }
   | { readonly type: "set-output-enabled"; readonly outputId: string; readonly enabled: boolean }
-  | { readonly type: "set-media-feature"; readonly outputId: string; readonly feature: "stream" | "record" | "virtual"; readonly enabled: boolean };
+  | { readonly type: "set-media-feature"; readonly outputId: string; readonly feature: "stream" | "record" | "virtual"; readonly enabled: boolean }
+  | { readonly type: "set-master"; readonly deckId: string; readonly level: number };
 
 export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; }
 
@@ -38,6 +39,12 @@ export class TriggerEngine {
       case "set-media-feature":
         if(!context.output) throw new Error("Output engine is required for output trigger actions.");
         context.output.setMediaFeature(action.outputId,action.feature,action.enabled); return fallback ?? context.controller.getProgramState();
+      case "set-master": {
+        const deck = context.decks.get(action.deckId);
+        if (!deck) throw new Error(`Deck "${action.deckId}" does not exist.`);
+        context.controller["deckRuntime"].setMasterLevel(action.deckId, action.level);
+        return fallback ?? context.controller.getProgramState();
+      }
     }
   }
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
