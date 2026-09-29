@@ -133,17 +133,30 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
       requireHr(buffer->Lock(&data, &maxLen, &currentLen), "Media buffer lock failed");
 
       UINT frameWidth = width, frameHeight = height;
+      LONG stride = static_cast<LONG>(frameWidth * 4);
       ComPtr<IMFMediaType> currentType;
       if (SUCCEEDED(reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType))) {
         MFGetAttributeSize(currentType.Get(), MF_MT_FRAME_SIZE, &frameWidth, &frameHeight);
+        UINT32 rawStride = 0;
+        if (SUCCEEDED(currentType->GetUINT32(MF_MT_DEFAULT_STRIDE, &rawStride))) {
+          stride = static_cast<LONG>(rawStride);
+        }
       }
-      const size_t required = static_cast<size_t>(frameWidth) * frameHeight * 4;
-      if (currentLen >= required) {
+      const size_t rowBytes = static_cast<size_t>(frameWidth) * 4;
+      const size_t required = rowBytes * frameHeight;
+      const size_t availableStride = static_cast<size_t>(stride < 0 ? -stride : stride);
+      if (currentLen >= availableStride * frameHeight && availableStride >= rowBytes) {
         auto frame = std::make_shared<NativeVideoFrame>();
         frame->width = frameWidth;
         frame->height = frameHeight;
         frame->timestampUs = sampleTimeUs(sample);
-        frame->bgra.assign(data, data + required);
+        frame->bgra.resize(required);
+        for (UINT y=0; y<frameHeight; ++y) {
+          const UINT srcY = stride < 0 ? (frameHeight - 1 - y) : y;
+          memcpy(frame->bgra.data() + static_cast<size_t>(y) * rowBytes,
+                 data + static_cast<size_t>(srcY) * availableStride,
+                 rowBytes);
+        }
         {
           std::lock_guard<std::mutex> lock(mutex_);
           latest_ = std::move(frame);
