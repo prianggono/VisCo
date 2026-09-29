@@ -9,6 +9,7 @@ import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { useSliceEditorTool, SliceEditorToolbar } from "./SliceEditorToolbar.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { TriggerEngine, type TriggerAction } from "../engine/trigger-engine.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
@@ -85,6 +86,7 @@ export function App() {
   const audioOutputRouter = useMemo(() => new AudioOutputRouter(audioEngine, outputEngine), [audioEngine, outputEngine]);
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
+  const triggerEngine = useMemo(() => new TriggerEngine(), []);
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
@@ -209,6 +211,48 @@ export function App() {
     if (!current) return;
     deckRuntime.setLayerPlayback(selectedDeck.id, selectedLayerModel.id, patch);
     setRuntimeRevision((value) => value + 1);
+  };
+
+  const updateSelectedTriggers = (triggers: readonly TriggerAction[]) => {
+    updateSelectedLayer({ triggers });
+  };
+
+  const addSelectedTrigger = (type: TriggerAction["type"]) => {
+    if (!selectedLayerModel || !selectedDeck) return;
+    let action: TriggerAction;
+    if (type === "program") {
+      action = { type: "program", target: { deckId: selectedDeck.id, layerId: selectedLayerModel.id } };
+    } else if (type === "set-master") {
+      action = { type: "set-master", deckId: selectedDeck.id, level: 100 };
+    } else if (type === "set-output-enabled") {
+      action = { type: "set-output-enabled", outputId: "fullscreen", enabled: true };
+    } else if (type === "set-media-feature") {
+      action = { type: "set-media-feature", outputId: "media-output", feature: "stream", enabled: true };
+    } else {
+      const first = selectedDeck.layers[0];
+      action = { type: "sequence", actions: first ? [{ type: "program", target: { deckId: selectedDeck.id, layerId: first.id } }] : [] };
+    }
+    updateSelectedTriggers([...(selectedLayerModel.triggers ?? []), action]);
+  };
+
+  const removeSelectedTrigger = (index: number) => {
+    if (!selectedLayerModel) return;
+    updateSelectedTriggers((selectedLayerModel.triggers ?? []).filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const runSelectedTrigger = (action: TriggerAction) => {
+    try {
+      triggerEngine.execute(action, {
+        decks: new Map(decks.map((deck) => [deck.id, deck])),
+        controller: deckProgramController,
+        output: outputEngine
+      });
+      setRuntimeRevision((value) => value + 1);
+      setOutputRevision((value) => value + 1);
+      setProjectMessage("Trigger executed.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Trigger execution failed.");
+    }
   };
 
   const updateSelectedTransform = (patch: Partial<NonNullable<Layer["transform"]>>) => {
@@ -739,7 +783,33 @@ export function App() {
                     const audio = selectedLayerModel?.audio ?? { volume: 100, pan: 0 };
                     return <><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
                   })()}
-                  {item === "Trigger" && <div className="property-empty">No triggers assigned to this layer.</div>}
+                  {item === "Trigger" && (() => {
+  const triggers = selectedLayerModel?.triggers ?? [];
+  const label = (action: TriggerAction): string => {
+    switch (action.type) {
+      case "program": return "Program " + action.target.deckId + " / " + action.target.layerId;
+      case "set-master": return "Set Master " + action.deckId + " → " + action.level + "%";
+      case "set-output-enabled": return (action.enabled ? "Enable " : "Disable ") + action.outputId;
+      case "set-media-feature": return (action.enabled ? "Enable " : "Disable ") + action.feature + " on " + action.outputId;
+      case "sequence": return "Sequence (" + action.actions.length + " actions)";
+    }
+  };
+  return <>
+    <div className="property-buttons">
+      <button onClick={() => addSelectedTrigger("program")}>+ Program</button>
+      <button onClick={() => addSelectedTrigger("set-master")}>+ Master</button>
+      <button onClick={() => addSelectedTrigger("set-output-enabled")}>+ Output</button>
+      <button onClick={() => addSelectedTrigger("set-media-feature")}>+ Stream</button>
+    </div>
+    {triggers.length === 0
+      ? <div className="property-empty">No triggers assigned to this layer.</div>
+      : triggers.map((action, index) => <div className="property-value" key={index}>
+          <span>{label(action)}</span>
+          <button onClick={() => runSelectedTrigger(action)}>RUN</button>
+          <button onClick={() => removeSelectedTrigger(index)}>×</button>
+        </div>)}
+  </>;
+})()}
                   {item === "Slice" && (() => {
                     const selectedSlices = slices.filter((slice) => (selectedLayerModel?.sliceIds ?? []).includes(slice.id));
                     return <><SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} /><div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div><div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>{selectedSlices.map((slice) => <div className="property-grid" key={slice.id}><label>Width<input type="number" min="1" value={slice.transform.width} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, width: Number(event.target.value) } } : item))} /></label><label>Height<input type="number" min="1" value={slice.transform.height} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, height: Number(event.target.value) } } : item))} /></label><label>X<input type="number" value={slice.transform.x} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, x: Number(event.target.value) } } : item))} /></label><label>Y<input type="number" value={slice.transform.y} onChange={(event) => setSlices((current) => current.map((item) => item.id === slice.id ? { ...item, transform: { ...item.transform, y: Number(event.target.value) } } : item))} /></label></div>)}</>;
