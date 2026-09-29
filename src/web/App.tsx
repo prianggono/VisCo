@@ -9,6 +9,7 @@ import { AudioOutputRouter } from "../engine/audio-output-router.js";
 import { useSliceEditorTool, SliceEditorToolbar } from "./SliceEditorToolbar.js";
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
+import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
@@ -84,6 +85,7 @@ export function App() {
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const [showAddDeck, setShowAddDeck] = useState(false);
+  const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const deviceDiscovery = useMemo(() => {
@@ -376,6 +378,49 @@ export function App() {
     setShowAddInput(true);
   };
 
+  const buildProjectSnapshot = () => createProjectSnapshot({
+    compositions: [{
+      id: "default",
+      name: "Default Composition",
+      format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+      deckIds: decks.map((deck) => deck.id),
+      groupIds: [],
+      sliceIds: slices.map((slice) => slice.id),
+      locked: false
+    }],
+    decks,
+    groups: [],
+    layers: decks.flatMap((deck) => deck.layers),
+    slices,
+    scenes: [],
+    sources: libraryEngine.list(),
+    outputs: outputEngine.list()
+  });
+
+  const saveProject = () => {
+    const blob = new Blob([serializeProject(buildProjectSnapshot())], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "visco-project.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setProjectMessage("Project saved.");
+  };
+
+  const loadProject = (file: File) => {
+    file.text().then((text) => {
+      const snapshot = parseProject(text);
+      setDecks(snapshot.decks as Deck[]);
+      setSlices([...snapshot.slices]);
+      libraryItems.splice(0, libraryItems.length);
+      setLibraryItems([...snapshot.sources]);
+      setProjectMessage("Project loaded.");
+    }).catch((error) => {
+      setProjectMessage(error instanceof Error ? error.message : "Project load failed.");
+    });
+  };
+
   const outputState = outputEngine.getState("media-output");
   const mediaSettings = outputState.target.media!;
   const fullscreenState = outputEngine.getState("fullscreen");
@@ -422,7 +467,10 @@ export function App() {
           <div><strong>VisCo</strong><span>Visual Control & Live Production System</span></div>
         </div>
         <nav className="topnav">
-          <button>File</button><button>Edit</button><button>View</button><button>Settings</button>
+          <button onClick={saveProject}>Save</button>
+          <label className="topnav-file">Open<input type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) loadProject(file); event.target.value = ""; }} /></label>
+          <button>Edit</button><button>View</button><button>Settings</button>
+          {projectMessage && <span className="project-message">{projectMessage}</span>}
         </nav>
         <div className="status"><span className="status-dot" /> SYSTEM READY</div>
       </header>
