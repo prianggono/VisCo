@@ -182,12 +182,14 @@ class HttpControlServer {
   }
 
   void loop() {
+    const HRESULT co = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     while (running_) {
       sockaddr_in clientAddr{}; int clientLen = sizeof(clientAddr);
       SOCKET client = accept(listener_, reinterpret_cast<sockaddr*>(&clientAddr), &clientLen);
       if (client != INVALID_SOCKET) handle(client);
       else Sleep(10);
     }
+    if (SUCCEEDED(co)) CoUninitialize();
   }
 
 public:
@@ -219,6 +221,7 @@ static LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 }
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+  const HRESULT co = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   try {
     const wchar_t* cls=L"VisCoNativeHost";
     WNDCLASSW wc{}; wc.lpfnWndProc=windowProc; wc.hInstance=instance; wc.lpszClassName=cls;
@@ -252,9 +255,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       renderer.render(capture.latest());
       Sleep(33);
     }
+    if (SUCCEEDED(co)) CoUninitialize();
     return 0;
   } catch(const std::exception& ex) {
     MessageBoxA(nullptr, ex.what(), "VisCo Native Host Error", MB_ICONERROR);
+    if (SUCCEEDED(co)) CoUninitialize();
     return 1;
   }
 }
