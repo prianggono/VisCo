@@ -39,3 +39,7 @@ export * from "./native/windows-video-device.js";
 export * from "./native/d3d11-renderer.js";
 export * from "./native/windows-display-output.js";
 export * from "./native/artnet-led-output.js";
+
+export * from "./native/windows-video-runtime.js";
+export * from "./native/media-output.js";
+export * from "./native/virtual-output.js";
