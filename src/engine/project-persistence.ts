@@ -49,5 +49,40 @@ export function parseProject(serialized: string): ProjectSnapshot {
   for (const key of collections) {
     if (!Array.isArray(value[key])) throw new Error(`Invalid VisCo project snapshot: "${key}" must be an array.`);
   }
-  return parsed as ProjectSnapshot;
+
+  // Migrate the pre-canonical Slice relationship where Layer/Slice could both
+  // carry duplicate relationship state. Slice.layerRefs is now authoritative.
+  const decks = value.decks as readonly Deck[];
+  const migratedSlices = (value.slices as readonly Record<string, unknown>[]).map((raw) => {
+    const existingRefs = Array.isArray(raw.layerRefs) ? raw.layerRefs : null;
+    const legacyLayerIds = Array.isArray(raw.layerIds) ? raw.layerIds.filter((id): id is string => typeof id === "string") : [];
+    const layerRefs = existingRefs
+      ? existingRefs.filter((ref): ref is { deckId: string; layerId: string } =>
+          Boolean(ref) && typeof ref === "object" &&
+          typeof (ref as { deckId?: unknown }).deckId === "string" &&
+          typeof (ref as { layerId?: unknown }).layerId === "string")
+      : legacyLayerIds.flatMap((layerId) => {
+          const deck = decks.find((candidate) => candidate.layers.some((layer) => layer.id === layerId));
+          return deck ? [{ deckId: deck.id, layerId }] : [];
+        });
+    const { layerIds: _legacyLayerIds, ...slice } = raw;
+    return { ...slice, layerRefs };
+  });
+
+  const migratedLayers = (value.layers as readonly Record<string, unknown>[]).map((raw) => {
+    const { sliceIds: _legacySliceIds, ...layer } = raw;
+    return layer;
+  });
+
+  return {
+    version: 1,
+    compositions: value.compositions,
+    decks: value.decks,
+    groups: value.groups,
+    layers: migratedLayers as readonly Layer[],
+    slices: migratedSlices as readonly Slice[],
+    scenes: value.scenes,
+    sources: value.sources,
+    outputs: value.outputs
+  };
 }
