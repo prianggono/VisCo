@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ProjectRuntime, projectSnapshotFromCollections } from "../src/engine/project-runtime.js";
 import { compositeProgramForOutput } from "../src/engine/output-compositor.js";
 import { createOutputFrame } from "../src/engine/output-frame-builder.js";
+import { OutputEngine } from "../src/engine/output-engine.js";
 import type { Deck } from "../src/domain/deck.js";
 import type { Scene } from "../src/domain/scene.js";
 
@@ -60,6 +61,19 @@ describe("project/output integration", () => {
     expect(result?.layer.layerId).toBe("layer-1");
   });
 
+  it("routes Display and Production Scenes to their canonical outputs", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-1", kind: "display", enabled: true, compositionId: "comp-1" });
+    output.register({ id: "display-2", kind: "display", enabled: true, compositionId: "comp-1" });
+    output.register({ id: "production", kind: "media", enabled: true, media: {
+      compositionId: "comp-1", resolution: [1920, 1080], fps: 30, streaming: true, recording: true, virtual: true
+    } });
+    const source = { deckId: "deck-1", layerId: "layer-1" };
+    expect(output.syncFromScene(scene, source).map((state) => state.target.id)).toEqual(["display-1"]);
+    const production = { ...scene, id: "production-scene", name: "Production", target: { kind: "production" as const, record: true, stream: true, virtual: true } };
+    expect(output.syncFromScene(production, source).map((state) => state.target.id)).toEqual(["production"]);
+  });
+
   it("builds an output frame using the active scene and slice references", () => {
     const program = {
       compositionId: "comp-1",
@@ -75,5 +89,7 @@ describe("project/output integration", () => {
     }]);
     expect(frame.sceneId).toBe("scene-1");
     expect(frame.layerIds).toEqual(["layer-1"]);
+    expect(frame.slices[0].id).toBe("slice-1");
+    expect(frame.slices[0].transform.width).toBe(1920);
   });
 });
