@@ -413,7 +413,7 @@ export function App() {
       const snapshot = parseProject(text);
       setDecks(snapshot.decks as Deck[]);
       setSlices([...snapshot.slices]);
-      libraryItems.splice(0, libraryItems.length);
+      libraryEngine.replaceAll(snapshot.sources);
       setLibraryItems([...snapshot.sources]);
       setProjectMessage("Project loaded.");
     }).catch((error) => {
