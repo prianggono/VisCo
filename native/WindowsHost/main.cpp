@@ -130,6 +130,11 @@ class HttpControlServer {
     return value;
   }
 
+  std::vector<NativeRenderLayer> renderLayersSnapshot() {
+    std::lock_guard<std::mutex> lock(renderMutex_);
+    return renderLayers_;
+  }
+
   void handle(SOCKET client) {
     char buffer[8192]{};
     const int received = recv(client, buffer, sizeof(buffer)-1, 0);
@@ -203,6 +208,7 @@ class HttpControlServer {
           while (std::getline(fields, f, '|')) v.push_back(f);
           if (v.size() != 11) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
+          layer.sourceId = v[1];
           layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
           layer.x=std::stof(v[2]); layer.y=std::stof(v[3]); layer.width=std::stof(v[4]); layer.height=std::stof(v[5]);
           layer.rotation=std::stof(v[6]); layer.scaleX=std::stof(v[7]); layer.scaleY=std::stof(v[8]);
@@ -461,11 +467,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       const auto frame = network.running() ? networkFrame : capture.latest();
       if (frame) sources.publish(network.running() ? "network" : "capture", frame);
       std::vector<NativeRenderLayer> compositionLayers;
-      {
-        std::lock_guard<std::mutex> lock(http.renderMutex_);
-        compositionLayers = http.renderLayers_;
-      }
+      compositionLayers = http.renderLayersSnapshot();
       for (auto& layer : compositionLayers) {
+        if (sources.latest(layer.sourceId)) layer.frame = sources.latest(layer.sourceId);
         if (!layer.frame) {
           // The endpoint stores the logical source through the registry. Refreshing
           // here keeps the render state live without copying pixel buffers.
