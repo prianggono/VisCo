@@ -43,8 +43,10 @@ export * from "./native/windows-display-output.js";
 export * from "./native/artnet-led-output.js";
 
 export * from "./native/windows-video-runtime.js";
-export * from "./native/media-output.js";
-export * from "./native/virtual-output.js";
+export { WindowsMediaOutput, validateMediaOutputConfig } from "./native/media-output.js";
+export type { MediaOutputConfig, MediaOutputStatus, MediaOutputBridge } from "./native/media-output.js";
+export { VirtualOutput as NativeVirtualOutput } from "./native/virtual-output.js";
+export type { VirtualOutputConfig, VirtualOutputStatus, VirtualOutputBridge } from "./native/virtual-output.js";
 
 export * from "./native/network-frame-source.js";
 export * from "./native/media-decoder.js";
