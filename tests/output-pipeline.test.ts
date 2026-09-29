@@ -11,7 +11,7 @@ const composition = {
   locked: false
 };
 
-const layer = { id: "layer-1", name: "Layer 1", order: 0, sliceIds: ["slice-1"] };
+const layer = { id: "layer-1", name: "Layer 1", order: 0 };
 const program = {
   compositionId: "comp-1",
   source: { deckId: "deck-1", layerId: "layer-1" },
