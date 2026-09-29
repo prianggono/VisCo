@@ -28,6 +28,14 @@ export function validateTriggerAction(action: TriggerAction, context: TriggerCon
         try { context.output.getState(current.outputId); }
         catch (error) { issues.push({severity:"error",code:"missing-output",path,message:error instanceof Error ? error.message : `Output "${current.outputId}" does not exist.`}); }
         break;
+      case "set-master": {
+        if (!context.decks.has(current.deckId)) {
+          issues.push({severity:"error",code:"missing-deck",path,message:`Deck "${current.deckId}" does not exist.`});
+        } else if (!Number.isFinite(current.level) || current.level < 0 || current.level > 100) {
+          issues.push({severity:"error",code:"invalid-output-action",path,message:"Master level must be between 0 and 100."});
+        }
+        break;
+      }
       case "set-media-feature":
         if (!context.output) { issues.push({severity:"error",code:"missing-output",path,message:"Output engine is required for output trigger actions."}); break; }
         try {
