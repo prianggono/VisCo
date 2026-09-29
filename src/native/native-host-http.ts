@@ -27,6 +27,35 @@ export interface NativeNetworkStatus {
   readonly error: string;
 }
 
+export interface NativeAsioDriver {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly clsid: string;
+}
+
+export interface NativeAsioStartResult {
+  readonly ok: boolean;
+  readonly running: boolean;
+  readonly driver?: string;
+  readonly sampleRate?: number;
+  readonly channels?: number;
+  readonly bufferFrames?: number;
+  readonly message?: string;
+}
+
+export interface NativeAsioStatus {
+  readonly running: boolean;
+  readonly sampleRate: number;
+  readonly channels: number;
+  readonly bufferFrames: number;
+  readonly callbackBlocks: number;
+  readonly callbackFrames: number;
+  readonly droppedFrames: number;
+  readonly overruns: number;
+  readonly availableFrames: number;
+}
+
 export interface NativeRuntimeAdapterStatus {
   readonly name: "NDI" | "OMT" | "ASIO";
   readonly available: boolean;
@@ -90,6 +119,31 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
     const response = await fetch(`${this.baseUrl}/network/status`, { cache: "no-store" });
     if (!response.ok) throw new Error(`Native network status failed (${response.status}).`);
     return await response.json() as NativeNetworkStatus;
+  }
+
+  async asioDrivers(): Promise<readonly NativeAsioDriver[]> {
+    const response = await fetch(`${this.baseUrl}/asio/drivers`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Native ASIO driver enumeration failed (${response.status}).`);
+    const payload = await response.json() as { drivers?: NativeAsioDriver[] };
+    return payload.drivers ?? [];
+  }
+
+  async asioStart(driver: string): Promise<NativeAsioStartResult> {
+    const response = await fetch(`${this.baseUrl}/asio/start?driver=${encodeURIComponent(driver)}`, { cache: "no-store" });
+    const payload = await response.json() as NativeAsioStartResult;
+    if (!response.ok || !payload.ok) throw new Error(payload.message ?? `Native ASIO start failed (${response.status}).`);
+    return payload;
+  }
+
+  async asioStop(): Promise<{ readonly ok: boolean; readonly running: boolean }> {
+    const response = await fetch(`${this.baseUrl}/asio/stop`, { cache: "no-store" });
+    return await response.json() as { ok: boolean; running: boolean };
+  }
+
+  async asioStatus(): Promise<NativeAsioStatus> {
+    const response = await fetch(`${this.baseUrl}/asio/status`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Native ASIO status failed (${response.status}).`);
+    return await response.json() as NativeAsioStatus;
   }
 
   async runtimeAdapters(): Promise<readonly NativeRuntimeAdapterStatus[]> {
