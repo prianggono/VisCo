@@ -16,8 +16,7 @@ This is the handoff checklist for future revisions.
 - [x] Deck M/A/V fields
 - [x] M OFF blocks Program but Preview remains available
 - [x] X deselect runtime action
-- [x] Project snapshot includes Output and License configuration
-- [x] License watermark policy
+- [x] Project snapshot includes Output and Scene configuration
 - [x] Health Check model
 - [x] Revision documentation
 
@@ -30,118 +29,56 @@ This is the handoff checklist for future revisions.
 - [x] Trigger validation checks references/action compatibility; duplicate/copy-pasted commands are allowed
 - [x] Program output synchronization carries Composition scope
 - [x] Stream/Record encoder settings can differ while sharing Media Composition
+- [x] Output transport registry isolates failed transports
+- [x] Resilient frame source isolates missing capture devices and supports manual retry
+- [x] Media compatibility cache boundary
+- [x] Control mapping boundary for Keyboard/MIDI/Mouse/Stream Deck
+- [x] Slice Editor engine: Move/Pick + Pen, point editing and Bezier handles
+- [x] Source playback and source validation contracts
 
 ## UI status
 
 - [ ] Web UI fully converted from mock state to domain/engine adapters
 - [x] Add Input modal converted to full Input Select workflow
-- [ ] Properties connected to selected Source/Layer
+- [ ] Properties fully connected to selected Source/Layer
 - [ ] View/layout persistence connected to Project
-- [ ] Real Output status connected to Output Engine
-- [x] Device discovery contract and Source UI selection workflow (NDI / OMT / IP Camera / Camera / Desktop Capture)
+- [ ] Real Output status connected to native Output transports
+- [x] Device discovery contract and Source UI selection workflow
+- [x] Slice Properties exposes Move/Pick and Pen/Edit tools
 
-## Runtime engines still planned
+## Native/runtime status
 
-- [ ] Real video/image/audio decode
-- [ ] USB Video Capture / NDI / OMT / IP camera
-- [ ] Composition renderer
-- [ ] Slice mapping renderer
-- [ ] Physical display / LED output
-- [ ] Virtual Out
-- [ ] Stream encoder
-- [ ] Segmented recorder
+- [ ] Real video/image/audio decode implementation
+- [ ] USB Video Capture / NDI / OMT / IP camera native frame implementations
+- [ ] D3D11 renderer implementation in Windows host
+- [ ] Slice mapping render implementation in native renderer
+- [x] HDMI display output native bridge contract
+- [x] LED output transport locked to Art-Net and adapter contract added
+- [ ] Virtual Out native implementation
+- [ ] Stream encoder implementation
+- [ ] Segmented recorder implementation
 - [ ] Zoom audio/video integration
-- [ ] MIDI / Shortcut runtime
+- [ ] Native MIDI/Shortcut runtime implementation
 - [ ] Health checks against real devices/files
-- [ ] License verification and watermark renderer — intentionally postponed per PRI
 - [ ] Windows desktop packaging
+- [ ] License verification/enforcement/watermark — intentionally postponed per PRI
 
-## Rule for the next revision
+## Audit rules
 
-Do not implement an unchecked item in the UI first. Add or update the owning domain/engine contract, add tests, then connect the UI adapter.
+1. Keep 30 FPS as the default target.
+2. Do not move native capture/render/protocol logic into React.
+3. Do not duplicate Layer state inside Group or Slice.
+4. One Production Scene may feed Record + Stream + Virtual Out from the shared Composition.
+5. Physical HDMI displays remain separate from Art-Net LED transport.
+6. Art-Net is the only LED transport currently selected; vendor-specific LED backends are not part of this revision.
+7. Duplicate/copied Trigger commands remain allowed; only broken references/actions are rejected.
+8. License work remains excluded while VisCo is in try-and-error.
+9. Before a Supabase backup, audit GitHub state and record unresolved native implementation items instead of marking them complete.
 
-No feature package tiers are planned. Unlicensed mode remains usable with a watermark; licensed mode removes the watermark.
+## Current audit conclusion — 2026-09-29
 
+Core domain/engine contracts are internally aligned across Source → Layer → Group → Composition → Program → Scene → Output Frame → Output Transport. The remaining unchecked runtime items are native Windows/backend implementations, not unresolved architecture choices.
 
-## Current runtime handoff
+The current repository has not been verified by a successful CI run after the latest direct commits; GitHub returned no workflow runs for the latest checked commit. Therefore this document does not claim build/test success.
 
-The Source UI now owns selection flow and delegates device discovery to the canonical DeviceDiscoveryEngine. Camera/Webcam and USB Video Capture discovery are native Windows responsibilities. NDI, OMT, Desktop Capture, Display, and LED discovery are intentionally native-provider responsibilities; the UI does not duplicate protocol or Windows device logic.
-
-OMT discovery supports an optional Discovery Server field. OMT documents DNS-SD as the normal discovery mechanism and a TCP Discovery Server as the multicast-unavailable fallback; the default Discovery Server port documented by OMT is 6399.
-
-The next implementation step is the Windows native provider/frame bridge. Do not move native capture or frame conversion into the React UI.
-
-
-### Input clarification — USB Video Capture
-
-The live inputs include **Camera / Webcam** and **Video Capture** as separate device classes. Camera/Webcam covers built-in or USB cameras; Video Capture covers USB-connected HDMI/SDI/video capture devices. Discovery and frame acquisition are native Windows responsibilities; the React UI must not use browser camera enumeration for this input. The native device metadata should preserve backend/device capabilities so the future Windows adapter can expose resolution, pixel format, FPS, audio presence, and vendor/device identity.
-
-
-## Decision gates — do not implement before explicit agreement
-
-Only the following architecture choices are currently blocked on a decision:
-
-1. **Renderer backend** — D3D11 is locked. Native implementation remains pending.
-2. **Native media/capture backend** — locked: Media Foundation primary decode, FFmpeg compatibility fallback, DirectShow capture fallback, and native professional capture boundary.
-3. **LED output architecture** — define the native transport/driver boundary for LED controllers and mapping outputs before implementing real LED output.
-4. **Real output transport details** — physical display / Virtual Out / stream / recorder backend choices are downstream of the renderer/media decisions.
-5. **License enforcement timing** — explicitly postponed. Do not implement enforcement or licensing tiers while the project is still in try-and-error. Watermark policy remains only as a domain contract.
-
-Everything else can be audited, tested, documented, or implemented without waiting for those decisions.
-
-## Autonomous work queue
-
-The next work should proceed without asking for a decision:
-
-- [x] Verify Program Layer Snapshot invariants and add regression tests.
-- [x] Finish Layering contract at the engine level: deterministic layer ordering and blend metadata for multi-layer composition, without selecting a GPU backend.
-- [x] Audit Program → Deck transition → Output synchronization and composition-scoped output sync.
-- [x] Audit Trigger validation/execution; duplicate commands intentionally allowed.
-- [x] Audit Audio routing ownership; canonical Audio In → VisCo VB → Record/Stream/Zoom path remains centralized.
-- [x] Audit Properties panels: General/Playback/Transform/Layering/Document/List are connected; Audio volume/pan, Slice add/reset, Trigger assignment, and Advanced remain UI placeholders.
-- [x] Audit persistence coverage; snapshot now covers Composition/Deck/Group/Layer/Slice/Scene/Source/Output.
-- [x] Audit Health Check contracts; generic ID/reference/output checks added without native binding.
-- [x] Keep Camera/Webcam and USB Video Capture separated as canonical source classes.
-- [x] Keep NDI and OMT as first-class source/device contracts.
-- [ ] Run regression/CI after every implementation batch.
-
-## Working rule
-
-When an item can be completed safely from the existing architecture, implement it directly. When an item changes a foundational technology choice or native backend, stop at the decision gate and ask PRI before coding it.
-
-
-## Audit continuation — #4 onward
-
-- [x] #4 Transform canonical state: Layer.transform is the single transform source.
-- [x] #5 Multi-layer ordering contract: deterministic Layer.order with stable insertion tie-breaker; Group remains organizational and does not duplicate Layer state.
-- [x] #6 Slice mapping contract: Slice remains composition-owned and references Layer IDs; mapping supports rectangle, corner-pin, Bezier, polygon, crop/scale, rotation and grid/snap metadata.
-- [x] Scene contract: Scene is an output mapping/routing preset. Physical displays use display Scenes; Record + Stream + External/Virtual Out share one production Scene.
-- [x] #7 Real compositor integration contract: Program carries immutable multi-layer snapshot and compositor emits deterministic render metadata.
-- [ ] #8 Native D3D11 renderer implementation: bridge contract added; Windows host implementation remains.
-- [x] Scene runtime adapter: composition-scoped Scene registration, validation and activation contract implemented.
-- [ ] Native output transport implementation remains downstream of the D3D11/media decisions.
-- [x] Output frame contract added: physical/media consumers receive a rendered Composition frame reference and Scene mapping identity.
-
-
-### Audit batch — 2026-09-29
-
-- [x] Program snapshot preserves all Deck Layers while retaining the selected Layer as UI/trigger focus.
-- [x] Multi-layer compositor consumes Program snapshot and emits deterministic render order plus blend/transform metadata.
-- [x] D3D11 native renderer boundary defined without leaking Windows APIs into React/domain code.
-- [x] Media pipeline boundary defined: Media Foundation → FFmpeg compatibility; DirectShow/professional capture fallback boundary.
-- [x] Trigger duplicate/copy-paste restriction removed per operator workflow; reference validation remains.
-- [x] Trigger output synchronization corrected to use Program composition scope.
-- [x] Project snapshot serialization covers current core domain objects including Scene.
-
-
-### Audit continuation — 2026-09-29 (continued)
-
-- [x] Scene runtime adapter implemented with one active mapping preset per Composition.
-- [x] Scene validation covers display targets and the shared Production Scene (Record / Stream / Virtual).
-- [x] Relationship validation now checks Scene → Composition references.
-- [x] Output frame boundary added so downstream physical/media transports consume rendered Composition frames rather than owning Layer state.
-- [x] Deck Runtime column mapping regression is covered by the existing deterministic layer-order test.
-- [ ] Native D3D11 implementation remains a Windows-host task.
-- [ ] Native physical display / Virtual Out / stream / recorder transport remains downstream of the locked renderer/media boundaries.
-- [ ] LED transport remains a decision gate and is intentionally not implemented.
-- [ ] License enforcement, licensing tiers, and watermark rendering remain postponed and are not part of this audit batch.
+Supabase is used as the VisCo history/decision backup. A backup should capture this audit conclusion, current decisions, unresolved native implementation queue, and the exact GitHub commit being backed up.
