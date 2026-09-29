@@ -54,11 +54,11 @@ describe("Deck click -> Preview / Program -> Output", () => {
     program.program(venueDeck, "layer-1", "venue");
     const controller = new DeckProgramController(runtime, program);
 
-    expect(controller.getState(venueDeck).program.source).toEqual({
+    expect(controller.getState(venueDeck, "venue").program.source).toEqual({
       deckId: "venue-deck",
       layerId: "layer-1"
     });
-    expect(controller.getState(venueDeck).program.compositionId).toBe("venue");
+    expect(controller.getState(venueDeck, "venue").program.compositionId).toBe("venue");
   });
 
   it("clicking a Layer box programs immediately and syncs outputs", () => {
