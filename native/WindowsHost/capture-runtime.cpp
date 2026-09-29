@@ -285,7 +285,7 @@ void D3D11Host::render(const std::shared_ptr<const NativeVideoFrame>& frame) {
   viewport.MinDepth=0; viewport.MaxDepth=1;
   context_->RSSetViewports(1, &viewport);
   const float clear[4]={0,0,0,1}; context_->ClearRenderTargetView(target_.Get(), clear);
-  if (!videoView_) { swap_->Present(1,0); return; }
+  if (!videoView_) { swap_->Present(0,0); return; }
   UINT stride=0, offset=0;
   context_->IASetVertexBuffers(0,0,nullptr,&stride,&offset);
   context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
