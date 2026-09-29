@@ -183,6 +183,9 @@ void NativeOutputRuntime::startVirtual(const std::string& mappingName, UINT widt
 
 void NativeOutputRuntime::startStream(NativeStreamProtocol protocol,const std::string& name,UINT width,UINT height,UINT fps){
   try{
+    if(impl_->omtSender){ impl_->omt.destroy(impl_->omtSender); impl_->omtSender=nullptr; }
+    if(impl_->ndiSender){ impl_->ndi.sendDestroy(impl_->ndiSender); impl_->ndiSender=nullptr; }
+    streaming_=false;
     if(name.empty()) throw std::runtime_error("Stream name is empty.");
     if(protocol==NativeStreamProtocol::OMT){
       if(!impl_->omt.load()) throw std::runtime_error("OMT runtime is not installed.");
