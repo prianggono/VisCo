@@ -9,6 +9,7 @@ import { WindowsDisplayOutput, type WindowsDisplayOutputBridge } from "../src/na
 import { D3D11RendererRuntime, type D3D11RendererBridge } from "../src/native/d3d11-renderer.js";
 import { WindowsMediaOutput, type MediaOutputBridge } from "../src/native/media-output.js";
 import { VirtualOutput, type VirtualOutputBridge } from "../src/native/virtual-output.js";
+import { WindowsVideoRuntime, type WindowsVideoCaptureBridge } from "../src/native/windows-video-runtime.js";
 
 describe("runtime contracts", () => {
   it("isolates a failed output transport", async () => {
@@ -111,6 +112,23 @@ describe("runtime contracts", () => {
     await output.submit({ width: 1920, height: 1080, frameNumber: 1, compositionId: "comp-1" });
     expect(submitted).toBe(true);
     expect(() => new WindowsMediaOutput({ id: "", kind: "record", width: 1920, height: 1080, fps: 30 }, bridge)).toThrow();
+  });
+
+  it("selects and safely closes Windows camera/capture devices", async () => {
+    let opened = false;
+    const bridge: WindowsVideoCaptureBridge = {
+      async enumerate(kind) { return [{ device: { id: "cam-1", name: "Camera", kind, transport: "native" } }]; },
+      async open() { opened = true; },
+      async close() { opened = false; },
+      async read() { return null; },
+      getStatus: () => ({ running: opened, connected: true, frames: 0, error: null })
+    };
+    const runtime = new WindowsVideoRuntime(bridge);
+    await runtime.select("camera", "cam-1");
+    await runtime.open({ device: { id: "cam-1", name: "Camera", kind: "camera", transport: "native" } });
+    expect(runtime.getStatus().running).toBe(true);
+    await runtime.close();
+    expect(runtime.getStatus().running).toBe(false);
   });
 
   it("keeps virtual output separate from physical display output", async () => {
