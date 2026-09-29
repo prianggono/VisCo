@@ -70,7 +70,8 @@ export function parseProject(serialized: string): ProjectSnapshot {
     return { ...slice, layerRefs };
   });
 
-  const migratedLayers = (value.layers as readonly unknown[]).map((entry) => {\n    const raw = entry as Record<string, unknown>;
+  const migratedLayers = (value.layers as readonly unknown[]).map((entry) => {
+    const raw = entry as Record<string, unknown>;
     const { sliceIds: _legacySliceIds, ...layer } = raw;
     return layer;
   });
