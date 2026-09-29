@@ -54,6 +54,14 @@ export class ProjectRuntime {
     return this.getState();
   }
 
+  update(next: ProjectSnapshotInput): ProjectRuntimeState {
+    const snapshot = createProjectSnapshot(next);
+    this.assertValid(snapshot);
+    this.snapshot = snapshot;
+    this.dirty = true;
+    return this.getState();
+  }
+
   private assertValid(snapshot: ProjectSnapshot): void {
     const graph: RelationshipGraph = {
       compositions: snapshot.compositions,
