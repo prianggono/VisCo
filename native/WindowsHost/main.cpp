@@ -165,7 +165,7 @@ class HttpControlServer {
            << "\",\"error\":\"" << network_->error() << "\"}";
       sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /capture/start", 0) == 0) {
-      const q = requestLine.find("device=");
+      const auto q = requestLine.find("device=");
       std::string id = q == std::string::npos ? "" : requestLine.substr(q + 7);
       const amp = id.find('&'); if (amp != std::string::npos) id.resize(amp);
       if (id.rfind("win-video-", 0) != 0) {
