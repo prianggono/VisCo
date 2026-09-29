@@ -81,8 +81,8 @@ export function parseProject(serialized: string): ProjectSnapshot {
     compositions: value.compositions!,
     decks: value.decks!,
     groups: value.groups!,
-    layers: migratedLayers as readonly Layer[],
-    slices: migratedSlices as readonly Slice[],
+    layers: migratedLayers as unknown as readonly Layer[],
+    slices: migratedSlices as unknown as readonly Slice[],
     scenes: value.scenes!,
     sources: value.sources!,
     outputs: value.outputs!
