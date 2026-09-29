@@ -5,11 +5,34 @@ export interface D3D11RendererCapabilities {
   readonly supportsCompute: boolean;
 }
 
+export interface D3D11RenderSlice {
+  readonly id: string;
+  readonly layerIds: readonly string[];
+  readonly transform: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+    readonly rotation: number;
+    readonly scaleX?: number;
+    readonly scaleY?: number;
+    readonly cropLeft?: number;
+    readonly cropTop?: number;
+    readonly cropRight?: number;
+    readonly cropBottom?: number;
+  };
+  readonly mapping?: {
+    readonly mode: "rectangle" | "corner-pin" | "bezier" | "polygon";
+    readonly points?: readonly { readonly x: number; readonly y: number }[];
+  };
+}
+
 export interface D3D11RenderFrame {
   readonly width: number;
   readonly height: number;
   readonly fps: number;
   readonly layerIds: readonly string[];
+  readonly slices?: readonly D3D11RenderSlice[];
 }
 
 /**
@@ -25,6 +48,9 @@ export function validateD3D11RenderFrame(frame: D3D11RenderFrame, capabilities?:
     throw new Error("D3D11 frame exceeds the native texture-size capability.");
   }
   if (frame.layerIds.some((id) => !id.trim())) throw new Error("D3D11 frame contains an invalid layer id.");
+  if (frame.slices?.some((slice) => !slice.id.trim() || slice.layerIds.some((id) => !id.trim()))) {
+    throw new Error("D3D11 frame contains an invalid Slice mapping.");
+  }
 }
 
 export class D3D11RendererRuntime {
