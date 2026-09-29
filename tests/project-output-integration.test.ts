@@ -73,7 +73,7 @@ describe("project/output integration", () => {
     };
     const frame = createOutputFrame(program, selectedScene, { width: 1920, height: 1080, fps: 30 }, 1, [
       { id: "slice-1", name: "Slice 1", transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 }, locked: false },
-      { id: "slice-2", name: "Slice 2", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerIds: ["layer-1"], locked: false }
+      { id: "slice-2", name: "Slice 2", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }], locked: false }
     ]);
     expect(frame.slices?.map((slice) => slice.id)).toEqual(["slice-2"]);
   });
@@ -108,7 +108,7 @@ describe("project/output integration", () => {
     const frame = createOutputFrame(program, scene, { width: 1920, height: 1080, fps: 30 }, 7, [{
       id: "slice-1", name: "Slice 1",
       transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
-      layerIds: ["layer-1"], locked: false
+      layerRefs: [{ deckId: "deck-1", layerId: "layer-1" }], locked: false
     }]);
     expect(frame.sceneId).toBe("scene-1");
     expect(frame.layerIds).toEqual(["layer-1"]);
