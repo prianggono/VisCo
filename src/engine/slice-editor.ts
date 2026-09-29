@@ -1,3 +1,4 @@
+import type { DeckLayerRef } from "../domain/deck.js";
 import type { Slice, SliceMapping, SlicePoint, SliceTransform } from "../domain/slice.js";
 
 export type SliceEditorTool = "move-pick" | "pen";
@@ -80,13 +81,16 @@ export function setSlicePoints(slice: Slice, points: readonly SlicePoint[]): Sli
   return patchSliceMapping(slice, { points: [...points] });
 }
 
-export function assignLayerToSlice(slice: Slice, layerId: string): Slice {
+export function assignLayerToSlice(slice: Slice, layerRef: DeckLayerRef): Slice {
   if (slice.locked) throw new Error(`Slice "${slice.id}" is locked.`);
-  if (slice.layerIds.includes(layerId)) return slice;
-  return { ...slice, layerIds: [...slice.layerIds, layerId] };
+  if (slice.layerRefs.some((ref) => ref.deckId === layerRef.deckId && ref.layerId === layerRef.layerId)) return slice;
+  return { ...slice, layerRefs: [...slice.layerRefs, { ...layerRef }] };
 }
 
-export function removeLayerFromSlice(slice: Slice, layerId: string): Slice {
+export function removeLayerFromSlice(slice: Slice, layerRef: DeckLayerRef): Slice {
   if (slice.locked) throw new Error(`Slice "${slice.id}" is locked.`);
-  return { ...slice, layerIds: slice.layerIds.filter((id) => id !== layerId) };
+  return {
+    ...slice,
+    layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === layerRef.deckId && ref.layerId === layerRef.layerId))
+  };
 }
