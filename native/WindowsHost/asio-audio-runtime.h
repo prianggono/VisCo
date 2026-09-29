@@ -14,7 +14,7 @@ struct ASIOBufferInfo{ASIOBool isInput;long channelNum;void* buffers[2];};
 struct ASIOChannelInfo{long channel;ASIOBool isInput;ASIOBool isActive;long channelGroup;long type;char name[32];};
 struct ASIOTime;
 struct ASIOCallbacks{void(__cdecl*bufferSwitch)(long,ASIOBool);void(__cdecl*sampleRateDidChange)(ASIOSampleRate);long(__cdecl*asioMessage)(long,long,void*,double*);ASIOTime*(__cdecl*bufferSwitchTimeInfo)(ASIOTime*,long,ASIOBool);};
-struct IASIO:public IUnknown{
+struct __declspec(uuid("a91eaba1-cf4c-11d3-b96a-00a0c9c7b61a")) IASIO:public IUnknown{
 virtual ASIOBool init(void*)=0;virtual void getDriverName(char*)=0;virtual long getDriverVersion()=0;virtual void getErrorMessage(char*)=0;virtual ASIOError start()=0;virtual ASIOError stop()=0;virtual ASIOError getChannels(long*,long*)=0;virtual ASIOError getLatencies(long*,long*)=0;virtual ASIOError getBufferSize(long*,long*,long*,long*)=0;virtual ASIOError canSampleRate(ASIOSampleRate)=0;virtual ASIOError getSampleRate(ASIOSampleRate*)=0;virtual ASIOError setSampleRate(ASIOSampleRate)=0;virtual ASIOError getClockSources(void*,long*)=0;virtual ASIOError setClockSource(long)=0;virtual ASIOError getSamplePosition(void*,void*)=0;virtual ASIOError getChannelInfo(ASIOChannelInfo*)=0;virtual ASIOError createBuffers(ASIOBufferInfo*,long,long,ASIOCallbacks*)=0;virtual ASIOError disposeBuffers()=0;virtual ASIOError controlPanel()=0;virtual ASIOError future(long,void*)=0;virtual ASIOError outputReady()=0;
 };
 struct AudioEngineStats{uint64_t callbackBlocks=0,callbackFrames=0,droppedFrames=0,overruns=0;uint32_t sampleRate=0,channels=0,bufferFrames=0;};
