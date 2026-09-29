@@ -68,6 +68,7 @@ export function App() {
       id: "production",
       kind: "media",
       enabled: true,
+      compositionId: "default",
       media: { compositionId: "default", resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false }
     });
     return engine;
