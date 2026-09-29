@@ -37,3 +37,16 @@ describe("relationship validation", () => {
     expect(result.errors).toHaveLength(7);
   });
 });
+
+
+it("rejects duplicate IDs across the same collection", () => {
+  const result = validateRelationships({
+    compositions: [],
+    decks: [],
+    groups: [],
+    layers: [{ id: "layer-1", name: "A" }, { id: "layer-1", name: "B" }],
+    slices: []
+  });
+  expect(result.valid).toBe(false);
+  expect(result.errors.some((error) => error.includes('Duplicate layer id "layer-1"'))).toBe(true);
+});
