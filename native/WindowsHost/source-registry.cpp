@@ -19,4 +19,11 @@ void SourceRegistry::remove(const std::string& sourceId) {
   frames_.erase(sourceId);
 }
 
+void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& nativeSourceId) {
+  if (sourceId.empty() || nativeSourceId.empty()) return;
+  std::lock_guard<std::mutex> lock(mutex_);
+  const auto it = frames_.find(nativeSourceId);
+  if (it != frames_.end()) frames_[sourceId] = it->second;
+}
+
 } // namespace visco_native
