@@ -337,7 +337,7 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
     ).not.toThrow();
   });
 
-  it("rejects an exact duplicate command before execution", () => {
+  it("allows an exact duplicate copied command", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const runtime = new DeckRuntime();
@@ -357,10 +357,10 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         },
         { decks, controller }
       )
-    ).toThrow('Duplicate command "PROGRAM deck-1/layer-2"');
+    ).not.toThrow();
   });
 
-  it("rejects conflicting output commands before execution", () => {
+  it("allows copied output commands with the final action taking effect", () => {
     const program = new ProgramEngine();
     const trigger = new TriggerEngine();
     const output = new OutputEngine();
@@ -392,9 +392,9 @@ describe("Deck -> Layer -> Program -> Trigger", () => {
         },
         { decks: new Map(), controller, output }
       )
-    ).toThrow("Conflicting command");
+    ).not.toThrow();
 
-    expect(output.getState("display-main").target.enabled).toBe(true);
+    expect(output.getState("display-main").target.enabled).toBe(false);
   });
 
   it("rejects an invalid target before changing Program", () => {
