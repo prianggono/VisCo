@@ -129,8 +129,6 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
 
       ComPtr<IMFMediaBuffer> buffer;
       requireHr(sample->ConvertToContiguousBuffer(&buffer), "ConvertToContiguousBuffer failed");
-      BYTE* data = nullptr; DWORD maxLen = 0, currentLen = 0;
-      requireHr(buffer->Lock(&data, &maxLen, &currentLen), "Media buffer lock failed");
 
       UINT frameWidth = width, frameHeight = height;
       LONG defaultStride = static_cast<LONG>(frameWidth * 4);
@@ -138,20 +136,30 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
       if (SUCCEEDED(reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType))) {
         MFGetAttributeSize(currentType.Get(), MF_MT_FRAME_SIZE, &frameWidth, &frameHeight);
         UINT32 rawStride = 0;
-        if (SUCCEEDED(currentType->GetUINT32(MF_MT_DEFAULT_STRIDE, &rawStride))) {
-          defaultStride = static_cast<LONG>(rawStride);
-        }
+        if (SUCCEEDED(currentType->GetUINT32(MF_MT_DEFAULT_STRIDE, &rawStride))) defaultStride = static_cast<LONG>(rawStride);
       }
 
-      // Prefer the actual 2-D surface pitch when the buffer exposes it.
-      // If only IMFMediaBuffer is available, reproduce Microsoft's negative-stride
-      // scanline-0 convention before copying into VisCo's canonical top-down BGRA.
-      BYTE* scanline0 = data;
+      BYTE* scanline0 = nullptr;
       LONG stride = defaultStride;
       ComPtr<IMF2DBuffer> buffer2d;
-      bool locked2d = SUCCEEDED(buffer.As(&buffer2d)) && SUCCEEDED(buffer2d->Lock2D(&scanline0, &stride));
-      if (!locked2d && stride < 0) {
-        scanline0 = data + static_cast<size_t>(-stride) * (frameHeight - 1);
+      const bool has2d = SUCCEEDED(buffer.As(&buffer2d));
+      bool locked2d = false;
+      BYTE* data = nullptr;
+      DWORD maxLen = 0, currentLen = 0;
+      if (has2d) {
+        locked2d = SUCCEEDED(buffer2d->Lock2D(&scanline0, &stride));
+      }
+      if (!locked2d) {
+        requireHr(buffer->Lock(&data, &maxLen, &currentLen), "Media buffer lock failed");
+        scanline0 = data;
+        stride = defaultStride;
+        if (stride < 0) scanline0 = data + static_cast<size_t>(-stride) * (frameHeight - 1);
+      } else {
+        // Lock2D exposes the actual pitch; contiguous bytes are not necessarily
+        // exactly width*4 because a surface may contain row padding.
+        currentLen = static_cast<DWORD>(std::min<size_t>(
+          static_cast<size_t>(frameHeight) * static_cast<size_t>(stride < 0 ? -stride : stride),
+          static_cast<size_t>(0xffffffffu)));
       }
 
       const size_t rowBytes = static_cast<size_t>(frameWidth) * 4;
@@ -173,6 +181,8 @@ void MediaCaptureHost::loop(std::wstring symbolicLink, UINT width, UINT height, 
         }
       }
       if (locked2d) buffer2d->Unlock2D();
+      else buffer->Unlock();
+
 
     }
     source->Shutdown();
