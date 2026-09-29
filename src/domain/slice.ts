@@ -1,3 +1,4 @@
+import type { DeckLayerRef } from "./deck.js";
 export type SliceMappingMode = "rectangle" | "corner-pin" | "bezier" | "polygon";
 
 export interface SlicePoint {
