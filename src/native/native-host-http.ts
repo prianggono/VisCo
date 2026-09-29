@@ -6,6 +6,20 @@ export interface NativeHostStatus {
   readonly message?: string;
 }
 
+export interface NativeCaptureStatus {
+  readonly ok: boolean;
+  readonly running: boolean;
+  readonly device?: string;
+  readonly message?: string;
+}
+
+export interface NativeRuntimeAdapterStatus {
+  readonly name: "NDI" | "OMT" | "ASIO";
+  readonly available: boolean;
+  readonly library: string;
+  readonly message: string;
+}
+
 export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
   constructor(private readonly baseUrl = "http://127.0.0.1:47821") {}
 
@@ -29,21 +43,7 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
     if (!Array.isArray(payload.devices)) throw new Error(payload.message ?? "Invalid native discovery response.");
     return payload.devices;
   }
-}
 
-
-export interface NativeCaptureStatus {
-  readonly ok: boolean;
-  readonly running: boolean;
-  readonly device?: string;
-  readonly message?: string;
-}
-
-export interface NativeRuntimeAdapterStatus {
-  readonly name: "NDI" | "OMT" | "ASIO";
-  readonly available: boolean;
-  readonly library: string;
-  readonly message: string;
   async startCapture(deviceId: string): Promise<NativeCaptureStatus> {
     const response = await fetch(`${this.baseUrl}/capture/start?device=${encodeURIComponent(deviceId)}`, { cache: "no-store" });
     return await response.json() as NativeCaptureStatus;
