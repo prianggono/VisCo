@@ -40,9 +40,10 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   // Slice editor: create a slice and exercise mapping mode.
   await page.getByRole("button", { name: "Slice", exact: true }).click();
   await page.getByRole("button", { name: "Add Slice", exact: true }).click();
-  await expect(page.locator("select").filter({ has: page.locator("option") }).first()).toHaveValue("rectangle");
-  await page.locator("select").first().selectOption("corner-pin");
-  await expect(page.locator("select").first()).toHaveValue("corner-pin");
+  const sliceSelect = page.locator(".property-content select").first();
+  await expect(sliceSelect).toHaveValue("rectangle");
+  await sliceSelect.selectOption("corner-pin");
+  await expect(sliceSelect).toHaveValue("corner-pin");
 
   // Scene routing and output controls.
   await page.getByRole("button", { name: "SCENE 2", exact: true }).click();
