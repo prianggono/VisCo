@@ -13,6 +13,10 @@ export interface ProjectRuntimeState extends ProjectSnapshot {
   readonly dirty: boolean;
 }
 
+export function cloneProjectSnapshot(snapshot: ProjectSnapshot): ProjectSnapshot {
+  return parseProject(serializeProject(snapshot));
+}
+
 export class ProjectRuntime {
   private snapshot: ProjectSnapshot;
   private dirty = false;
