@@ -227,7 +227,6 @@ export function App() {
       name: `Slice ${slices.length + 1}`,
       transform: { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 },
       mapping: { mode: "rectangle", snapToGrid: true, gridSize: 16 },
-      layerIds: [selectedLayerModel.id],
       locked: false
     };
     setSlices((current) => [...current, slice]);
@@ -236,8 +235,7 @@ export function App() {
 
   const resetSelectedLayerSlices = () => {
     if (!selectedLayerModel) return;
-    const selectedIds = new Set(selectedLayerModel.sliceIds ?? []);
-    setSlices((current) => current.filter((slice) => !selectedIds.has(slice.id)));
+    // Detach the Layer's Slice references only. A Slice may be shared by other Layers.
     updateSelectedLayer({ sliceIds: [] });
   };
 
