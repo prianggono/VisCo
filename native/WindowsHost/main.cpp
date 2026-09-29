@@ -23,6 +23,7 @@
 #include <sstream>
 #include <cctype>
 #include "capture-runtime.h"
+#include "runtime-adapters.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -116,6 +117,7 @@ class HttpControlServer {
   MediaFoundationHost* media_ = nullptr;
   WasapiHost* audio_ = nullptr;
   MediaCaptureHost* capture_ = nullptr;
+  RuntimeAdapterRegistry* runtimes_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
     std::ostringstream response;
@@ -140,6 +142,8 @@ class HttpControlServer {
       sendResponse(client, "{}", "204 No Content");
     } else if (requestLine.rfind("GET /health", 0) == 0) {
       sendResponse(client, R"({"available":true,"version":"native-host-1","backend":"d3d11","capture":"media-foundation","audio":"wasapi","led":"art-net"})");
+    } else if (requestLine.rfind("GET /runtime", 0) == 0) {
+      sendResponse(client, runtimes_ ? runtimes_->json() : R"({"adapters":[]})");
     } else if (requestLine.rfind("GET /capture/start", 0) == 0) {
       const q = requestLine.find("device=");
       std::string id = q == std::string::npos ? "" : requestLine.substr(q + 7);
@@ -211,8 +215,8 @@ class HttpControlServer {
   }
 
 public:
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -257,11 +261,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     MediaCaptureHost capture(media);
     MjpegPreviewServer preview(capture);
     preview.start(47822);
+    RuntimeAdapterRegistry runtimes;
     if (!media.enumerateVideoDeviceInfo().empty()) {
       capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
     }
     HttpControlServer http;
-    http.start(media, audio, capture);
+    http.start(media, audio, capture, runtimes);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
