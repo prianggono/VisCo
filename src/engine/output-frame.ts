@@ -10,6 +10,11 @@ export interface OutputFrameLayer {
   readonly scaleY: number;
   readonly opacity: number;
   readonly order: number;
+  readonly cropLeft?: number;
+  readonly cropTop?: number;
+  readonly cropRight?: number;
+  readonly cropBottom?: number;
+  readonly sliceId?: string;
 }
 
 export interface OutputFrameSource {
