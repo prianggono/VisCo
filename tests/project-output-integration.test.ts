@@ -89,7 +89,7 @@ describe("project/output integration", () => {
     }]);
     expect(frame.sceneId).toBe("scene-1");
     expect(frame.layerIds).toEqual(["layer-1"]);
-    expect(frame.slices[0].id).toBe("slice-1");
-    expect(frame.slices[0].transform.width).toBe(1920);
+    expect(frame.slices?.[0]?.id).toBe("slice-1");
+    expect(frame.slices?.[0]?.transform.width).toBe(1920);
   });
 });
