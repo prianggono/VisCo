@@ -29,6 +29,7 @@
 #include "network-frame-runtime.h"
 #include "output-runtime.h"
 #include "asio-audio-runtime.h"
+#include "source-registry.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -374,6 +375,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     RuntimeAdapterRegistry runtimes;
     NetworkFrameRuntime network;
     NativeOutputRuntime outputs;
+    visco_native::SourceRegistry sources;
     visco_asio::AudioEngine audioEngine(48000, 2, 96000);
     visco_asio::AsioAudioRuntime asio(audioEngine);
     visco_audio::AudioMixer audioMixer(audioEngine, 48000, 2);
@@ -413,7 +415,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
       const auto networkFrame = network.latest();
       const auto frame = network.running() ? networkFrame : capture.latest();
-      const auto finalFrame = renderer.render(frame);
+      if (frame) sources.publish(network.running() ? "network" : "capture", frame);
+      std::vector<NativeRenderLayer> compositionLayers;
+      if (network.running()) {
+        if (const auto source = sources.latest("network")) {
+          NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
+          layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
+          layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
+          compositionLayers.push_back(std::move(layer));
+        }
+      } else if (const auto source = sources.latest("capture")) {
+        NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
+        layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
+        layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
+        compositionLayers.push_back(std::move(layer));
+      }
+      const auto finalFrame = compositionLayers.empty() ? renderer.render(frame) : renderer.renderComposition(compositionLayers);
       outputs.submit(finalFrame, outputFrameNumber++);
       Sleep(33);
     }
