@@ -110,6 +110,7 @@ export function App() {
   const sceneRuntime = useMemo(() => {
     const runtime = new SceneRuntime();
     runtime.replaceAll(defaultScenes);
+    runtime.activate("scene-display-1");
     return runtime;
   }, []);
   const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
