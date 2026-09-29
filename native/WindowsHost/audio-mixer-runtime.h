@@ -19,7 +19,7 @@ class AudioMixer {
 public:
   explicit AudioMixer(visco_asio::AudioEngine& input, uint32_t sampleRate = 48000, uint32_t channels = 2);
 
-  uint32_t process(float* outputInterleaved, uint32_t frames) noexcept;
+  uint32_t process(float* outputInterleaved, uint32_t frames);
   void setMasterGain(float gain) noexcept;
   float masterGain() const noexcept;
   AudioBusStats stats() const noexcept;
