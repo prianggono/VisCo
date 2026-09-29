@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 
+
 namespace visco_native {
 
 class SourceRegistry {
@@ -16,6 +17,7 @@ public:
 private:
   mutable std::mutex mutex_;
   std::unordered_map<std::string, std::shared_ptr<const NativeVideoFrame>> frames_;
+  std::unordered_map<std::string, std::string> aliases_;
 };
 
 } // namespace visco_native
