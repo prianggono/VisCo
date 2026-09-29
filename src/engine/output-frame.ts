@@ -33,7 +33,7 @@ export interface OutputFrame {
   readonly sceneId: string;
   readonly layerIds: readonly string[];
   /** Immutable mapping data carried to the renderer; Slice remains the source of truth. */
-  readonly slices: readonly OutputFrameSlice[];
+  readonly slices?: readonly OutputFrameSlice[];
 }
 
 export interface OutputFrameConsumer {
