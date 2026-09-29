@@ -53,7 +53,8 @@ export function parseProject(serialized: string): ProjectSnapshot {
   // Migrate the pre-canonical Slice relationship where Layer/Slice could both
   // carry duplicate relationship state. Slice.layerRefs is now authoritative.
   const decks = value.decks as readonly Deck[];
-  const migratedSlices = (value.slices as readonly unknown[]).map((entry) => {\n    const raw = entry as Record<string, unknown>;
+  const migratedSlices = (value.slices as readonly unknown[]).map((entry) => {
+    const raw = entry as Record<string, unknown>;
     const existingRefs = Array.isArray(raw.layerRefs) ? raw.layerRefs : null;
     const legacyLayerIds = Array.isArray(raw.layerIds) ? raw.layerIds.filter((id): id is string => typeof id === "string") : [];
     const layerRefs = existingRefs
