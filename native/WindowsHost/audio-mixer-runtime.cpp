@@ -7,7 +7,7 @@ namespace visco_audio {
 AudioMixer::AudioMixer(visco_asio::AudioEngine& input, uint32_t sampleRate, uint32_t channels)
   : input_(input), sampleRate_(sampleRate), channels_(channels) {}
 
-uint32_t AudioMixer::process(float* outputInterleaved, uint32_t frames) noexcept {
+uint32_t AudioMixer::process(float* outputInterleaved, uint32_t frames) {
   if (!outputInterleaved || frames == 0 || channels_ == 0) return 0;
   inputBuffer_.resize(static_cast<size_t>(frames) * channels_);
   const uint32_t available = input_.pullInterleaved(inputBuffer_.data(), frames);
