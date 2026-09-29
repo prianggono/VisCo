@@ -346,7 +346,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const auto cameras=media.enumerateVideoDevices();
     const auto audioDevices=audio.enumerate();
     MediaCaptureHost capture(media);
-    MjpegPreviewServer preview(capture);
+    MjpegPreviewServer preview(renderer);
     preview.start(47822);
     RuntimeAdapterRegistry runtimes;
     NetworkFrameRuntime network;
