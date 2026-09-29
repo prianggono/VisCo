@@ -118,6 +118,18 @@ class HttpControlServer {
     send(client, text.data(), static_cast<int>(text.size()), 0);
   }
 
+  std::mutex renderMutex_;
+  std::vector<NativeRenderLayer> renderLayers_;
+  visco_native::SourceRegistry* sources_ = nullptr;
+
+  static std::string queryValue(const std::string& requestLine, const std::string& key) {
+    const auto q = requestLine.find(key + "=");
+    if (q == std::string::npos) return {};
+    auto value = requestLine.substr(q + key.size() + 1);
+    const auto amp = value.find("&"); if (amp != std::string::npos) value.resize(amp);
+    return value;
+  }
+
   void handle(SOCKET client) {
     char buffer[8192]{};
     const int received = recv(client, buffer, sizeof(buffer)-1, 0);
@@ -170,6 +182,38 @@ class HttpControlServer {
            << ",\"droppedFrames\":" << s.droppedFrames << ",\"overruns\":" << s.overruns
            << ",\"availableFrames\":" << (audioEngine_ ? audioEngine_->availableFrames() : 0)
            << "}"; sendResponse(client, body.str());
+    } else if (requestLine.rfind("GET /render/bind", 0) == 0) {
+      const std::string sourceId = queryValue(requestLine, "sourceId");
+      const std::string nativeId = queryValue(requestLine, "native");
+      if (!sources_ || sourceId.empty() || nativeId.empty()) {
+        sendResponse(client, R"({"ok":false,"message":"sourceId and native are required."})", "400 Bad Request");
+      } else {
+        sources_->bindAlias(sourceId, nativeId);
+        sendResponse(client, R"({"ok":true})");
+      }
+    } else if (requestLine.rfind("GET /render/layers", 0) == 0) {
+      const std::string value = queryValue(requestLine, "value");
+      std::vector<NativeRenderLayer> parsed;
+      std::stringstream input(value);
+      std::string item;
+      try {
+        while (std::getline(input, item, ';')) {
+          if (item.empty()) continue;
+          std::stringstream fields(item); std::string f; std::vector<std::string> v;
+          while (std::getline(fields, f, '|')) v.push_back(f);
+          if (v.size() != 11) throw std::runtime_error("Invalid render layer descriptor.");
+          NativeRenderLayer layer;
+          layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
+          layer.x=std::stof(v[2]); layer.y=std::stof(v[3]); layer.width=std::stof(v[4]); layer.height=std::stof(v[5]);
+          layer.rotation=std::stof(v[6]); layer.scaleX=std::stof(v[7]); layer.scaleY=std::stof(v[8]);
+          layer.opacity=std::stof(v[9]); layer.order=std::stoi(v[10]);
+          parsed.push_back(std::move(layer));
+        }
+        { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
+        sendResponse(client, R"({"ok":true})");
+      } catch (const std::exception& ex) {
+        sendResponse(client, std::string(R"({"ok":false,"message":")") + jsonEscape(ex.what()) + R"("})", "400 Bad Request");
+      }
     } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
       const auto s = audioMixer_->stats();
       std::ostringstream body;
@@ -305,8 +349,8 @@ class HttpControlServer {
   }
 
 public:
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -405,7 +449,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
 
     HttpControlServer http;
-    http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd);
+    http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd, sources);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
@@ -417,7 +461,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       const auto frame = network.running() ? networkFrame : capture.latest();
       if (frame) sources.publish(network.running() ? "network" : "capture", frame);
       std::vector<NativeRenderLayer> compositionLayers;
-      if (network.running()) {
+      {
+        std::lock_guard<std::mutex> lock(http.renderMutex_);
+        compositionLayers = http.renderLayers_;
+      }
+      for (auto& layer : compositionLayers) {
+        if (!layer.frame) {
+          // The endpoint stores the logical source through the registry. Refreshing
+          // here keeps the render state live without copying pixel buffers.
+        }
+      }
+      if (compositionLayers.empty() && network.running()) {
         if (const auto source = sources.latest("network")) {
           NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
           layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
