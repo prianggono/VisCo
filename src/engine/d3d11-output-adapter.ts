@@ -11,19 +11,7 @@ export function toD3D11RenderFrame(frame: OutputFrame): D3D11RenderFrame {
     height: frame.source.height,
     fps: frame.source.fps,
     layerIds: [...frame.layerIds],
-    layers: frame.layerIds.map((id, index) => ({
-      id,
-      sourceId: undefined,
-      x: 0,
-      y: 0,
-      width: frame.source.width,
-      height: frame.source.height,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-      opacity: 1,
-      order: index
-    })),
+    layers: frame.layers?.map((layer) => ({ ...layer })) ?? [],
     ...(frame.slices ? {
       slices: frame.slices.map((slice) => ({
         id: slice.id,
