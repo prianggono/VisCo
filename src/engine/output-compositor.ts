@@ -13,13 +13,14 @@ export interface CompositedOutput {
  * Output routing remains owned by OutputEngine; Transform remains owned by Layer.
  */
 export function compositeProgramForOutput(program: ProgramState): CompositedOutput | null {
-  if (!program.source) return null;
+  const source = program.source;
+  if (!source) return null;
   const layers = compositeProgram(program);
-  const activeLayer = layers.find((item) => item.layerId === program.source.layerId) ?? layers[0];
+  const activeLayer = layers.find((item) => item.layerId === source.layerId) ?? layers[0];
   if (!activeLayer) return null;
 
   return {
-    source: program.source,
+    source,
     compositionId: program.compositionId,
     layer: activeLayer
   };
