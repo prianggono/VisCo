@@ -83,3 +83,32 @@ Optional environment variables:
 - `VISCO_STREAM_NAME=VisCo Program` selects the NDI source name or OMT sender name.
 
 These outputs share the host's selected native BGRA frame and use the 30 FPS default.
+
+
+## Native ASIO callback -> Audio Engine
+
+ASIO is now a real native input path when an ASIO driver is installed and registered in Windows.
+
+The host:
+- enumerates registered ASIO drivers from the Windows ASIO registry;
+- creates the selected ASIO COM driver;
+- initializes the driver against the native host window;
+- queries sample rate, input channels and preferred buffer size;
+- creates native ASIO input buffers;
+- receives the driver's real-time `bufferSwitch` callback;
+- converts supported little-endian Int16/Int24/Int32/Float32/Float64 samples to canonical interleaved Float32;
+- pushes those samples into a preallocated single-producer/single-consumer Audio Engine ring buffer;
+- exposes callback/runtime counters through the native HTTP API.
+
+The callback does not allocate memory, perform HTTP work, or touch the UI. If the Audio Engine ring buffer is full, the callback drops that block and increments the overrun counters rather than blocking the ASIO thread.
+
+ASIO control endpoints:
+- `GET /asio/drivers`
+- `GET /asio/start?driver=<id-or-name>`
+- `GET /asio/stop`
+- `GET /asio/status`
+
+Optional startup:
+- `VISCO_ASIO_DRIVER=<driver id/name/description>`
+
+ASIO is not treated as a generic `asio.dll` dependency. Windows ASIO drivers are discovered through their registered ASIO entries and instantiated through COM. If no driver is installed, the native host remains operational and ASIO simply stays offline.
