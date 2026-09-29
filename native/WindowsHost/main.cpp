@@ -101,6 +101,7 @@ class HttpControlServer {
   NetworkFrameRuntime* network_ = nullptr;
   visco_asio::AsioAudioRuntime* asio_ = nullptr;
   visco_asio::AudioEngine* audioEngine_ = nullptr;
+  HWND asioWindow_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
     std::ostringstream response;
@@ -142,7 +143,7 @@ class HttpControlServer {
       const auto amp = driver.find('&'); if (amp != std::string::npos) driver.resize(amp);
       if (!asio_ || driver.empty()) {
         sendResponse(client, R"({"ok":false,"message":"ASIO driver is required."})", "400 Bad Request");
-      } else if (asio_->start(driver, GetActiveWindow(), 2)) {
+      } else if (asio_->start(driver, asioWindow_, 2)) {
         const auto info = asio_->activeDriver();
         std::ostringstream body;
         body << "{\"ok\":true,\"running\":true,\"driver\":\"" << info.name
@@ -281,7 +282,7 @@ class HttpControlServer {
 
 public:
   void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine;
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; asioWindow_ = GetConsoleWindow();
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
