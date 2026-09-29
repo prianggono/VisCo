@@ -29,6 +29,7 @@ struct NativeVideoFrame {
 };
 
 struct NativeRenderLayer {
+  std::string sourceId;
   std::shared_ptr<const NativeVideoFrame> frame;
   float x = 0.0f;
   float y = 0.0f;
