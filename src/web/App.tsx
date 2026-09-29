@@ -10,6 +10,7 @@ import { useSliceEditorTool, SliceEditorToolbar } from "./SliceEditorToolbar.js"
 import { patchLayerTransform, setLayerScale } from "../engine/layer-transform.js";
 import { compositeLayer, compositeProgram } from "../engine/compositor.js";
 import { TriggerEngine, type TriggerAction } from "../engine/trigger-engine.js";
+import { SceneRuntime } from "../engine/scene-runtime.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine } from "../engine/device-discovery.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
@@ -87,7 +88,15 @@ export function App() {
   const programEngine = useMemo(() => new ProgramEngine(), []);
   const deckProgramController = useMemo(() => new DeckProgramController(deckRuntime, programEngine, outputEngine), [deckRuntime, programEngine, outputEngine]);
   const triggerEngine = useMemo(() => new TriggerEngine(), []);
+  const sceneRuntime = useMemo(() => new SceneRuntime(), []);
+  const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
   const [showAddDeck, setShowAddDeck] = useState(false);
+  const defaultScenes: readonly Scene[] = [
+    { id: "scene-display-1", name: "Display 1", compositionId: "default", target: { kind: "display", displayId: "display-1" }, enabled: true },
+    { id: "scene-display-2", name: "Display 2", compositionId: "default", target: { kind: "display", displayId: "display-2" }, enabled: true },
+    { id: "scene-production", name: "Production", compositionId: "default", target: { kind: "production", record: true, stream: true, virtual: true }, enabled: true }
+  ];
+  sceneRuntime.replaceAll(defaultScenes);
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
@@ -470,6 +479,8 @@ export function App() {
       setLibraryItems([...snapshot.sources]);
       setLibrarySearch("");
       if (snapshot.outputs.length > 0) outputEngine.replaceAll(snapshot.outputs);
+      sceneRuntime.replaceAll(snapshot.scenes.length > 0 ? snapshot.scenes : defaultScenes);
+      setActiveSceneId((snapshot.scenes.find((scene) => scene.enabled)?.id ?? "scene-display-1"));
       setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
       setRuntimeRevision((value) => value + 1);
       setOutputRevision((value) => value + 1);
@@ -484,6 +495,16 @@ export function App() {
   const outputState = outputEngine.getState("media-output");
   const mediaSettings = outputState.target.media!;
   const fullscreenState = outputEngine.getState("fullscreen");
+
+  const activateScene = (sceneId: string) => {
+    try {
+      sceneRuntime.activate(sceneId);
+      setActiveSceneId(sceneId);
+      setProjectMessage("Scene " + sceneId + " active.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Scene activation failed.");
+    }
+  };
 
   const toggleOutput = (targetId: string) => {
     const state = outputEngine.getState(targetId);
@@ -837,6 +858,15 @@ export function App() {
             <button className="output-gear" title="Record settings">⚙</button>
           </div>
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
+        </div>
+        <div className="scene-controls">
+          {[
+            ["scene-display-1", "SCENE 1"],
+            ["scene-display-2", "SCENE 2"],
+            ["scene-production", "PRODUCTION"]
+          ].map(([id, label]) => (
+            <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
+          ))}
         </div>
         <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span></div>
       </footer>
