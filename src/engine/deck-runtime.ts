@@ -65,6 +65,32 @@ export class DeckRuntime {
     return this.states.has(deckId);
   }
 
+  /** Replace the runtime registry atomically when a project is opened. */
+  replaceAll(decks: readonly Deck[]): void {
+    const next = new Map<string, DeckRuntimeState>();
+    for (const deck of decks) {
+      if (next.has(deck.id)) throw new Error(`Deck "${deck.id}" is duplicated.`);
+      next.set(deck.id, {
+        deckId: deck.id,
+        previewLayerId: null,
+        activeLayerId: null,
+        masterLevel: deck.masterLevel ?? 100,
+        audioLevel: deck.audioLevel ?? 100,
+        visualLevel: deck.visualLevel ?? 100,
+        playback: new Map(deck.layers.map((layer) => [layer.id, {
+          layerId: layer.id,
+          playing: layer.playback?.playing ?? false,
+          loop: layer.playback?.loop ?? false,
+          speed: layer.playback?.speed ?? 100
+        }])),
+        listCursors: new Map(),
+        columns: new Map()
+      });
+    }
+    this.states.clear();
+    for (const [id, state] of next) this.states.set(id, state);
+  }
+
   setMasterLevel(deckId: string, level: number): DeckRuntimeState {
     const state = { ...this.require(deckId), masterLevel: Math.max(0, Math.min(100, level)) };
     this.states.set(deckId, state);
