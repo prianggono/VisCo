@@ -32,5 +32,7 @@ export interface Slice {
   readonly name: string;
   readonly transform: SliceTransform;
   readonly mapping?: SliceMapping;
+  /** Canonical Layer references for this mapping; no Layer state is duplicated. */
+  readonly layerRefs: readonly DeckLayerRef[];
   readonly locked: boolean;
 }
