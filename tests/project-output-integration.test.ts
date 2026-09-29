@@ -12,7 +12,6 @@ const deck: Deck = {
   id: "deck-1",
   name: "Deck 1",
   layers: [layer],
-  compositionId: "comp-1",
   transition: { type: "fade", durationMs: 500 }
 };
 const scene: Scene = {
