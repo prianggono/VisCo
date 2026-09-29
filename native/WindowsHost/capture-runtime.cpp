@@ -2,6 +2,8 @@
 #define NOMINMAX
 #include "capture-runtime.h"
 #include <mferror.h>
+#include <ks.h>
+#include <ksmedia.h>
 #include <chrono>
 #include <sstream>
 #include <stdexcept>
