@@ -10,6 +10,8 @@ import { D3D11RendererRuntime, type D3D11RendererBridge } from "../src/native/d3
 import { WindowsMediaOutput, type MediaOutputBridge } from "../src/native/media-output.js";
 import { VirtualOutput, type VirtualOutputBridge } from "../src/native/virtual-output.js";
 import { WindowsVideoRuntime, type WindowsVideoCaptureBridge } from "../src/native/windows-video-runtime.js";
+import { NativeMediaDecoder, type NativeMediaDecoderBridge } from "../src/native/media-decoder.js";
+import { NativeNetworkFrameSource, type NetworkFrameSourceBridge } from "../src/native/network-frame-source.js";
 
 describe("runtime contracts", () => {
   it("isolates a failed output transport", async () => {
@@ -112,6 +114,36 @@ describe("runtime contracts", () => {
     await output.submit({ width: 1920, height: 1080, frameNumber: 1, compositionId: "comp-1" });
     expect(submitted).toBe(true);
     expect(() => new WindowsMediaOutput({ id: "", kind: "record", width: 1920, height: 1080, fps: 30 }, bridge)).toThrow();
+  });
+
+  it("guards native media decoder lifecycle", async () => {
+    let opened = false;
+    const bridge: NativeMediaDecoderBridge = {
+      async open() { opened = true; }, async close() { opened = false; },
+      async play() {}, async pause() {}, async seek() {},
+      async read() { return null; },
+      getStatus: () => ({ opened, playing: false, durationMs: null, positionMs: 0, error: null })
+    };
+    const decoder = new NativeMediaDecoder(bridge);
+    await expect(decoder.play()).rejects.toThrow();
+    await decoder.open({ uri: "file://clip.mp4", backend: "media-foundation" });
+    expect(decoder.getStatus().opened).toBe(true);
+    await decoder.close();
+    expect(decoder.getStatus().opened).toBe(false);
+  });
+
+  it("keeps NDI, OMT and IP camera behind one native network boundary", async () => {
+    const bridge: NetworkFrameSourceBridge = {
+      async probe() { return { available: true }; },
+      async create(device) { return { id: device.id, device, async start() {}, async stop() {}, getStatus: () => ({ id: device.id, running: false, frameCount: 0, lastFrameTimestampUs: null }), subscribe: () => () => undefined }; }
+    };
+    const source = new NativeNetworkFrameSource(bridge);
+    for (const kind of ["ndi", "omt", "ip-camera"] as const) {
+      const device = { id: kind + "-1", name: kind, kind, transport: "network" as const };
+      expect(source.supports(device)).toBe(true);
+      expect((await source.probe(device)).available).toBe(true);
+      expect((await source.create(device)).id).toBe(device.id);
+    }
   });
 
   it("selects and safely closes Windows camera/capture devices", async () => {
