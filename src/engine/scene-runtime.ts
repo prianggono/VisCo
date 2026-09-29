@@ -20,6 +20,20 @@ export class SceneRuntime {
     this.scenes.set(scene.id, scene);
   }
 
+  replaceAll(scenes: readonly Scene[]): void {
+    const next = new Map<string, Scene>();
+    for (const scene of scenes) {
+      if (next.has(scene.id)) throw new Error(`Scene "${scene.id}" is duplicated.`);
+      if (!scene.id.trim() || !scene.name.trim() || !scene.compositionId.trim()) throw new Error(`Scene "${scene.id}" is invalid.`);
+      if (scene.target.kind === "display" && !scene.target.displayId.trim()) throw new Error(`Scene "${scene.id}" requires a display target.`);
+      if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) throw new Error(`Production Scene "${scene.id}" must enable at least one production output.`);
+      next.set(scene.id, scene);
+    }
+    this.scenes.clear();
+    this.activeByComposition.clear();
+    for (const [id, value] of next) this.scenes.set(id, value);
+  }
+
   setEnabled(sceneId: string, enabled: boolean): SceneRuntimeState {
     const scene = this.require(sceneId);
     const updated = { ...scene, enabled };
