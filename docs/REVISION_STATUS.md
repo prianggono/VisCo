@@ -106,3 +106,21 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [x] Added regression tests for all new native boundaries.
 - [ ] Actual Windows-native host implementations still require the native host layer; the TypeScript boundaries deliberately do not fake GPU/device/protocol behavior.
 - [ ] License work remains excluded.
+
+
+## End-to-end audit pass — 2026-09-29
+
+- [x] Added validated ProjectRuntime around ProjectSnapshot serialization/loading.
+- [x] ProjectRuntime validates Composition/Deck/Group/Layer/Slice/Source/Scene references before replace/load.
+- [x] Added collection-to-snapshot helper so Deck-contained Layers are persisted without creating duplicate Layer state.
+- [x] Exposed OutputEngine target listing for persistence.
+- [x] Added OutputFrame builder that binds Program + Scene + Composition format and validates dimensions/FPS/frame number.
+- [x] Fixed Output compositor to select the active Program Layer from the composed Layer array instead of assigning the array to a single-layer field.
+- [x] Added Scene Runtime regression coverage and Scene/Composition relationship validation coverage.
+- [x] Added Trigger Engine regression coverage; duplicate/copied actions remain valid while broken references remain errors.
+- [x] Added Library search/sort plus reference-aware removal guards.
+- [x] Added regression coverage for safe Library removal.
+- [ ] React UI still needs full application-level Save/Load Project wiring; the validated persistence engine is now ready for that adapter.
+- [ ] Native Windows host implementations remain pending and are not simulated by TypeScript.
+- [ ] CI success is not claimed: GitHub connector returned no workflow runs for the latest direct commit during this audit.
+- [ ] License verification/enforcement/watermark remains intentionally excluded.
