@@ -1,3 +1,17 @@
+export interface OutputFrameLayer {
+  readonly id: string;
+  readonly sourceId?: string | null;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly rotation: number;
+  readonly scaleX: number;
+  readonly scaleY: number;
+  readonly opacity: number;
+  readonly order: number;
+}
+
 export interface OutputFrameSource {
   readonly compositionId: string;
   readonly width: number;
@@ -32,6 +46,7 @@ export interface OutputFrame {
   readonly source: OutputFrameSource;
   readonly sceneId: string;
   readonly layerIds: readonly string[];
+  readonly layers?: readonly OutputFrameLayer[];
   /** Immutable mapping data carried to the renderer; Slice remains the source of truth. */
   readonly slices?: readonly OutputFrameSlice[];
 }
