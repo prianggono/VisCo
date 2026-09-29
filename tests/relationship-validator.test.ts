@@ -14,7 +14,7 @@ describe("relationship validation", () => {
       groups: [{ id: "group-1", name: "Group 1", layerIds: ["layer-1"], collapsed: false }],
       layers: [layer],
       sources: [{ id: "src-1", name: "Source 1", kind: "video" }],
-      slices: [{ id: "slice-1", name: "Left", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, layerIds: ["layer-1"], locked: false }]
+      slices: [{ id: "slice-1", name: "Left", transform: { x: 0, y: 0, width: 960, height: 1080, rotation: 0 }, locked: false }]
     });
 
     expect(result).toEqual({ valid: true, errors: [] });
@@ -34,7 +34,7 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(7);
+    expect(result.errors).toHaveLength(6);
   });
 });
 
