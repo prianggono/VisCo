@@ -30,3 +30,34 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
     return payload.devices;
   }
 }
+
+
+export interface NativeCaptureStatus {
+  readonly ok: boolean;
+  readonly running: boolean;
+  readonly device?: string;
+  readonly message?: string;
+}
+
+export interface NativeRuntimeAdapterStatus {
+  readonly name: "NDI" | "OMT" | "ASIO";
+  readonly available: boolean;
+  readonly library: string;
+  readonly message: string;
+  async startCapture(deviceId: string): Promise<NativeCaptureStatus> {
+    const response = await fetch(`${this.baseUrl}/capture/start?device=${encodeURIComponent(deviceId)}`, { cache: "no-store" });
+    return await response.json() as NativeCaptureStatus;
+  }
+
+  async stopCapture(): Promise<NativeCaptureStatus> {
+    const response = await fetch(`${this.baseUrl}/capture/stop`, { cache: "no-store" });
+    return await response.json() as NativeCaptureStatus;
+  }
+
+  async runtimeAdapters(): Promise<readonly NativeRuntimeAdapterStatus[]> {
+    const response = await fetch(`${this.baseUrl}/runtime`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Native runtime status failed (${response.status}).`);
+    const payload = await response.json() as { adapters?: NativeRuntimeAdapterStatus[] };
+    return payload.adapters ?? [];
+  }
+}
