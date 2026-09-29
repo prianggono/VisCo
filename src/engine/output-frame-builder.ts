@@ -37,6 +37,15 @@ export function createOutputFrame(
       frameNumber
     },
     sceneId: scene.id,
-    layerIds
+    layerIds,
+    slices: slices.map((slice) => ({
+      id: slice.id,
+      layerIds: [...slice.layerIds],
+      transform: { ...slice.transform },
+      ...(slice.mapping ? { mapping: {
+        mode: slice.mapping.mode,
+        ...(slice.mapping.points ? { points: slice.mapping.points.map((point) => ({ ...point })) } : {})
+      } } : {})
+    }))
   };
 }
