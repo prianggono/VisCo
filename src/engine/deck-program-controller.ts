@@ -48,11 +48,11 @@ export class DeckProgramController {
     return this.programEngine.getState(compositionId);
   }
 
-  getState(deck: Deck): DeckProgramControllerState;
-  getState(deckId: string): DeckProgramControllerState;
+  getState(deck: Deck, compositionId?: string): DeckProgramControllerState;
+  getState(deckId: string, compositionId?: string): DeckProgramControllerState;
   getState(deckOrId: Deck | string): DeckProgramControllerState {
     const deckId = typeof deckOrId === "string" ? deckOrId : deckOrId.id;
-    const compositionId = "default";
+    const compositionId = arguments.length > 1 ? (arguments[1] as string) : "default";
     return {
       deck: this.deckRuntime.getState(deckId),
       program: this.programEngine.getState(compositionId)
