@@ -293,7 +293,8 @@ export function App() {
       triggerEngine.execute(action, {
         decks: new Map(decks.map((deck) => [deck.id, deck])),
         controller: deckProgramController,
-        output: outputEngine
+        output: outputEngine,
+        compositionIdForDeck
       });
       setRuntimeRevision((value) => value + 1);
       setOutputRevision((value) => value + 1);
