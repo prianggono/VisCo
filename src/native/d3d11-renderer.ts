@@ -7,7 +7,7 @@ export interface D3D11RendererCapabilities {
 
 export interface D3D11RenderSlice {
   readonly id: string;
-  readonly layerIds: readonly string[];
+  readonly layerRefs: readonly { readonly deckId: string; readonly layerId: string }[];
   readonly transform: {
     readonly x: number;
     readonly y: number;
@@ -48,7 +48,7 @@ export function validateD3D11RenderFrame(frame: D3D11RenderFrame, capabilities?:
     throw new Error("D3D11 frame exceeds the native texture-size capability.");
   }
   if (frame.layerIds.some((id) => !id.trim())) throw new Error("D3D11 frame contains an invalid layer id.");
-  if (frame.slices?.some((slice) => !slice.id.trim() || slice.layerIds.some((id) => !id.trim()))) {
+  if (frame.slices?.some((slice) => !slice.id.trim() || slice.layerRefs.some((ref) => !ref.deckId.trim() || !ref.layerId.trim()))) {
     throw new Error("D3D11 frame contains an invalid Slice mapping.");
   }
 }
