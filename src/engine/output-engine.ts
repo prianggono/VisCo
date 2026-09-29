@@ -19,6 +19,7 @@ export class OutputEngine {
   private readonly states = new Map<string, OutputState>();
 
   register(target: OutputTarget): void {
+    target = this.normalizeTarget(target);
     if (this.targets.has(target.id)) {
       throw new Error(`Output "${target.id}" is already registered.`);
     }
@@ -109,6 +110,9 @@ export class OutputEngine {
     if (!scene.enabled) throw new Error(`Scene "${scene.id}" is disabled.`);
     if (scene.target.kind === "display") {
       const target = this.requireTarget(scene.target.displayId);
+      if (target.compositionId !== undefined && target.compositionId !== scene.compositionId) {
+        throw new Error(`Scene "${scene.id}" and output "${target.id}" belong to different compositions.`);
+      }
       if (target.kind !== "display") throw new Error(`Scene "${scene.id}" targets non-display output "${target.id}".`);
       if (!target.enabled) return [];
       return [this.route(target.id, source)];
@@ -116,6 +120,9 @@ export class OutputEngine {
 
     const target = this.requireTarget("production");
     if (target.kind !== "media" || !target.media) throw new Error(`Scene "${scene.id}" requires the production media output.`);
+    if (target.compositionId !== undefined && target.compositionId !== scene.compositionId) {
+      throw new Error(`Scene "${scene.id}" and production output belong to different compositions.`);
+    }
     if (!target.enabled) return [];
     const mediaEnabled = target.media.streaming || target.media.recording || target.media.virtual;
     return mediaEnabled ? [this.route(target.id, source)] : [];
@@ -134,7 +141,8 @@ export class OutputEngine {
   replaceAll(targets: readonly OutputTarget[]): void {
     const nextTargets = new Map<string, OutputTarget>();
     const nextStates = new Map<string, OutputState>();
-    for (const target of targets) {
+    for (const rawTarget of targets) {
+      const target = this.normalizeTarget(rawTarget);
       if (nextTargets.has(target.id)) throw new Error(`Output "${target.id}" is duplicated.`);
       if (target.kind === "media" && !target.media) throw new Error(`Media output "${target.id}" requires media settings.`);
       if (target.kind === "display" && target.media) throw new Error(`Display output "${target.id}" cannot have media settings.`);
@@ -147,6 +155,11 @@ export class OutputEngine {
     for (const [id, state] of nextStates) this.states.set(id, state);
   }
   getActiveStates(): readonly OutputState[] { return [...this.states.values()].filter(state => state.active); }
+
+  private normalizeTarget(target: OutputTarget): OutputTarget {
+    if (target.kind !== "media" || !target.media?.compositionId || target.compositionId !== undefined) return target;
+    return { ...target, compositionId: target.media.compositionId };
+  }
 
   private requireTarget(targetId: string): OutputTarget {
     const target = this.targets.get(targetId);
