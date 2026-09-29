@@ -12,21 +12,39 @@ static void requireHr(HRESULT hr, const char* message) {
   if (FAILED(hr)) throw std::runtime_error(message);
 }
 
-class MediaFoundationHost {
-public:
-  MediaFoundationHost() { requireHr(MFStartup(MF_VERSION, MFSTARTUP_FULL), "MFStartup failed"); }
-  ~MediaFoundationHost() { MFShutdown(); }
+MediaFoundationHost::MediaFoundationHost() { requireHr(MFStartup(MF_VERSION, MFSTARTUP_FULL), "MFStartup failed"); }
+MediaFoundationHost::~MediaFoundationHost() { MFShutdown(); }
 
-  ComPtr<IMFMediaSource> createSource(const std::wstring& symbolicLink) {
-    ComPtr<IMFAttributes> attrs;
-    requireHr(MFCreateAttributes(&attrs, 2), "MFCreateAttributes failed");
-    requireHr(attrs->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID), "Set video source type failed");
-    requireHr(attrs->SetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, symbolicLink.c_str()), "Set video symbolic link failed");
-    ComPtr<IMFMediaSource> source;
-    requireHr(MFCreateDeviceSource(attrs.Get(), &source), "MFCreateDeviceSource failed");
-    return source;
+std::vector<MediaFoundationHost::VideoDeviceInfo> MediaFoundationHost::enumerateVideoDeviceInfo() {
+  ComPtr<IMFAttributes> attrs;
+  requireHr(MFCreateAttributes(&attrs, 1), "MFCreateAttributes failed");
+  requireHr(attrs->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID), "MF device attrs failed");
+  IMFActivate** devices=nullptr; UINT32 count=0;
+  requireHr(MFEnumDeviceSources(attrs.Get(), &devices, &count), "MFEnumDeviceSources failed");
+  std::vector<VideoDeviceInfo> result;
+  for(UINT32 i=0;i<count;i++){
+    WCHAR* name=nullptr; UINT32 nameLength=0; WCHAR* link=nullptr; UINT32 linkLength=0; GUID category{};
+    const HRESULT catHr=devices[i]->GetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_CATEGORY,&category);
+    if(SUCCEEDED(devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,&name,&nameLength))){
+      devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK,&link,&linkLength);
+      result.push_back({std::wstring(name,nameLength),link?std::wstring(link,linkLength):L"",SUCCEEDED(catHr)&&IsEqualGUID(category,KSCATEGORY_VIDEO_CAMERA)});
+    }
+    if(name)CoTaskMemFree(name); if(link)CoTaskMemFree(link); devices[i]->Release();
   }
-};
+  CoTaskMemFree(devices); return result;
+}
+std::vector<std::wstring> MediaFoundationHost::enumerateVideoDevices(){
+  std::vector<std::wstring> result; for(const auto& item:enumerateVideoDeviceInfo()) result.push_back(item.name); return result;
+}
+ComPtr<IMFMediaSource> MediaFoundationHost::createSource(const std::wstring& symbolicLink) {
+  ComPtr<IMFAttributes> attrs;
+  requireHr(MFCreateAttributes(&attrs, 2), "MFCreateAttributes failed");
+  requireHr(attrs->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID), "Set video source type failed");
+  requireHr(attrs->SetString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, symbolicLink.c_str()), "Set video symbolic link failed");
+  ComPtr<IMFMediaSource> source;
+  requireHr(MFCreateDeviceSource(attrs.Get(), &source), "MFCreateDeviceSource failed");
+  return source;
+}
 
 static UINT64 sampleTimeUs(IMFSample* sample) {
   LONGLONG hns = 0;
