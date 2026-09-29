@@ -1,3 +1,4 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Slice, SlicePoint } from "../domain/slice.js";
 
 export interface SliceCanvasProps {
@@ -14,7 +15,7 @@ export function SliceCanvas({ slice, width = 360, height = 200, onMovePoint, onA
   const sx = width / Math.max(1, slice.transform.width);
   const sy = height / Math.max(1, slice.transform.height);
   const points = slice.mapping?.points ?? [];
-  const toPoint = (event: React.PointerEvent<SVGSVGElement>): SlicePoint => {
+  const toPoint = (event: ReactPointerEvent<SVGSVGElement>): SlicePoint => {
     const rect = event.currentTarget.getBoundingClientRect();
     return { x: (event.clientX - rect.left) / sx + slice.transform.x, y: (event.clientY - rect.top) / sy + slice.transform.y };
   };
