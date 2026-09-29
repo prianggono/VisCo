@@ -79,7 +79,7 @@ using NdiRecvDestroyFn = void (__cdecl*)(NdiInstance);
 using NdiRecvCaptureFn = int (__cdecl*)(NdiInstance, NdiVideoFrame*, void*, void*, unsigned int);
 using NdiRecvFreeVideoFn = void (__cdecl*)(NdiInstance, const NdiVideoFrame*);
 
-struct NdiFindCreate { bool show_local_sources; bool groups; const char* p_groups; const char* p_extra_ips; };
+struct NdiFindCreate { bool show_local_sources; const char* p_groups; const char* p_extra_ips; };
 struct NdiApi {
   HMODULE module=nullptr; NdiInitFn initialize=nullptr; NdiDestroyFn destroy=nullptr;
   NdiFindCreateFn findCreate=nullptr; NdiFindDestroyFn findDestroy=nullptr;
