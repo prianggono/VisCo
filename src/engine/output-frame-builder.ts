@@ -45,10 +45,11 @@ export function createOutputFrame(
     }
   }
 
+  // Layer owns Slice references. A Slice never owns duplicated Layer state.
+  // Only Layers participating in the selected mapping are sent to the output frame.
+  const selectedSliceIds = new Set(selectedSlices.map((slice) => slice.id));
   const layerIds = program.layers
-    .filter((layer) => scene.sliceIds === undefined
-      ? (selectedSlices.length === 0 || selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
-      : selectedSlices.some((slice) => slice.layerIds.includes(layer.id)))
+    .filter((layer) => (layer.sliceIds ?? []).some((sliceId) => selectedSliceIds.has(sliceId)))
     .map((layer) => layer.id);
 
   return {
@@ -63,7 +64,6 @@ export function createOutputFrame(
     layerIds,
     slices: selectedSlices.map((slice) => ({
       id: slice.id,
-      layerIds: [...slice.layerIds],
       transform: { ...slice.transform },
       ...(slice.mapping ? { mapping: {
         mode: slice.mapping.mode,
