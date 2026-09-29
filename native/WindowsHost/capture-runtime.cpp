@@ -218,21 +218,57 @@ void D3D11Host::initialize(HWND hwnd, UINT width, UINT height) {
 
 void D3D11Host::initializeShaders() {
   const char* shader = R"(
+cbuffer Transform : register(b0) {
+  float4 rect;      // x, y, width, height in output pixels
+  float4 rotation;  // radians, unused yzw
+  float4 scaleOpacity; // scaleX, scaleY, opacity, outputWidth
+  float4 outputSize; // outputWidth, outputHeight, unused, unused
+};
 struct VSOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
 VSOut vs(uint id : SV_VertexID) {
-  float2 p[3] = { float2(-1,-1), float2(-1,3), float2(3,-1) };
-  float2 uv[3] = { float2(0,1), float2(0,-1), float2(2,1) };
-  VSOut o; o.pos=float4(p[id],0,1); o.uv=uv[id]; return o;
+  float2 p[3] = { float2(0,0), float2(0,2), float2(2,0) };
+  float2 uv[3] = { float2(0,0), float2(0,1), float2(1,0) };
+  float2 local = (p[id] - 0.5) * float2(rect.z, rect.w);
+  local *= float2(scaleOpacity.x, scaleOpacity.y);
+  float c = cos(rotation.x), sn = sin(rotation.x);
+  local = float2(local.x*c - local.y*sn, local.x*sn + local.y*c);
+  float2 center = float2(rect.x + rect.z*0.5, rect.y + rect.w*0.5);
+  float2 pixel = center + local;
+  float2 ndc = float2(pixel.x / outputSize.x * 2.0 - 1.0,
+                       1.0 - pixel.y / outputSize.y * 2.0);
+  VSOut o; o.pos=float4(ndc,0,1); o.uv=uv[id]; return o;
 }
 Texture2D tex0 : register(t0);
 SamplerState samp0 : register(s0);
-float4 ps(VSOut input) : SV_Target { return tex0.Sample(samp0, input.uv); }
+float4 ps(VSOut input) : SV_Target {
+  float4 c = tex0.Sample(samp0, input.uv);
+  c.a *= saturate(scaleOpacity.z);
+  return c;
+}
 )";
   ComPtr<ID3DBlob> vsBlob, psBlob, errors;
-  requireHr(D3DCompile(shader, strlen(shader), "visco-video", nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vsBlob, &errors), "Vertex shader compile failed");
-  requireHr(D3DCompile(shader, strlen(shader), "visco-video", nullptr, nullptr, "ps", "ps_5_0", 0, 0, &psBlob, &errors), "Pixel shader compile failed");
+  requireHr(D3DCompile(shader, strlen(shader), "visco-compositor", nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vsBlob, &errors), "Vertex shader compile failed");
+  requireHr(D3DCompile(shader, strlen(shader), "visco-compositor", nullptr, nullptr, "ps", "ps_5_0", 0, 0, &psBlob, &errors), "Pixel shader compile failed");
   requireHr(device_->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader_), "Vertex shader creation failed");
   requireHr(device_->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader_), "Pixel shader creation failed");
+
+  D3D11_BUFFER_DESC cb{};
+  cb.ByteWidth = 64;
+  cb.Usage = D3D11_USAGE_DYNAMIC;
+  cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+  cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+  requireHr(device_->CreateBuffer(&cb, nullptr, &transformBuffer_), "Transform buffer creation failed");
+
+  D3D11_BLEND_DESC blend{};
+  blend.RenderTarget[0].BlendEnable = TRUE;
+  blend.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+  blend.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+  blend.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+  blend.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+  blend.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+  blend.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+  blend.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+  requireHr(device_->CreateBlendState(&blend, &blendState_), "Blend state creation failed");
 
   D3D11_SAMPLER_DESC sampler{};
   sampler.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -339,6 +375,92 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::render(const std::shared_ptr<
     std::lock_guard<std::mutex> lock(finalMutex_);
     latestFinal_ = finalFrame;
   }
+  return finalFrame;
+}
+
+std::shared_ptr<const NativeVideoFrame> D3D11Host::renderComposition(const std::vector<NativeRenderLayer>& layers) {
+  if (!target_ || layers.empty()) return nullptr;
+
+  ComPtr<ID3D11Resource> backResource;
+  target_->GetResource(&backResource);
+  ComPtr<ID3D11Texture2D> backTexture;
+  requireHr(backResource.As(&backTexture), "Backbuffer texture query failed");
+  D3D11_TEXTURE2D_DESC backDesc{}; backTexture->GetDesc(&backDesc);
+
+  context_->OMSetRenderTargets(1, target_.GetAddressOf(), nullptr);
+  D3D11_VIEWPORT viewport{};
+  viewport.Width = static_cast<float>(backDesc.Width);
+  viewport.Height = static_cast<float>(backDesc.Height);
+  viewport.MinDepth = 0; viewport.MaxDepth = 1;
+  context_->RSSetViewports(1, &viewport);
+  const float clear[4] = {0,0,0,1};
+  context_->ClearRenderTargetView(target_.Get(), clear);
+
+  std::vector<NativeRenderLayer> ordered;
+  ordered.reserve(layers.size());
+  for (const auto& layer : layers) if (layer.frame && !layer.frame->bgra.empty()) ordered.push_back(layer);
+  std::sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b){ return a.order < b.order; });
+
+  UINT stride=0, offset=0;
+  context_->IASetVertexBuffers(0,0,nullptr,&stride,&offset);
+  context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  context_->VSSetShader(vertexShader_.Get(),nullptr,0);
+  context_->PSSetShader(pixelShader_.Get(),nullptr,0);
+  context_->PSSetSamplers(0,1,sampler_.GetAddressOf());
+  context_->OMSetBlendState(blendState_.Get(), nullptr, 0xffffffffu);
+
+  struct CB { float rect[4]; float rotation[4]; float scaleOpacity[4]; float outputSize[4]; } cb{};
+  cb.outputSize[0] = static_cast<float>(backDesc.Width);
+  cb.outputSize[1] = static_cast<float>(backDesc.Height);
+
+  for (const auto& layer : ordered) {
+    ensureVideoTexture(layer.frame->width, layer.frame->height);
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    if (FAILED(context_->Map(videoTexture_.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) continue;
+    const size_t rowBytes = static_cast<size_t>(layer.frame->width) * 4;
+    for (UINT y=0; y<layer.frame->height; ++y)
+      memcpy(static_cast<unsigned char*>(mapped.pData) + static_cast<size_t>(y)*mapped.RowPitch,
+             layer.frame->bgra.data() + static_cast<size_t>(y)*rowBytes, rowBytes);
+    context_->Unmap(videoTexture_.Get(),0);
+
+    cb.rect[0]=layer.x; cb.rect[1]=layer.y; cb.rect[2]=layer.width; cb.rect[3]=layer.height;
+    cb.rotation[0]=layer.rotation * 3.14159265358979323846f / 180.0f;
+    cb.scaleOpacity[0]=layer.scaleX; cb.scaleOpacity[1]=layer.scaleY; cb.scaleOpacity[2]=layer.opacity;
+    context_->Map(transformBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&mapped);
+    memcpy(mapped.pData,&cb,sizeof(cb));
+    context_->Unmap(transformBuffer_.Get(),0);
+    context_->VSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf());
+    context_->PSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf());
+    context_->PSSetShaderResources(0,1,videoView_.GetAddressOf());
+    context_->Draw(3,0);
+    ID3D11ShaderResourceView* nullSrv=nullptr;
+    context_->PSSetShaderResources(0,1,&nullSrv);
+  }
+  context_->OMSetBlendState(nullptr, nullptr, 0xffffffffu);
+
+  if (readbackTexture_) {
+    D3D11_TEXTURE2D_DESC existing{}; readbackTexture_->GetDesc(&existing);
+    if (existing.Width != backDesc.Width || existing.Height != backDesc.Height) readbackTexture_.Reset();
+  }
+  if (!readbackTexture_) {
+    D3D11_TEXTURE2D_DESC staging=backDesc;
+    staging.Usage=D3D11_USAGE_STAGING; staging.BindFlags=0; staging.CPUAccessFlags=D3D11_CPU_ACCESS_READ; staging.MiscFlags=0;
+    requireHr(device_->CreateTexture2D(&staging,nullptr,&readbackTexture_), "Final frame staging texture failed");
+  }
+  context_->CopyResource(readbackTexture_.Get(),backTexture.Get());
+  D3D11_MAPPED_SUBRESOURCE mapped{};
+  requireHr(context_->Map(readbackTexture_.Get(),0,D3D11_MAP_READ,0,&mapped),"Final frame readback failed");
+  auto finalFrame=std::make_shared<NativeVideoFrame>();
+  finalFrame->width=backDesc.Width; finalFrame->height=backDesc.Height;
+  finalFrame->bgra.resize(static_cast<size_t>(finalFrame->width)*finalFrame->height*4);
+  const size_t rowBytes=static_cast<size_t>(finalFrame->width)*4;
+  for(UINT y=0;y<finalFrame->height;++y)
+    memcpy(finalFrame->bgra.data()+static_cast<size_t>(y)*rowBytes,
+           static_cast<const unsigned char*>(mapped.pData)+static_cast<size_t>(y)*mapped.RowPitch,rowBytes);
+  context_->Unmap(readbackTexture_.Get(),0);
+  finalFrame->timestampUs=ordered.back().frame->timestampUs;
+  swap_->Present(0,0);
+  { std::lock_guard<std::mutex> lock(finalMutex_); latestFinal_=finalFrame; }
   return finalFrame;
 }
 
