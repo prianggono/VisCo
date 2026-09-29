@@ -615,23 +615,35 @@ export function App() {
 
   const applyOutputSettings = (patch: { resolution?: [number, number]; fps?: number; codec?: string; bitrate?: number | "auto" }) => {
     try {
+      const media = outputEngine.getState("production").target.media;
+      if (!media) return;
       if (outputSettings === "display") {
         setProjectMessage("Fullscreen uses the active Scene and Windows display target.");
         return;
       }
-      const media = outputEngine.getState("production").target.media;
-      if (!media) return;
-      const next: Partial<typeof media> = { ...patch };
+      const mediaPatch: { resolution?: [number, number]; fps?: number } = {};
+      if (patch.resolution) mediaPatch.resolution = patch.resolution;
+      if (patch.fps !== undefined) mediaPatch.fps = patch.fps;
+      if (Object.keys(mediaPatch).length) outputEngine.updateMediaSettings("production", mediaPatch);
       if (patch.codec !== undefined || patch.bitrate !== undefined) {
         if (outputSettings === "stream") {
-          next.stream = { ...(media.stream ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", server: "", key: "" }), ...patch };
+          outputEngine.updateMediaSettings("production", {
+            stream: {
+              ...(media.stream ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", server: "", key: "" }),
+              ...(patch.codec !== undefined ? { codec: patch.codec } : {}),
+              ...(patch.bitrate !== undefined ? { bitrate: patch.bitrate } : {})
+            }
+          });
         } else {
-          next.record = { ...(media.record ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", segmentMinutes: 60, targetFolder: "" }), ...patch };
+          outputEngine.updateMediaSettings("production", {
+            record: {
+              ...(media.record ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", segmentMinutes: 60, targetFolder: "" }),
+              ...(patch.codec !== undefined ? { codec: patch.codec } : {}),
+              ...(patch.bitrate !== undefined ? { bitrate: patch.bitrate } : {})
+            }
+          });
         }
-        delete next.codec;
-        delete next.bitrate;
       }
-      outputEngine.updateMediaSettings("production", next);
       setOutputRevision((value) => value + 1);
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Output settings update failed.");
