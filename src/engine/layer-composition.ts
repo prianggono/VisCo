@@ -1,6 +1,6 @@
 import type { Group } from "../domain/group.js";
 import type { Layer } from "../domain/layer.js";
-import { compositeLayer, type CompositedLayer } from "./compositor.js";
+import type { CompositedLayer } from "./compositor.js";
 
 export interface LayerCompositionInput {
   readonly layers: readonly Layer[];
@@ -26,5 +26,15 @@ export function orderLayers(input: LayerCompositionInput): readonly Layer[] {
 }
 
 export function compositeLayers(input: LayerCompositionInput): readonly CompositedLayer[] {
-  return orderLayers(input).map(compositeLayer);
+  return orderLayers(input).map((layer) => ({
+    layerId: layer.id,
+    style: {
+      transform: "",
+      opacity: layer.transform?.opacity ?? 100,
+      transformOrigin: "center center" as const,
+      zIndex: layer.order ?? 0,
+      mixBlendMode: "normal" as const
+    },
+    renderOrder: layer.order ?? 0
+  }));
 }
