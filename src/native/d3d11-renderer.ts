@@ -44,6 +44,8 @@ export interface D3D11RenderLayer {
   readonly cropRight?: number;
   readonly cropBottom?: number;
   readonly sliceId?: string;
+  readonly mappingMode?: "rectangle" | "corner-pin" | "bezier" | "polygon";
+  readonly mappingPoints?: readonly { readonly x: number; readonly y: number }[];
 }
 
 export interface D3D11RenderFrame {
@@ -68,7 +70,7 @@ export function validateD3D11RenderFrame(frame: D3D11RenderFrame, capabilities?:
     throw new Error("D3D11 frame exceeds the native texture-size capability.");
   }
   if (frame.layerIds.some((id) => !id.trim())) throw new Error("D3D11 frame contains an invalid layer id.");
-  if (frame.layers?.some((layer) => !layer.id.trim() || !Number.isFinite(layer.x) || !Number.isFinite(layer.y) || !Number.isFinite(layer.width) || layer.width <= 0 || !Number.isFinite(layer.height) || layer.height <= 0 || !Number.isFinite(layer.rotation) || !Number.isFinite(layer.scaleX) || layer.scaleX === 0 || !Number.isFinite(layer.scaleY) || layer.scaleY === 0 || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1 || [layer.cropLeft, layer.cropTop, layer.cropRight, layer.cropBottom].filter((v): v is number => v !== undefined).some((v) => !Number.isFinite(v) || v < 0 || v > 1))) throw new Error("D3D11 frame contains invalid layer transform/crop values.");
+  if (frame.layers?.some((layer) => !layer.id.trim() || !Number.isFinite(layer.x) || !Number.isFinite(layer.y) || !Number.isFinite(layer.width) || layer.width <= 0 || !Number.isFinite(layer.height) || layer.height <= 0 || !Number.isFinite(layer.scaleX) || layer.scaleX === 0 || !Number.isFinite(layer.scaleY) || layer.scaleY === 0 || !Number.isFinite(layer.rotation) || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1 || [layer.cropLeft, layer.cropTop, layer.cropRight, layer.cropBottom].filter((v): v is number => v !== undefined).some((v) => !Number.isFinite(v) || v < 0 || v > 1) || (layer.mappingMode === "corner-pin" && (layer.mappingPoints?.length !== 4 || layer.mappingPoints.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y)))) || (layer.mappingPoints && layer.mappingPoints.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))))) throw new Error("D3D11 frame contains invalid layer transform/crop/mapping values.");
   if (frame.slices?.some((slice) => !slice.id.trim() || slice.layerRefs.some((ref) => !ref.deckId.trim() || !ref.layerId.trim()))) {
     throw new Error("D3D11 frame contains an invalid Slice mapping.");
   }
