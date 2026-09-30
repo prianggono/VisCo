@@ -18,6 +18,7 @@ export interface ProjectSnapshot {
   readonly sources: readonly Source[];
   readonly outputs: readonly OutputTarget[];
   readonly activeSceneIds?: Readonly<Record<string, string>>;
+  readonly selectedCompositionId?: string;
   readonly programs?: Readonly<Record<string, DeckLayerRef | null>>;
   readonly deckPreviewLayerIds?: Readonly<Record<string, string | null>>;
   readonly deckActiveLayerIds?: Readonly<Record<string, string | null>>;
@@ -37,6 +38,7 @@ export function createProjectSnapshot(input: ProjectSnapshotInput): ProjectSnaps
     sources: [...input.sources],
     outputs: [...input.outputs],
     activeSceneIds: input.activeSceneIds ? { ...input.activeSceneIds } : undefined,
+    selectedCompositionId: input.selectedCompositionId,
     programs: input.programs ? { ...input.programs } : undefined,
     deckPreviewLayerIds: input.deckPreviewLayerIds ? { ...input.deckPreviewLayerIds } : undefined,
     deckActiveLayerIds: input.deckActiveLayerIds ? { ...input.deckActiveLayerIds } : undefined
@@ -101,6 +103,7 @@ export function parseProject(serialized: string): ProjectSnapshot {
     sources: value.sources!,
     outputs: value.outputs!,
     activeSceneIds: value.activeSceneIds && typeof value.activeSceneIds === "object" ? value.activeSceneIds as Record<string, string> : undefined,
+    selectedCompositionId: typeof value.selectedCompositionId === "string" ? value.selectedCompositionId : undefined,
     programs: value.programs && typeof value.programs === "object" ? value.programs as Record<string, DeckLayerRef | null> : undefined,
     deckPreviewLayerIds: value.deckPreviewLayerIds && typeof value.deckPreviewLayerIds === "object" ? value.deckPreviewLayerIds as Record<string, string | null> : undefined,
     deckActiveLayerIds: value.deckActiveLayerIds && typeof value.deckActiveLayerIds === "object" ? value.deckActiveLayerIds as Record<string, string | null> : undefined
