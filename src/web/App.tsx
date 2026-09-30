@@ -145,6 +145,7 @@ export function App() {
   const [librarySort, setLibrarySort] = useState<"name" | "kind">("name");
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [relinkSourceId, setRelinkSourceId] = useState<string | null>(null);
   const [sceneManagerOpen, setSceneManagerOpen] = useState(false);
   const [, setSceneManagerRevision] = useState(0);
   const [panicArmed, setPanicArmed] = useState(false);
@@ -705,6 +706,18 @@ export function App() {
   const handleLibraryDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     registerFiles(Array.from(event.dataTransfer.files));
+  };
+
+  const handleRelinkFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && relinkSourceId && libraryEngine.has(relinkSourceId)) {
+      const source = libraryEngine.get(relinkSourceId);
+      libraryEngine.update({ ...source, uri: URL.createObjectURL(file), name: file.name, metadata: { ...source.metadata, fileType: file.type, size: file.size } });
+      setLibraryItems([...libraryEngine.list()]);
+      setProjectMessage(source.name + " relinked.");
+    }
+    event.target.value = "";
+    setRelinkSourceId(null);
   };
 
   const handleInputFiles = (event: ChangeEvent<HTMLInputElement>) => {
