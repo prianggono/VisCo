@@ -86,3 +86,22 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .output-group,.scene-controls,.resolution{display:flex;align-items:center;gap:5px}
 .media-bar{padding:6px 10px}
 .output-button.enabled{box-shadow:inset 0 0 0 1px #718aa8}
+
+/* UI/UX audit fixes: operator navigation, selected layer, deck settings */
+.topnav-menu{position:relative;display:inline-flex}
+.topnav-dropdown{position:absolute;top:30px;right:0;z-index:120;min-width:150px;padding:4px;border:1px solid #303946;border-radius:5px;background:#11161d;box-shadow:0 14px 32px #0009}
+.topnav-dropdown button{display:block;width:100%;padding:8px 9px;background:transparent;color:#aeb7c4;text-align:left;font-size:9px;border-radius:3px}
+.topnav-dropdown button:hover{background:#202731;color:#fff}
+.layer-card.selected{border-color:#6b7f99;box-shadow:inset 0 0 0 1px #465b73}
+.layer-card.selected .layer-box{background:#0d1218}
+.operator-mode .workspace{grid-template-columns:1fr!important}
+.operator-mode .library,.operator-mode .properties,.operator-mode .resize-handle{display:none}
+.operator-mode .center{min-width:0}
+.operator-mode .monitors{grid-template-columns:1fr 1fr}
+.operator-mode .preview-canvas,.operator-mode .program-canvas{min-height:360px}
+.deck-settings-modal{width:min(820px,calc(100vw - 70px))}
+.deck-settings-grid{grid-template-columns:repeat(3,1fr)}
+.deck-setting-field{display:grid;gap:5px;color:#788393;font-size:8px;text-transform:uppercase;letter-spacing:.06em}
+.deck-setting-field input,.deck-setting-field select{width:100%;box-sizing:border-box;padding:8px;border:1px solid #2b333e;border-radius:4px;background:#151a21;color:#dce2ea;font-size:10px}
+.deck-setting-field input[type="checkbox"]{width:14px;height:14px;accent-color:#8fa9c8}
+@media (max-width:1250px){.topnav-dropdown{right:auto;left:0}.operator-mode .preview-canvas,.operator-mode .program-canvas{min-height:300px}}
