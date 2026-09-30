@@ -19,6 +19,7 @@
 #include <memory>
 #include <cstdint>
 #include <array>
+#include <utility>
 
 using Microsoft::WRL::ComPtr;
 
@@ -47,7 +48,7 @@ struct NativeRenderLayer {
   float cropBottom = 0.0f;
   std::string sliceId;
   std::string mappingMode = "rectangle";
-  std::array<float, 8> mappingPoints{};
+  std::vector<std::pair<float, float>> mappingPoints;
 };
 
 class MediaFoundationHost {
