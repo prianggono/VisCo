@@ -222,6 +222,10 @@ export function App() {
   const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
   const recordHistory = () => { try { const snapshot = serializeProject(buildProjectSnapshot()); const history = historyRef.current; if (history.past[history.past.length - 1] !== snapshot) { history.past = [...history.past.slice(-49), snapshot]; history.future = []; setHistoryRevision((v) => v + 1); } } catch {} };
   const updateSelectedLayer = (patch: Partial<Layer>) => {
+    if (selectedLayerModel?.locked && !Object.prototype.hasOwnProperty.call(patch, "locked")) {
+      setProjectMessage("Layer is locked.");
+      return;
+    }
     recordHistory();
     setDecks((current) => current.map((deck) =>
       deck.id !== selectedLayer.deckId
@@ -703,7 +707,9 @@ export function App() {
     for (const [deckId, layerId] of Object.entries(snapshot.deckActiveLayerIds ?? {})) {
       if (layerId) {
         const deck = loadedDecks.find((item) => item.id === deckId);
-        if (deck?.layers.some((layer) => layer.id === layerId)) deckRuntime.programLayer(deck, layerId);
+        if (deck?.layers.some((layer) => layer.id === layerId)) {
+          try { deckRuntime.programLayer(deck, layerId); } catch {}
+        }
       }
     }
     for (const [compositionId, ref] of Object.entries(snapshot.programs ?? {})) {
