@@ -370,7 +370,8 @@ export function App() {
     const group = groupEngine.create(groupId, `Group ${groups.length + 1}`, [selectedLayerModel.id]);
     setGroups([...groupEngine.list()]);
     setSelectedGroupId(group.id);
-    setCompositions((current) => current.map((composition) => composition.id === "default" ? { ...composition, groupIds: [...new Set([...composition.groupIds, group.id])] } : composition));
+    setCompositions((current) => current.map((composition) => composition.id === activeCompositionId ? { ...composition, groupIds: [...new Set([...composition.groupIds, group.id])] } : composition));
+    setProjectDirty(true);
     setProjectMessage(`Group ${group.name} created.`);
   };
 
@@ -381,12 +382,17 @@ export function App() {
   };
 
   const addLayerToGroup = (groupId: string, layerId: string) => {
-    const layer = decks.flatMap((deck) => deck.layers).find((item) => item.id === layerId);
+    const composition = compositions.find((item) => item.id === activeCompositionId);
+    if (!composition?.groupIds.includes(groupId)) { setProjectMessage("Group does not belong to the active Composition."); return; }
+    const layerDeck = decks.find((deck) => deck.layers.some((item) => item.id === layerId));
+    if (!layerDeck || !composition.deckIds.includes(layerDeck.id)) { setProjectMessage("Layer does not belong to the active Composition."); return; }
+    const layer = layerDeck.layers.find((item) => item.id === layerId);
     if (layer?.locked) { setProjectMessage("Layer is locked."); return; }
     try {
       groupEngine.addLayer(groupId, layerId);
       setGroups([...groupEngine.list()]);
       setSelectedGroupId(groupId);
+      setProjectDirty(true);
       setProjectMessage("Layer added to group.");
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Unable to add layer to group.");
@@ -398,6 +404,7 @@ export function App() {
     if (layer?.locked) { setProjectMessage("Layer is locked."); return; }
     groupEngine.removeLayer(groupId, layerId);
     setGroups([...groupEngine.list()]);
+    setProjectDirty(true);
   };
 
   const renameGroup = (groupId: string, name: string) => {
@@ -405,6 +412,7 @@ export function App() {
     if (!trimmed) return;
     groupEngine.update(groupId, { name: trimmed });
     setGroups([...groupEngine.list()]);
+    setProjectDirty(true);
     setEditingGroupId(null);
   };
 
@@ -412,7 +420,9 @@ export function App() {
     try {
       const clone = groupEngine.clone(groupId, "group-" + Date.now());
       setGroups([...groupEngine.list()]);
+      setCompositions((items) => items.map((composition) => composition.id === activeCompositionId && composition.groupIds.includes(groupId) ? { ...composition, groupIds: [...composition.groupIds, clone.id] } : composition));
       setSelectedGroupId(clone.id);
+      setProjectDirty(true);
       setProjectMessage(clone.name + " created.");
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Group clone failed.");
@@ -424,6 +434,8 @@ export function App() {
     setGroups([...groupEngine.list()]);
     if (selectedGroupId === groupId) setSelectedGroupId(null);
     if (editingGroupId === groupId) setEditingGroupId(null);
+    setCompositions((items) => items.map((composition) => ({ ...composition, groupIds: composition.groupIds.filter((id) => id !== groupId) })));
+    setProjectDirty(true);
   };
 
   const reorderGroupLayer = (groupId: string, layerId: string, direction: -1 | 1) => {
