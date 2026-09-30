@@ -538,17 +538,23 @@ export function App() {
 
   const addDeck = (kind: DeckKind) => {
     const number = decks.length + 1;
+    const deckId = "deck-" + Date.now();
     const deck: Deck = {
-      id: "deck-" + Date.now(),
+      id: deckId,
       name: kind === "audio" ? "Audio Deck " + number : "Deck " + number,
       kind,
       transition: { type: "fade", durationMs: 500 } as Transition,
       loop: false,
-      layers: makeLayers("deck-" + Date.now())
+      layers: makeLayers(deckId)
     };
     setDecks((items) => [...items, deck]);
+    setCompositions((items) => items.map((composition) => composition.id === activeCompositionId
+      ? { ...composition, deckIds: [...composition.deckIds, deck.id] }
+      : composition));
     deckRuntime.register(deck);
     if (kind === "audio") audioEngine.registerDeck(deck.id);
+    setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" });
+    setProjectDirty(true);
     setShowAddDeck(false);
   };
 
@@ -951,6 +957,7 @@ export function App() {
     } else {
       setSelectedLayer({ deckId: "", layerId: "" });
     }
+    setSelectedGroupId(composition.groupIds[0] ?? null);
     const activeScene = sceneRuntime.getActive(compositionId);
     setActiveSceneId(activeScene?.id ?? "");
     setOutputRevision((value) => value + 1);
@@ -1372,10 +1379,10 @@ export function App() {
             <div className="deck-toolbar">
               <button className="add-deck-button" onClick={() => setShowAddDeck((value) => !value)}>+ Add Deck</button>
               <button className="output-button" onClick={() => setCompositionManagerOpen(true)}>COMPOSITION ⚙</button>
-              {groups.length > 0 && (
+              {groups.filter((group) => compositions.find((composition) => composition.id === activeCompositionId)?.groupIds.includes(group.id)).length > 0 && (
                 <div className="group-toolbar" aria-label="Group controls">
                   <span className="group-toolbar-label">GROUPS</span>
-                  {groups.map((group) => (
+                  {groups.filter((group) => compositions.find((composition) => composition.id === activeCompositionId)?.groupIds.includes(group.id)).map((group) => (
                     <div
                       key={group.id}
                       className={selectedGroupId === group.id ? "group-chip selected" : "group-chip"}
@@ -1416,7 +1423,7 @@ export function App() {
               <div className="column-spacer" />
               {Array.from({ length: 8 }, (_, index) => {
                 const column = index + 1;
-                const active = decks.some((deck) => deckRuntime.getState(deck.id).columns.get(column));
+                const active = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).some((deck) => deckRuntime.getState(deck.id).columns.get(column));
                 return (
                   <div className="column-cell" key={column}>
                     <button
@@ -1445,7 +1452,7 @@ export function App() {
               })}
             </div>
 
-            {decks.map((deck) => {
+            {decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => {
               const runtimeState = deckRuntime.getState(deck.id);
               const values = { master: runtimeState.masterLevel, audio: runtimeState.audioLevel, opacity: runtimeState.visualLevel };
               return (
