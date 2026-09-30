@@ -34,4 +34,9 @@ export interface Layer {
   readonly order?: number;
   /** Trigger actions are persisted with the Layer; duplicate/copy actions are allowed. */
   readonly triggers?: readonly TriggerAction[];
+  /** Operator UI state; renderer/runtime may consume these flags when wired. */
+  readonly visible?: boolean;
+  readonly locked?: boolean;
+  readonly muted?: boolean;
+  readonly solo?: boolean;
 }
