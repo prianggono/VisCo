@@ -655,7 +655,15 @@ export function App() {
     slices,
     scenes: sceneRuntime.list(),
     sources: libraryEngine.list(),
-    outputs: outputEngine.list()
+    outputs: outputEngine.list(),
+    activeSceneIds: Object.fromEntries(compositions.map((composition) => {
+      const active = sceneRuntime.getActive(composition.id);
+      return active ? [composition.id, active.id] : [];
+    })),
+    programs: Object.fromEntries(compositions.map((composition) => {
+      const source = programEngine.getState(composition.id).source;
+      return [composition.id, source];
+    }))
   });
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
@@ -666,7 +674,26 @@ export function App() {
     const persistedOutputs = snapshot.outputs.length ? snapshot.outputs : outputEngine.list(); const byId = new Map(persistedOutputs.map((o) => [o.id, o]));
     outputEngine.replaceAll([...outputEngine.list().map((o) => byId.get(o.id) ?? o), ...persistedOutputs.filter((o) => !outputEngine.list().some((x) => x.id === o.id))]);
     const restoredScenes = snapshot.scenes.length ? snapshot.scenes : defaultScenes; sceneRuntime.replaceAll(restoredScenes);
-    const restoredSceneId = restoredScenes.find((s) => s.enabled)?.id ?? restoredScenes[0]?.id ?? "scene-display-1"; setActiveSceneId(restoredSceneId); sceneRuntime.activate(restoredSceneId);
+    for (const composition of snapshot.compositions) {
+      const requestedSceneId = snapshot.activeSceneIds?.[composition.id];
+      const candidate = requestedSceneId ? restoredScenes.find((scene) => scene.id === requestedSceneId && scene.compositionId === composition.id && scene.enabled) : undefined;
+      const fallback = restoredScenes.find((scene) => scene.compositionId === composition.id && scene.enabled);
+      const activeScene = candidate ?? fallback;
+      if (activeScene) sceneRuntime.activate(activeScene.id);
+    }
+    for (const [compositionId, ref] of Object.entries(snapshot.programs ?? {})) {
+      if (!ref) continue;
+      const deck = loadedDecks.find((item) => item.id === ref.deckId);
+      const layer = deck?.layers.find((item) => item.id === ref.layerId);
+      if (deck && layer) programEngine.program(deck, layer.id, compositionId);
+    }
+    const defaultActiveScene = sceneRuntime.getActive("default");
+    const restoredSceneId = defaultActiveScene?.id ?? restoredScenes[0]?.id ?? "scene-display-1";
+    setActiveSceneId(restoredSceneId);
+    const restoredProgram = programEngine.getState("default");
+    if (defaultActiveScene && restoredProgram.source) {
+      try { outputEngine.syncFromScene(defaultActiveScene, restoredProgram.source); } catch {}
+    }
     audioEngine.replaceAll(loadedDecks.filter((d) => d.kind === "audio").map((d) => d.id)); setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
     setRuntimeRevision((v) => v + 1); setOutputRevision((v) => v + 1); setProjectMessage(message);
   };
@@ -1313,12 +1340,10 @@ export function App() {
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
         <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button>
-          {[
-            ["scene-display-1", "SCENE 1"],
-            ["scene-display-2", "SCENE 2"],
-            ["scene-production", "PRODUCTION"]
-          ].map(([id, label]) => (
-            <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
+          {currentScenes().filter((scene) => scene.compositionId === "default").map((scene) => (
+            <button key={scene.id} className={activeSceneId === scene.id ? "output-button enabled" : "output-button"} onClick={() => activateScene(scene.id)} disabled={!scene.enabled}>
+              {scene.name.toUpperCase()}
+            </button>
           ))}
         </div>
         <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { const next = !blackout; setBlackout(next); outputEngine.setEnabled("display-1", !next); setOutputRevision((v) => v + 1); setProjectMessage(next ? "Display blackout active." : "Display blackout cleared."); }}>{blackout ? "CLEAR" : "BLACKOUT"}</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>{mediaSettings.resolution[0]} × {mediaSettings.resolution[1]}</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span><span className="output-status-pill">{mediaSettings.virtual ? "VIRTUAL ON" : "VIRTUAL OFF"}</span></div>
