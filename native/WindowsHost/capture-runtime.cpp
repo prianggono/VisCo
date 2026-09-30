@@ -315,11 +315,9 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::render(const std::shared_ptr<
 
   // The backbuffer is the canonical final GPU frame. Read it back once so
   // Record/Virtual/NDI/OMT can consume exactly the pixels shown on Program.
-  ComPtr<ID3D11Resource> backResource;
-  target_->GetResource(&backResource);
-  ComPtr<ID3D11Texture2D> backTexture;
+  // Reuse the backbuffer handles queried above; redeclaring them here breaks
+  // the native Windows build (C2086/C2374).
   requireHr(backResource.As(&backTexture), "Backbuffer texture query failed");
-  D3D11_TEXTURE2D_DESC backDesc{};
   backTexture->GetDesc(&backDesc);
   if (readbackTexture_) {
     D3D11_TEXTURE2D_DESC existing{};
