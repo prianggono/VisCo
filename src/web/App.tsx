@@ -501,6 +501,48 @@ export function App() {
     setShowAddDeck(false);
   };
 
+  const cloneDeck = (deckId: string) => {
+    const source = decks.find((deck) => deck.id === deckId);
+    if (!source) return;
+    const newDeckId = "deck-" + Date.now();
+    const cloned: Deck = {
+      ...source,
+      id: newDeckId,
+      name: source.name + " Copy",
+      layers: source.layers.map((layer, index) => ({ ...layer, id: newDeckId + "-layer-" + (index + 1) }))
+    };
+    setDecks((items) => [...items, cloned]);
+    deckRuntime.register(cloned);
+    if (cloned.kind === "audio") audioEngine.registerDeck(cloned.id);
+    setCompositions((items) => items.map((composition) => composition.id === activeCompositionId
+      ? { ...composition, deckIds: [...composition.deckIds, cloned.id] }
+      : composition));
+    setSelectedLayer({ deckId: cloned.id, layerId: cloned.layers[0]?.id ?? "" });
+    setProjectMessage(cloned.name + " cloned.");
+  };
+
+  const deleteDeck = (deckId: string) => {
+    if (decks.length <= 1) {
+      setProjectMessage("At least one Deck must remain.");
+      return;
+    }
+    const target = decks.find((deck) => deck.id === deckId);
+    if (!target) return;
+    const nextDecks = decks.filter((deck) => deck.id !== deckId);
+    setDecks(nextDecks);
+    setCompositions((items) => items.map((composition) => ({
+      ...composition,
+      deckIds: composition.deckIds.filter((id) => id !== deckId)
+    })));
+    try { deckRuntime.replaceAll(nextDecks); } catch {}
+    if (target.kind === "audio") {
+      try { audioEngine.removeDeck(deckId); } catch {}
+    }
+    const nextSelected = nextDecks[0];
+    if (nextSelected) setSelectedLayer({ deckId: nextSelected.id, layerId: nextSelected.layers[0]?.id ?? "" });
+    setProjectMessage(target.name + " deleted.");
+  };
+
   const sourceKindIsList = (kind: SourceKind): boolean => kind === "list";
   const sourceKindIsDocument = (kind: SourceKind): boolean => kind === "powerpoint" || kind === "pdf";
 
