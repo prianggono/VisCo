@@ -29,7 +29,7 @@ export interface StreamSettings extends EncoderSettings {
 }
 
 export interface RecordSettings extends EncoderSettings {
-  readonly segmentMinutes: 1 | 2 | 5 | 10 | 15 | 30 | 60 | "custom";
+  readonly segmentMinutes: number | "custom";
   readonly targetFolder: string;
 }
 
