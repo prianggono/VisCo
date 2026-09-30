@@ -924,7 +924,8 @@ export function App() {
                   <div className="deck-rail">
                     <div className="deck-heading">
                       <span>{deck.name}</span>
-                      <small>{deck.kind.toUpperCase()}</small>
+                      <small>{deck.kind.toUpperCase()} · {runtimeState.masterLevel}% MASTER</small>
+                      <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
                     </div>
                     <div className="deck-faders">
                       {([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const).map(([label, key]) => (
@@ -1163,7 +1164,7 @@ export function App() {
             <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
           ))}
         </div>
-        <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span></div>
+        <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
@@ -1182,6 +1183,20 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {showSettings && (
+        <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
+          <div className="add-input-modal settings-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>VISCO SETTINGS</strong><span>Runtime, devices and operator preferences.</span></div><button onClick={() => setShowSettings(false)}>×</button></div>
+            <div className="settings-grid">
+              <section><h4>RUNTIME</h4><div className="settings-row"><span>Native Host</span><b>{nativeHostState.toUpperCase()}</b></div><div className="settings-row"><span>Capture Device</span><b>{nativeCaptureDevice || "NONE"}</b></div>{runtimeAdapters.map((adapter)=><div className="settings-row" key={adapter.name}><span>{adapter.name}</span><b className={adapter.available?"ok":"off"}>{adapter.available?"AVAILABLE":"UNAVAILABLE"}</b></div>)}</section>
+              <section><h4>PERFORMANCE</h4><div className="settings-row"><span>Target FPS</span><b>{mediaSettings.fps}</b></div><div className="settings-row"><span>Preview</span><b>{nativeHostState === "online" ? "NATIVE" : "SIMULATED"}</b></div><div className="settings-row"><span>Autosave</span><b>{autoSaveEnabled ? "5 SEC" : "OFF"}</b></div></section>
+              <section><h4>OUTPUTS</h4><div className="settings-row"><span>Display</span><b>{fullscreenState.target.enabled?"ON":"OFF"}</b></div><div className="settings-row"><span>Stream</span><b>{mediaSettings.streaming?"ON":"OFF"}</b></div><div className="settings-row"><span>Record</span><b>{mediaSettings.recording?"ON":"OFF"}</b></div><div className="settings-row"><span>Virtual Out</span><b>{mediaSettings.virtual?"ON":"OFF"}</b></div></section>
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Backend runtime settings remain read-only here.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setShowSettings(false)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
+
       {outputSettings && (
         <div className="modal-backdrop" onClick={() => setOutputSettings(null)}>
           <div className="add-input-modal output-settings-modal" onClick={(event) => event.stopPropagation()}>
