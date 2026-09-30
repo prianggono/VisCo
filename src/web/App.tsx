@@ -140,6 +140,14 @@ export function App() {
   const nativePreviewUrl = "http://127.0.0.1:47822/preview.mjpg";
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
   const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryKindFilter, setLibraryKindFilter] = useState<SourceKind | "all">("all");
+  const [librarySort, setLibrarySort] = useState<"name" | "kind">("name");
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [sceneManagerOpen, setSceneManagerOpen] = useState(false);
+  const [panicArmed, setPanicArmed] = useState(false);
+  const [blackout, setBlackout] = useState(false);
+  const [audioMeters, setAudioMeters] = useState([18, 32]);
   const [slices, setSlices] = useState<Slice[]>([{
     id: "slice-default",
     name: "Full Composition",
@@ -420,6 +428,26 @@ export function App() {
     setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, ...patch } : deck));
   };
 
+  const toggleLayerFlag = (flag: "visible" | "locked" | "muted" | "solo") => {
+    if (!selectedLayerModel) return;
+    updateSelectedLayer({ [flag]: !(selectedLayerModel[flag] ?? (flag === "visible")) });
+  };
+  const duplicateSelectedLayer = () => {
+    if (!selectedDeck || !selectedLayerModel) return;
+    const copy = { ...selectedLayerModel, id: selectedLayerModel.id + "-copy-" + Date.now(), name: selectedLayerModel.name + " Copy" };
+    recordHistory();
+    setDecks((current) => current.map((deck) => deck.id === selectedDeck.id ? { ...deck, layers: [...deck.layers.slice(0, deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1), copy, ...deck.layers.slice(deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1)] } : deck));
+    setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
+  };
+  const deleteSelectedLayer = () => {
+    if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1) return;
+    recordHistory();
+    const remaining = selectedDeck.layers.filter((layer) => layer.id !== selectedLayerModel.id);
+    setDecks((current) => current.map((deck) => deck.id === selectedDeck.id ? { ...deck, layers: remaining } : deck));
+    const next = remaining[0];
+    if (next) setSelectedLayer({ deckId: selectedDeck.id, layerId: next.id });
+  };
+
   const addDeck = (kind: DeckKind) => {
     const number = decks.length + 1;
     const deck: Deck = {
@@ -655,7 +683,24 @@ export function App() {
   const loadProject = (file: File) => { file.text().then((text) => { restoreSnapshot(parseProject(text), "Project loaded."); historyRef.current = { past: [], future: [] }; setHistoryRevision((v) => v + 1); }).catch((error) => setProjectMessage(error instanceof Error ? error.message : "Project load failed.")); };
 
 
-  const filteredLibraryItems = libraryItems.filter((item) => item.name.toLowerCase().includes(librarySearch.trim().toLowerCase()));
+  const filteredLibraryItems = [...libraryItems]
+    .filter((item) => item.name.toLowerCase().includes(librarySearch.trim().toLowerCase()))
+    .filter((item) => libraryKindFilter === "all" || item.kind === libraryKindFilter)
+    .sort((a, b) => librarySort === "kind" ? a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
+
+  const sourceUsage = (sourceId: string) => decks.some((deck) => deck.layers.some((layer) => layer.sourceId === sourceId));
+  const duplicateSource = (source: Source) => {
+    const copy = { ...source, id: "source-" + Date.now(), name: source.name + " Copy" };
+    libraryEngine.add(copy); setLibraryItems([...libraryEngine.list()]); setSelectedSourceId(copy.id); setProjectMessage("Source duplicated.");
+  };
+  const removeSource = (source: Source) => {
+    if (sourceUsage(source.id)) { setProjectMessage("Source is still used by a Layer. Remove the Layer reference first."); return; }
+    libraryEngine.remove(source.id); setLibraryItems([...libraryEngine.list()]); setSelectedSourceId(null); setProjectMessage("Source removed from Library.");
+  };
+  const renameSource = (source: Source, name: string) => {
+    const trimmed = name.trim(); if (!trimmed) return;
+    libraryEngine.update({ ...source, name: trimmed }); setLibraryItems([...libraryEngine.list()]); setEditingSourceId(null);
+  };
 
   const outputState = outputEngine.getState("production");
   const mediaSettings = outputState.target.media!;
@@ -765,6 +810,10 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setAudioMeters((meters) => meters.map((value) => Math.max(4, Math.min(96, value + (Math.random() * 24 - 12))))), 180);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => { const raw=localStorage.getItem("visco-autosave-v1"); if(raw){try{const saved=JSON.parse(raw) as {project?:string}; if(saved.project)setRecoveryAvailable(true);}catch{localStorage.removeItem("visco-autosave-v1");}}}, []);
   useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
   useEffect(() => { const onKeyDown=(event:KeyboardEvent)=>{if(!(event.ctrlKey||event.metaKey)||event.altKey)return; const target=event.target as HTMLElement|null; if(target&&["INPUT","TEXTAREA","SELECT"].includes(target.tagName))return; if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown);}, []);
@@ -792,7 +841,8 @@ export function App() {
       >
         <aside className="library panel">
           <div className="panel-title"><span>LIBRARY</span></div>
-          <input className="search" value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search media…" />
+          <div className="library-search-row"><input className="search" value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search media…" /><select value={libraryKindFilter} onChange={(event) => setLibraryKindFilter(event.target.value as SourceKind | "all")}><option value="all">ALL</option>{Array.from(new Set(libraryItems.map((item) => item.kind))).sort().map((kind) => <option key={kind} value={kind}>{kind.toUpperCase()}</option>)}</select></div>
+          <div className="library-toolbar"><span>{filteredLibraryItems.length} / {libraryItems.length}</span><select value={librarySort} onChange={(event) => setLibrarySort(event.target.value as "name" | "kind")}><option value="name">NAME</option><option value="kind">TYPE</option></select></div>
           <div
             className="library-dropzone"
             onDragOver={(event) => event.preventDefault()}
@@ -804,20 +854,34 @@ export function App() {
               <div className="library-empty">Drag & drop files here</div>
             ) : (
               <div className="library-items">
-                {libraryItems.map((item) => (
+                {filteredLibraryItems.map((item) => (
                   <button
-                    className="library-item"
+                    className={selectedSourceId === item.id ? "library-item selected" : "library-item"}
                     key={item.id}
                     draggable
                     onDragStart={(event) => event.dataTransfer.setData("text/library-id", item.id)}
+                    onClick={() => setSelectedSourceId(item.id)}
                   >
                     <span className="library-icon">{item.name.slice(0, 1).toUpperCase()}</span>
-                    {item.name}
+                    {editingSourceId === item.id ? <input autoFocus value={item.name} onChange={(event) => libraryEngine.update({ ...item, name: event.target.value })} onBlur={(event) => renameSource(item, event.currentTarget.value)} onClick={(event) => event.stopPropagation()} /> : <span>{item.name}</span>}
+                    <small className="library-kind">{item.kind}</small>
                   </button>
                 ))}
               </div>
             )}
           </div>
+          {selectedSourceId && libraryEngine.has(selectedSourceId) && (() => {
+            const source = libraryEngine.get(selectedSourceId);
+            return <div className="library-inspector">
+              <div className="library-inspector-head"><strong>{source.name}</strong><small>{source.kind.toUpperCase()}</small></div>
+              <div className="library-actions">
+                <button onClick={() => setEditingSourceId(source.id)}>RENAME</button>
+                <button onClick={() => duplicateSource(source)}>DUPLICATE</button>
+                <button onClick={() => removeSource(source)}>REMOVE</button>
+              </div>
+              <div className="library-meta"><span>Used: {sourceUsage(source.id) ? "YES" : "NO"}</span><span>{source.uri ? "URI READY" : "NO URI"}</span></div>
+            </div>;
+          })()}
         </aside>
 
         <section className="center">
@@ -1056,7 +1120,14 @@ export function App() {
                       <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
                       <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
                     </div>
-                    <div className="property-buttons"><button onClick={createGroupFromSelectedLayer}>+ Group Selected Layer</button></div>
+                    <div className="layer-operator-grid">
+  <button className={selectedLayerModel?.visible !== false ? "active" : ""} onClick={() => toggleLayerFlag("visible")}>VIS</button>
+  <button className={selectedLayerModel?.muted ? "active" : ""} onClick={() => toggleLayerFlag("muted")}>MUTE</button>
+  <button className={selectedLayerModel?.solo ? "active" : ""} onClick={() => toggleLayerFlag("solo")}>SOLO</button>
+  <button className={selectedLayerModel?.locked ? "active" : ""} onClick={() => toggleLayerFlag("locked")}>LOCK</button>
+  <button onClick={duplicateSelectedLayer}>DUP</button><button onClick={deleteSelectedLayer}>DELETE</button>
+</div>
+<div className="property-buttons"><button onClick={createGroupFromSelectedLayer}>+ Group Selected Layer</button></div>
                     {selectedGroupId && (() => {
                       const group = groups.find((item) => item.id === selectedGroupId);
                       if (!group) return null;
@@ -1082,7 +1153,7 @@ export function App() {
                   </>}
                   {item === "Audio" && (() => {
                     const audio = selectedLayerModel?.audio ?? { volume: 100, pan: 0 };
-                    return <><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
+                    return <><div className="audio-meter"><span>L</span><i style={{height: audioMeters[0] + "%"}} /><span>R</span><i style={{height: audioMeters[1] + "%"}} /></div><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
                   })()}
                   {item === "Trigger" && (() => {
   const triggers = selectedLayerModel?.triggers ?? [];
@@ -1100,7 +1171,7 @@ export function App() {
       <button onClick={() => addSelectedTrigger("program")}>+ Program</button>
       <button onClick={() => addSelectedTrigger("set-master")}>+ Master</button>
       <button onClick={() => addSelectedTrigger("set-output-enabled")}>+ Output</button>
-      <button onClick={() => addSelectedTrigger("set-media-feature")}>+ Stream</button>
+      <button onClick={() => addSelectedTrigger("set-media-feature")}>+ Stream</button><button onClick={() => addSelectedTrigger("sequence")}>+ Sequence</button>
     </div>
     {triggers.length === 0
       ? <div className="property-empty">No triggers assigned to this layer.</div>
@@ -1163,7 +1234,7 @@ export function App() {
           </div>
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
-        <div className="scene-controls">
+        <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button>
           {[
             ["scene-display-1", "SCENE 1"],
             ["scene-display-2", "SCENE 2"],
@@ -1172,7 +1243,7 @@ export function App() {
             <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
           ))}
         </div>
-        <div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
+        <div className="safety-controls"><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { setBlackout((v) => !v); if (!blackout) outputEngine.setEnabled("display-1", false); }}>BLACKOUT</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
@@ -1191,6 +1262,13 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {sceneManagerOpen && <div className="modal-backdrop" onClick={() => setSceneManagerOpen(false)}>
+        <div className="add-input-modal scene-manager-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-head"><div><strong>SCENE MANAGER</strong><span>Output routing presets.</span></div><button onClick={() => setSceneManagerOpen(false)}>×</button></div>
+          <div className="scene-manager-list">{defaultScenes.map((scene) => <div className={activeSceneId === scene.id ? "scene-manager-row active" : "scene-manager-row"} key={scene.id}><div><strong>{scene.name}</strong><small>{scene.target.kind.toUpperCase()} · {scene.compositionId}</small></div><button onClick={() => { activateScene(scene.id); setSceneManagerOpen(false); }}>RECALL</button></div>)}</div>
+          <div className="input-select-footer"><div className="modal-drop">Scene stores output routing; composition remains the render hierarchy.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setSceneManagerOpen(false)}>CLOSE</button></div></div>
+        </div>
+      </div>}
       {deckSettingsId && (() => {
         const deck = decks.find((item) => item.id === deckSettingsId);
         if (!deck) return null;
