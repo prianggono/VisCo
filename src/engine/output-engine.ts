@@ -126,7 +126,10 @@ export class OutputEngine {
       const sameFamily =
         (sceneKind === "display" && state.target.kind === "display") ||
         (sceneKind === "production" && state.target.kind === "media");
-      if (sameFamily && state.active && state.target.enabled) {
+      const sameComposition =
+        state.target.compositionId === undefined ||
+        state.target.compositionId === scene.compositionId;
+      if (sameFamily && sameComposition && state.active && state.target.enabled) {
         this.states.set(state.target.id, { ...state, active: false });
       }
     }
