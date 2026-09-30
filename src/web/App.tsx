@@ -302,11 +302,16 @@ export function App() {
 
   const resetSelectedLayerSlices = () => {
     if (!selectedLayerModel) return;
+    const composition = compositions.find((item) => item.id === activeCompositionId);
+    if (!composition) return;
     recordHistory();
-    setSlices((current) => current.map((slice) => ({
-      ...slice,
-      layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel.id))
-    })));
+    const ownedSliceIds = new Set(composition.sliceIds);
+    setSlices((current) => current.map((slice) => ownedSliceIds.has(slice.id)
+      ? {
+          ...slice,
+          layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel.id))
+        }
+      : slice));
     setProjectDirty(true);
   };
 
@@ -941,7 +946,7 @@ export function App() {
       format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
       deckIds: [],
       groupIds: [],
-      sliceIds: slices.map((slice) => slice.id),
+      sliceIds: [],
       locked: false
     };
     setCompositions((items) => [...items, composition]);
@@ -953,6 +958,12 @@ export function App() {
   const assignSelectedDeckToComposition = (compositionId: string) => {
     if (!selectedDeck) {
       setProjectMessage("Select a Deck first.");
+      return;
+    }
+    const target = compositions.find((composition) => composition.id === compositionId);
+    if (!target) return;
+    if (target.locked) {
+      setProjectMessage("Composition is locked.");
       return;
     }
     setCompositions((items) => items.map((composition) => ({
@@ -993,11 +1004,24 @@ export function App() {
     }
     const target = compositions.find((composition) => composition.id === compositionId);
     if (!target) return;
+    if (target.locked) {
+      setProjectMessage("Composition is locked.");
+      return;
+    }
     if (target.deckIds.length > 0) {
       setProjectMessage("Move Decks to another Composition before deleting this Composition.");
       return;
     }
-    setCompositions((items) => items.filter((composition) => composition.id !== compositionId));
+    const remaining = compositions.filter((composition) => composition.id !== compositionId);
+    setCompositions(remaining);
+    sceneRuntime.list(compositionId).forEach((scene) => {
+      try { sceneRuntime.remove(scene.id); } catch {}
+    });
+    if (selectedCompositionId === compositionId) {
+      setSelectedCompositionId(remaining[0]?.id ?? "default");
+    }
+    setProjectDirty(true);
+    setProjectMessage(target.name + " deleted.");
     setCompositionManagerOpen(false);
   };
 
@@ -1590,10 +1614,15 @@ export function App() {
   </>;
 })()}
                   {item === "Slice" && (() => {
-                    const selectedSlices = slices.filter((slice) => slice.layerRefs.some((ref) => ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel?.id));
+                    const activeCompositionSliceIds = new Set(compositions.find((composition) => composition.id === activeCompositionId)?.sliceIds ?? []);
+                    const selectedSlices = slices.filter((slice) => activeCompositionSliceIds.has(slice.id) && slice.layerRefs.some((ref) => ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel?.id));
                     const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => {
     const target = slices.find((slice) => slice.id === sliceId);
     if (!target) return;
+    if (!activeCompositionSliceIds.has(sliceId)) {
+      setProjectMessage("Slice does not belong to the active Composition.");
+      return;
+    }
     if (target.locked) { setProjectMessage("Slice is locked."); return; }
     recordHistory();
     setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
