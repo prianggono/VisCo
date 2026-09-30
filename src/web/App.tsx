@@ -181,6 +181,8 @@ export function App() {
   const compositionIdForDeck = (deckId: string): string =>
     compositions.find((composition) => composition.deckIds.includes(deckId))?.id ?? "default";
 
+  const activeCompositionId = selectedDeck ? compositionIdForDeck(selectedDeck.id) : "default";
+
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck) return;
