@@ -14,8 +14,10 @@ export function compositeLayer(layer: Layer, renderOrder = layer.order ?? 0): Co
 
 /** CPU-side composition contract; GPU work is delegated to the native renderer. */
 export function compositeLayersForRender(layers: readonly Layer[]): readonly CompositedLayer[] {
+  const hasSolo = layers.some((layer) => layer.solo === true);
+  const renderable = layers.filter((layer) => layer.visible !== false && (!hasSolo || layer.solo === true));
   const positions = new Map(layers.map((layer, index) => [layer.id, index]));
-  return [...layers]
+  return [...renderable]
     .sort((a, b) => {
       const orderA = a.order ?? 0;
       const orderB = b.order ?? 0;
