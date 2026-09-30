@@ -445,8 +445,19 @@ export function App() {
   const deleteSelectedLayer = () => {
     if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1) return;
     recordHistory();
+    const deletedRef = { deckId: selectedDeck.id, layerId: selectedLayerModel.id };
     const remaining = selectedDeck.layers.filter((layer) => layer.id !== selectedLayerModel.id);
     setDecks((current) => current.map((deck) => deck.id === selectedDeck.id ? { ...deck, layers: remaining } : deck));
+    setGroups((current) => current.map((group) => group.layerIds.includes(selectedLayerModel.id)
+      ? { ...group, layerIds: group.layerIds.filter((id) => id !== selectedLayerModel.id) }
+      : group));
+    setSlices((current) => current.map((slice) => slice.layerRefs.some((ref) => ref.deckId === deletedRef.deckId && ref.layerId === deletedRef.layerId)
+      ? { ...slice, layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === deletedRef.deckId && ref.layerId === deletedRef.layerId)) }
+      : slice));
+    groupEngine.replaceAll(groups.map((group) => group.layerIds.includes(selectedLayerModel.id)
+      ? { ...group, layerIds: group.layerIds.filter((id) => id !== selectedLayerModel.id) }
+      : group));
+    try { if (programEngine.getState("default").source?.layerId === selectedLayerModel.id) programEngine.clear("default"); } catch {}
     const next = remaining[0];
     if (next) setSelectedLayer({ deckId: selectedDeck.id, layerId: next.id });
   };
@@ -663,7 +674,9 @@ export function App() {
     programs: Object.fromEntries(compositions.map((composition) => {
       const source = programEngine.getState(composition.id).source;
       return [composition.id, source];
-    }))
+    })),
+    deckPreviewLayerIds: Object.fromEntries(decks.map((deck) => [deck.id, deckRuntime.getState(deck.id).previewLayerId])),
+    deckActiveLayerIds: Object.fromEntries(decks.map((deck) => [deck.id, deckRuntime.getState(deck.id).activeLayerId]))
   });
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
@@ -680,6 +693,18 @@ export function App() {
       const fallback = restoredScenes.find((scene) => scene.compositionId === composition.id && scene.enabled);
       const activeScene = candidate ?? fallback;
       if (activeScene) sceneRuntime.activate(activeScene.id);
+    }
+    for (const [deckId, layerId] of Object.entries(snapshot.deckPreviewLayerIds ?? {})) {
+      if (layerId) {
+        const deck = loadedDecks.find((item) => item.id === deckId);
+        if (deck?.layers.some((layer) => layer.id === layerId)) deckRuntime.previewLayer(deck, layerId);
+      }
+    }
+    for (const [deckId, layerId] of Object.entries(snapshot.deckActiveLayerIds ?? {})) {
+      if (layerId) {
+        const deck = loadedDecks.find((item) => item.id === deckId);
+        if (deck?.layers.some((layer) => layer.id === layerId)) deckRuntime.programLayer(deck, layerId);
+      }
     }
     for (const [compositionId, ref] of Object.entries(snapshot.programs ?? {})) {
       if (!ref) continue;
