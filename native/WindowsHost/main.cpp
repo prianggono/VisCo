@@ -97,7 +97,7 @@ static std::string jsonEscape(const std::string& input) {
   out.reserve(input.size());
   for (const char ch : input) {
     if (ch == '\\') out += "\\\\";
-    else if (ch == '"') out += "\\"";
+    else if (ch == '"') out += "\\\"";
     else if (static_cast<unsigned char>(ch) >= 32) out.push_back(ch);
     else out += "?";
   }
