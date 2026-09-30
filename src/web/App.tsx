@@ -96,7 +96,7 @@ export function App() {
     initialDecks.forEach((deck) => runtime.register(deck));
     return runtime;
   }, []);
-  const [, setRuntimeRevision] = useState(0);
+  const [runtimeRevision, setRuntimeRevision] = useState(0);
   const audioEngine = useMemo(() => {
     const engine = new AudioEngine();
     initialDecks.filter((deck) => deck.kind === "audio").forEach((deck) => engine.registerDeck(deck.id));
@@ -779,7 +779,7 @@ export function App() {
       if (!cancelled) setProjectMessage(error instanceof Error ? error.message : "Native render bridge failed.");
     });
     return () => { cancelled = true; };
-  }, [nativeHost, nativeHostState, activeCompositionId, compositions, decks, slices, libraryItems, programEngine, libraryEngine]);
+  }, [nativeHost, nativeHostState, activeCompositionId, compositions, decks, slices, libraryItems, programEngine, libraryEngine, runtimeRevision]);
 
   useEffect(() => {
     nativeHost.status().then(async (status) => {
