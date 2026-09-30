@@ -969,7 +969,9 @@ export function App() {
       locked: false
     };
     setCompositions((items) => [...items, composition]);
-    activateComposition(id);
+    setSelectedCompositionId(id);
+    setSelectedLayer({ deckId: "", layerId: "" });
+    setActiveSceneId("");
     setProjectDirty(true);
     setProjectMessage(composition.name + " created.");
   };
@@ -1110,13 +1112,13 @@ export function App() {
         const nextActive = remaining.find((scene) => scene.enabled) ?? remaining[0];
         if (nextActive) {
           sceneRuntime.activate(nextActive.id);
-          if (removed.compositionId === "default") {
+          if (removed.compositionId === activeCompositionId) {
             setActiveSceneId(nextActive.id);
             const program = programEngine.getState(nextActive.compositionId);
             if (program.source) outputEngine.syncFromScene(nextActive, program.source);
           }
         }
-      } else if (removed.compositionId === "default") {
+      } else if (removed.compositionId === activeCompositionId) {
         setActiveSceneId(activeForComposition.id);
       }
       setOutputRevision((value) => value + 1);
@@ -1219,7 +1221,7 @@ export function App() {
   const toggleMediaFeature = (feature: "stream" | "record" | "virtual") => {
     const key = feature === "stream" ? "streaming" : feature === "record" ? "recording" : "virtual";
     outputEngine.setMediaFeature("production", feature, !mediaSettings[key]);
-    const program = programEngine.getState("default");
+    const program = programEngine.getState(activeCompositionId);
     const scene = sceneRuntime.getActive(program.compositionId);
     if (program.source && scene?.target.kind === "production") {
       try {
@@ -1358,7 +1360,7 @@ export function App() {
                 {nativeHostState === "online" && nativeCaptureDevice
                   ? <img src={nativePreviewUrl} alt="VisCo native program" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   : (() => {
-                    const program = programEngine.getState("default");
+                    const program = programEngine.getState(activeCompositionId);
                     const composed = compositeProgram(program); return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
                   })()}
                 </div>
