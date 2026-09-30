@@ -145,6 +145,7 @@ export function App() {
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [sceneManagerOpen, setSceneManagerOpen] = useState(false);
+  const [, setSceneManagerRevision] = useState(0);
   const [panicArmed, setPanicArmed] = useState(false);
   const [blackout, setBlackout] = useState(false);
   const [audioMeters, setAudioMeters] = useState([18, 32]);
@@ -706,6 +707,59 @@ export function App() {
   const outputState = outputEngine.getState("production");
   const mediaSettings = outputState.target.media!;
   const fullscreenState = outputEngine.getState("display-1");
+
+  const currentScenes = () => sceneRuntime.list();
+
+  const createScene = () => {
+    const scenes = currentScenes();
+    const scene: Scene = {
+      id: "scene-" + Date.now(),
+      name: "Scene " + (scenes.length + 1),
+      compositionId: "default",
+      target: { kind: "display", displayId: "display-1" },
+      enabled: true
+    };
+    try {
+      sceneRuntime.register(scene);
+      setSceneManagerRevision((v) => v + 1);
+      setProjectMessage(scene.name + " created.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Scene creation failed.");
+    }
+  };
+
+  const renameScene = (sceneId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const scenes = currentScenes().map((scene) => scene.id === sceneId ? { ...scene, name: trimmed } : scene);
+    try {
+      sceneRuntime.replaceAll(scenes);
+      setSceneManagerRevision((v) => v + 1);
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Scene rename failed.");
+    }
+  };
+
+  const deleteScene = (sceneId: string) => {
+    const scenes = currentScenes();
+    if (scenes.length <= 1) {
+      setProjectMessage("At least one Scene must remain.");
+      return;
+    }
+    const next = scenes.filter((scene) => scene.id !== sceneId);
+    try {
+      sceneRuntime.replaceAll(next);
+      const nextActive = next.find((scene) => scene.enabled) ?? next[0];
+      if (nextActive) {
+        sceneRuntime.activate(nextActive.id);
+        setActiveSceneId(nextActive.id);
+      }
+      setSceneManagerRevision((v) => v + 1);
+      setProjectMessage("Scene removed.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Scene removal failed.");
+    }
+  };
 
   const activateScene = (sceneId: string) => {
     try {
@@ -1282,7 +1336,7 @@ export function App() {
       {sceneManagerOpen && <div className="modal-backdrop" onClick={() => setSceneManagerOpen(false)}>
         <div className="add-input-modal scene-manager-modal" onClick={(event) => event.stopPropagation()}>
           <div className="modal-head"><div><strong>SCENE MANAGER</strong><span>Output routing presets.</span></div><button onClick={() => setSceneManagerOpen(false)}>×</button></div>
-          <div className="scene-manager-list">{defaultScenes.map((scene) => <div className={activeSceneId === scene.id ? "scene-manager-row active" : "scene-manager-row"} key={scene.id}><div><strong>{scene.name}</strong><small>{scene.target.kind.toUpperCase()} · {scene.compositionId}</small></div><button onClick={() => { activateScene(scene.id); setSceneManagerOpen(false); }}>RECALL</button></div>)}</div>
+          <div className="scene-manager-list"><div className="scene-manager-actions"><button className="modal-add" onClick={createScene}>+ NEW SCENE</button></div>{currentScenes().map((scene) => <div className={activeSceneId === scene.id ? "scene-manager-row active" : "scene-manager-row"} key={scene.id}><div><input className="scene-name-input" value={scene.name} onChange={(event) => renameScene(scene.id, event.target.value)} /><small>{scene.target.kind.toUpperCase()} · {scene.compositionId}</small></div><div className="scene-row-actions"><button onClick={() => { activateScene(scene.id); setSceneManagerOpen(false); }}>RECALL</button><button onClick={() => deleteScene(scene.id)} disabled={currentScenes().length <= 1}>DELETE</button></div></div>)}</div>
           <div className="input-select-footer"><div className="modal-drop">Scene stores output routing; composition remains the render hierarchy.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setSceneManagerOpen(false)}>CLOSE</button></div></div>
         </div>
       </div>}
