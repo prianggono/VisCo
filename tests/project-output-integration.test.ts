@@ -96,6 +96,21 @@ describe("project/output integration", () => {
     expect(output.syncFromScene(streamOnly, source)).toEqual([]);
   });
 
+  it("builds the full Program when the Scene has no Slice selection", () => {
+    const secondLayer = { id: "layer-2", name: "Layer 2", order: 1 };
+    const program = {
+      compositionId: "comp-1",
+      source: { deckId: "deck-1", layerId: "layer-1" },
+      layer,
+      layers: [layer, secondLayer],
+      transition: deck.transition
+    };
+    const frame = createOutputFrame(program, scene, { width: 1920, height: 1080, fps: 30 }, 2);
+    expect(frame.layerIds).toEqual(["layer-1", "layer-2"]);
+    expect(frame.layers.map((item) => item.id)).toEqual(["layer-1", "layer-2"]);
+    expect(frame.slices).toEqual([]);
+  });
+
   it("builds an output frame using the active scene and slice references", () => {
     const program = {
       compositionId: "comp-1",
