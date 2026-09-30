@@ -1212,6 +1212,7 @@ export function App() {
           <div className="decks">
             <div className="deck-toolbar">
               <button className="add-deck-button" onClick={() => setShowAddDeck((value) => !value)}>+ Add Deck</button>
+              <button className="output-button" onClick={() => setCompositionManagerOpen(true)}>COMPOSITION ⚙</button>
               {groups.length > 0 && (
                 <div className="group-toolbar" aria-label="Group controls">
                   <span className="group-toolbar-label">GROUPS</span>
