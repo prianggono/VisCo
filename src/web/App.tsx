@@ -1309,7 +1309,7 @@ export function App() {
                             }}
                           >
                             <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
-                            <div className="layer-tools"><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : "eye"}>{isProgram ? "PROGRAM" : "◉"}</span></div>
+                            <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : "eye"}>{isProgram ? "PROGRAM" : "◉"}</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">ON AIR</div>}
                           </button>
