@@ -941,7 +941,23 @@ export function App() {
   const productionFeaturesEnabled = mediaSettings.streaming || mediaSettings.recording || mediaSettings.virtual;
   const productionRouteActive = outputState.active;
 
+  const activateComposition = (compositionId: string) => {
+    const composition = compositions.find((item) => item.id === compositionId);
+    if (!composition) return;
+    setSelectedCompositionId(compositionId);
+    const deck = decks.find((item) => composition.deckIds.includes(item.id));
+    if (deck) {
+      setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" });
+    } else {
+      setSelectedLayer({ deckId: "", layerId: "" });
+    }
+    const activeScene = sceneRuntime.getActive(compositionId);
+    setActiveSceneId(activeScene?.id ?? "");
+    setOutputRevision((value) => value + 1);
+  };
+
   const createComposition = () => {
+    recordHistory();
     const id = "composition-" + Date.now();
     const composition: Composition = {
       id,
@@ -953,7 +969,7 @@ export function App() {
       locked: false
     };
     setCompositions((items) => [...items, composition]);
-    setSelectedCompositionId(id);
+    activateComposition(id);
     setProjectDirty(true);
     setProjectMessage(composition.name + " created.");
   };
@@ -1015,14 +1031,21 @@ export function App() {
       setProjectMessage("Move Decks to another Composition before deleting this Composition.");
       return;
     }
+
+    recordHistory();
     const remaining = compositions.filter((composition) => composition.id !== compositionId);
+    const removedGroupIds = new Set(target.groupIds);
+    const removedSliceIds = new Set(target.sliceIds);
     setCompositions(remaining);
+    setGroups((current) => current.filter((group) => !removedGroupIds.has(group.id)));
+    groupEngine.replaceAll(groups.filter((group) => !removedGroupIds.has(group.id)));
+    setSlices((current) => current.filter((slice) => !removedSliceIds.has(slice.id)));
     sceneRuntime.list(compositionId).forEach((scene) => {
       try { sceneRuntime.remove(scene.id); } catch {}
     });
-    if (selectedCompositionId === compositionId) {
-      setSelectedCompositionId(remaining[0]?.id ?? "default");
-    }
+
+    const nextComposition = remaining[0];
+    if (nextComposition) activateComposition(nextComposition.id);
     setProjectDirty(true);
     setProjectMessage(target.name + " deleted.");
     setCompositionManagerOpen(false);
@@ -1738,9 +1761,7 @@ export function App() {
                   <div className="settings-row"><span>Bit Depth</span><select value={composition.format.bitDepth} onChange={(event) => updateCompositionFormat(composition.id, { bitDepth: Number(event.target.value) as 8 | 10 })}><option value={8}>8-bit</option><option value={10}>10-bit</option></select></div>
                 </div>
                 <div className="scene-row-actions"><button onClick={() => assignSelectedDeckToComposition(composition.id)}>USE SELECTED DECK</button><button onClick={() => {
-  setSelectedCompositionId(composition.id);
-  const deck = decks.find((item) => composition.deckIds.includes(item.id));
-  if (deck) setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" });
+  activateComposition(composition.id);
   setCompositionManagerOpen(false);
   setProjectMessage(composition.name + " active.");
 }}>ACTIVATE</button><button onClick={() => deleteComposition(composition.id)} disabled={compositions.length <= 1 || composition.deckIds.length > 0}>DELETE</button></div>
