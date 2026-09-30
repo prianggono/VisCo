@@ -392,7 +392,7 @@ class HttpControlServer {
   }
 
 public:
-  std::vector<NativeRenderLayer> renderLayersSnapshot() const {
+  std::vector<NativeRenderLayer> renderLayersSnapshot() {
     std::lock_guard<std::mutex> lock(renderMutex_);
     return renderLayers_;
   }
