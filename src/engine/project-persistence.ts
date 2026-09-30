@@ -1,5 +1,5 @@
 import type { Composition } from "../domain/composition.js";
-import type { Deck } from "../domain/deck.js";
+import type { Deck, DeckLayerRef } from "../domain/deck.js";
 import type { Group } from "../domain/group.js";
 import type { Layer } from "../domain/layer.js";
 import type { Scene } from "../domain/scene.js";
@@ -17,6 +17,8 @@ export interface ProjectSnapshot {
   readonly scenes: readonly Scene[];
   readonly sources: readonly Source[];
   readonly outputs: readonly OutputTarget[];
+  readonly activeSceneIds?: Readonly<Record<string, string>>;
+  readonly programs?: Readonly<Record<string, DeckLayerRef | null>>;
 }
 
 export type ProjectSnapshotInput = Omit<ProjectSnapshot, "version">;
@@ -31,7 +33,9 @@ export function createProjectSnapshot(input: ProjectSnapshotInput): ProjectSnaps
     slices: [...input.slices],
     scenes: [...input.scenes],
     sources: [...input.sources],
-    outputs: [...input.outputs]
+    outputs: [...input.outputs],
+    activeSceneIds: input.activeSceneIds ? { ...input.activeSceneIds } : undefined,
+    programs: input.programs ? { ...input.programs } : undefined
   };
 }
 
@@ -91,6 +95,8 @@ export function parseProject(serialized: string): ProjectSnapshot {
     slices: migratedSlices as unknown as readonly Slice[],
     scenes: value.scenes!,
     sources: value.sources!,
-    outputs: value.outputs!
+    outputs: value.outputs!,
+    activeSceneIds: value.activeSceneIds && typeof value.activeSceneIds === "object" ? value.activeSceneIds as Record<string, string> : undefined,
+    programs: value.programs && typeof value.programs === "object" ? value.programs as Record<string, DeckLayerRef | null> : undefined
   };
 }
