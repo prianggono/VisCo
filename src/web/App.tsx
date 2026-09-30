@@ -328,6 +328,7 @@ export function App() {
         decks: new Map(decks.map((deck) => [deck.id, deck])),
         controller: deckProgramController,
         output: outputEngine,
+        scene: sceneRuntime.getActive("default") ?? undefined,
         compositionIdForDeck
       });
       setRuntimeRevision((value) => value + 1);
