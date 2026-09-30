@@ -69,3 +69,28 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await expect(page.getByText("STREAM SETTINGS", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "CLOSE", exact: true }).click();
 });
+
+
+test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
+
+  await page.getByRole("button", { name: "COMPOSITION ⚙", exact: true }).click();
+  const manager = page.locator(".composition-manager-modal");
+  await expect(manager).toBeVisible();
+  await manager.getByRole("button", { name: "+ NEW COMPOSITION", exact: true }).click();
+
+  await expect(page.locator(".top-status-detail")).toContainText("COMP composition-");
+  await expect(manager.locator(".scene-manager-row")).toHaveCount(2);
+
+  await page.getByRole("button", { name: "+ Add Deck", exact: true }).click();
+  await expect(page.locator(".deck-row")).toHaveCount(1);
+  await expect(page.locator(".deck-row").first()).toContainText("Deck");
+
+  await page.getByRole("button", { name: "COMPOSITION ⚙", exact: true }).click();
+  const rows = page.locator(".composition-manager-modal .scene-manager-row");
+  await expect(rows).toHaveCount(2);
+  await rows.first().getByRole("button", { name: "ACTIVATE", exact: true }).click();
+
+  await expect(page.locator(".top-status-detail")).toContainText("COMP default");
+  await expect(page.locator(".deck-row")).toHaveCount(2);
+});
