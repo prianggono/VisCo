@@ -48,11 +48,31 @@ export function validateRelationships(graph: RelationshipGraph): RelationshipVal
     for (const groupId of composition.groupIds) if (!groupIds.has(groupId)) errors.push(`Composition "${composition.id}" references missing group "${groupId}".`);
     for (const sliceId of composition.sliceIds) if (!sliceIds.has(sliceId)) errors.push(`Composition "${composition.id}" references missing slice "${sliceId}".`);
   }
+
+  const ownership = <T extends { readonly id: string }>(label: string, items: readonly T[], ownerIds: readonly string[][]) => {
+    for (const item of items) {
+      const owners = ownerIds
+        .map((ids, index) => ids.includes(item.id) ? graph.compositions[index]?.id : undefined)
+        .filter((id): id is string => Boolean(id));
+      if (owners.length === 0) errors.push(`Orphan ${label} "${item.id}" is not owned by any Composition.`);
+      if (owners.length > 1) errors.push(`${label} "${item.id}" belongs to multiple Compositions: ${owners.join(", ")}.`);
+    }
+  };
+  ownership("deck", graph.decks, graph.compositions.map((composition) => [...composition.deckIds]));
+  ownership("group", graph.groups, graph.compositions.map((composition) => [...composition.groupIds]));
+  ownership("slice", graph.slices, graph.compositions.map((composition) => [...composition.sliceIds]));
+  const nestedLayerIds = new Set<string>();
   for (const deck of graph.decks) {
+    const ownerComposition = graph.compositions.find((composition) => composition.deckIds.includes(deck.id));
     for (const layer of deck.layers) {
+      nestedLayerIds.add(layer.id);
       if (!layerIds.has(layer.id)) errors.push(`Deck "${deck.id}" contains unregistered layer "${layer.id}".`);
       if (layer.sourceId != null && !sourceIds.has(layer.sourceId)) errors.push(`Layer "${layer.id}" references missing source "${layer.sourceId}".`);
+      if (!ownerComposition) errors.push(`Layer "${layer.id}" is orphaned because deck "${deck.id}" has no Composition owner.`);
     }
+  }
+  for (const layer of graph.layers) {
+    if (!nestedLayerIds.has(layer.id)) errors.push(`Orphan layer "${layer.id}" is not contained by any Deck.`);
   }
   for (const group of graph.groups) {
     const ownerComposition = graph.compositions.find((composition) => composition.groupIds.includes(group.id));
