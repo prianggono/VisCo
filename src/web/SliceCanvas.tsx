@@ -15,10 +15,12 @@ export interface SliceCanvasProps {
 export function SliceCanvas({ slice, width = 360, height = 200, guides = true, onMovePoint, onAddPoint, onRemovePoint }: SliceCanvasProps) {
   const [zoom, setZoom] = useState(1);
   if (!slice) return <div className="property-empty">Select a Slice to edit mapping.</div>;
-  const sx = (width / Math.max(1, slice.transform.width)) * zoom, sy = (height / Math.max(1, slice.transform.height)) * zoom;
+  const sx = width / Math.max(1, slice.transform.width), sy = height / Math.max(1, slice.transform.height);
+  const viewBoxWidth = width / zoom, viewBoxHeight = height / zoom;
+  const viewBoxX = (width - viewBoxWidth) / 2, viewBoxY = (height - viewBoxHeight) / 2;
   const snap = (value: number, size: number) => Math.round(value / size) * size;
   const toPoint = (clientX: number, clientY: number, rect: DOMRect): SlicePoint => {
-    const raw = { x: (clientX - rect.left) / sx + slice.transform.x, y: (clientY - rect.top) / sy + slice.transform.y };
+    const raw = { x: ((clientX - rect.left) / zoom) / sx + slice.transform.x + viewBoxX / sx, y: ((clientY - rect.top) / zoom) / sy + slice.transform.y + viewBoxY / sy };
     if (!slice.mapping?.snapToGrid) return raw;
     const grid = Math.max(1, slice.mapping.gridSize ?? 16);
     return { x: snap(raw.x, grid), y: snap(raw.y, grid) };
@@ -27,7 +29,7 @@ export function SliceCanvas({ slice, width = 360, height = 200, guides = true, o
   const gridSize = Math.max(1, slice.mapping?.gridSize ?? 16);
   const gridX = Math.max(1, Math.floor(slice.transform.width / gridSize)), gridY = Math.max(1, Math.floor(slice.transform.height / gridSize));
   return (
-    <div className="slice-canvas-wrap"><div className="slice-canvas-nav"><button onClick={() => setZoom((v) => Math.max(.5, v - .25))}>−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((v) => Math.min(3, v + .25))}>+</button><button onClick={() => setZoom(1)}>FIT</button></div><svg width={width} height={height} viewBox={"0 0 " + width / zoom + " " + height / zoom} className="slice-editor-canvas"
+    <div className="slice-canvas-wrap"><div className="slice-canvas-nav"><button onClick={() => setZoom((v) => Math.max(.5, v - .25))}>−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((v) => Math.min(3, v + .25))}>+</button><button onClick={() => setZoom(1)}>FIT</button></div><svg width={width} height={height} viewBox={viewBoxX + " " + viewBoxY + " " + viewBoxWidth + " " + viewBoxHeight} className="slice-editor-canvas"
       onDoubleClick={(event) => onAddPoint(toPoint(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect()))}>
       <rect x="0" y="0" width={width} height={height} fill="none" stroke="currentColor" strokeOpacity=".35" />
       {slice.mapping?.snapToGrid && <g className="slice-grid">
