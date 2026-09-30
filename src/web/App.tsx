@@ -327,6 +327,7 @@ export function App() {
     const groupId = `group-${Date.now()}`;
     const group = groupEngine.create(groupId, `Group ${groups.length + 1}`, [selectedLayerModel.id]);
     setGroups([...groupEngine.list()]);
+    setSelectedGroupId(group.id);
     setCompositions((current) => current.map((composition) => composition.id === "default" ? { ...composition, groupIds: [...new Set([...composition.groupIds, group.id])] } : composition));
     setProjectMessage(`Group ${group.name} created.`);
   };
