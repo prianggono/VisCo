@@ -162,6 +162,7 @@ export function App() {
     locked: false
   }]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
   const [discoveredDevices, setDiscoveredDevices] = useState<readonly DiscoveredDevice[]>([]);
