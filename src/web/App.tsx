@@ -1478,8 +1478,8 @@ export function App() {
                       <button onClick={() => updateSelectedPlayback({ playing: true })}>▶ Play</button>
                       <button onClick={() => updateSelectedPlayback({ playing: false })}>Ⅱ Pause</button>
                       <button className={playback?.loop ? "active" : ""} onClick={() => updateSelectedPlayback({ loop: !playback?.loop })}>↻ Loop</button>
-                      <button onClick={() => updateSelectedPlayback({ positionMs: 0 })}>⏮ Start</button>
-                      <button onClick={() => updateSelectedPlayback({ playing: true, positionMs: 0 })}>↺ Restart</button>
+                      <button onClick={() => updateSelectedPlayback({ playing: false })}>⏮ Start</button>
+                      <button onClick={() => updateSelectedPlayback({ playing: true })}>↺ Restart</button>
                     </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
                   })()}
                   {item === "Transform" && <>
