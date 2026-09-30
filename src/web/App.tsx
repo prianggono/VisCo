@@ -588,18 +588,34 @@ export function App() {
     }
     const target = decks.find((deck) => deck.id === deckId);
     if (!target) return;
+    recordHistory();
+    const deletedLayerIds = new Set(target.layers.map((layer) => layer.id));
     const nextDecks = decks.filter((deck) => deck.id !== deckId);
+    const nextGroups = groups
+      .map((group) => ({ ...group, layerIds: group.layerIds.filter((layerId) => !deletedLayerIds.has(layerId)) }))
+      .filter((group) => group.layerIds.length > 0);
+    const removedGroupIds = new Set(groups.filter((group) => !nextGroups.some((item) => item.id === group.id)).map((group) => group.id));
+    const nextSlices = slices
+      .map((slice) => ({ ...slice, layerRefs: slice.layerRefs.filter((ref) => ref.deckId !== deckId) }))
+      .filter((slice) => slice.layerRefs.length > 0);
+    const removedSliceIds = new Set(slices.filter((slice) => !nextSlices.some((item) => item.id === slice.id)).map((slice) => slice.id));
+
     setDecks(nextDecks);
+    setGroups(nextGroups);
+    groupEngine.replaceAll(nextGroups);
+    setSlices(nextSlices);
     setProjectDirty(true);
     setCompositions((items) => items.map((composition) => ({
       ...composition,
-      deckIds: composition.deckIds.filter((id) => id !== deckId)
+      deckIds: composition.deckIds.filter((id) => id !== deckId),
+      groupIds: composition.groupIds.filter((id) => !removedGroupIds.has(id)),
+      sliceIds: composition.sliceIds.filter((id) => !removedSliceIds.has(id))
     })));
     try { deckRuntime.replaceAll(nextDecks); } catch {}
     if (target.kind === "audio") {
       audioEngine.replaceAll(nextDecks.filter((deck) => deck.kind === "audio").map((deck) => deck.id));
     }
-    const nextSelected = nextDecks[0];
+    const nextSelected = nextDecks.find((deck) => compositionIdForDeck(deck.id) === activeCompositionId) ?? nextDecks[0];
     if (nextSelected) setSelectedLayer({ deckId: nextSelected.id, layerId: nextSelected.layers[0]?.id ?? "" });
     setProjectMessage(target.name + " deleted.");
   };
@@ -967,6 +983,7 @@ export function App() {
     setSelectedGroupId(composition.groupIds[0] ?? null);
     const activeScene = sceneRuntime.getActive(compositionId);
     setActiveSceneId(activeScene?.id ?? "");
+    setProjectDirty(true);
     setOutputRevision((value) => value + 1);
   };
 
@@ -996,11 +1013,28 @@ export function App() {
       return;
     }
     const target = compositions.find((composition) => composition.id === compositionId);
+    const sourceComposition = compositions.find((composition) => composition.deckIds.includes(selectedDeck.id));
     if (!target) return;
     if (target.locked) {
       setProjectMessage("Composition is locked.");
       return;
     }
+    if (sourceComposition && sourceComposition.id !== compositionId) {
+      const deckLayerIds = new Set(selectedDeck.layers.map((layer) => layer.id));
+      const attachedGroup = groups.find((group) =>
+        sourceComposition.groupIds.includes(group.id) &&
+        group.layerIds.some((layerId) => deckLayerIds.has(layerId))
+      );
+      const attachedSlice = slices.find((slice) =>
+        sourceComposition.sliceIds.includes(slice.id) &&
+        slice.layerRefs.some((ref) => ref.deckId === selectedDeck.id)
+      );
+      if (attachedGroup || attachedSlice) {
+        setProjectMessage("Move/remove this Deck's Group/Slice references before moving the Deck.");
+        return;
+      }
+    }
+    recordHistory();
     setCompositions((items) => items.map((composition) => ({
       ...composition,
       deckIds: composition.id === compositionId
