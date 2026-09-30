@@ -296,14 +296,18 @@ export function App() {
       locked: false
     };
     setSlices((current) => [...current, slice]);
+    setCompositions((items) => items.map((composition) => composition.id === activeCompositionId ? { ...composition, sliceIds: [...new Set([...composition.sliceIds, sliceId])] } : composition));
+    setProjectDirty(true);
   };
 
   const resetSelectedLayerSlices = () => {
     if (!selectedLayerModel) return;
+    recordHistory();
     setSlices((current) => current.map((slice) => ({
       ...slice,
       layerRefs: slice.layerRefs.filter((ref) => !(ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel.id))
     })));
+    setProjectDirty(true);
   };
 
   const updateSelectedPlayback = (patch: Partial<NonNullable<Layer["playback"]>>) => {
