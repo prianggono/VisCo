@@ -1057,7 +1057,7 @@ export function App() {
         <section className="center">
           <div className="monitors">
             <div className="monitor">
-              <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{getPreviewRef().deckId} / {getPreviewRef().layerId}</span></div>
+              <div className="monitor-head"><span>PREVIEW</span><span className="monitor-source">{getPreviewRef().deckId} / {getPreviewRef().layerId}</span><div className="monitor-tools"><button onClick={() => setWorkspaceZoom((value) => Math.max(50, value - 10))}>−</button><b>{workspaceZoom}%</b><button onClick={() => setWorkspaceZoom((value) => Math.min(200, value + 10))}>+</button><button onClick={() => setWorkspaceZoom(100)}>FIT</button></div></div>
               <div className="preview-canvas">
                 {nativeHostState === "online" && nativeCaptureDevice
                   ? <img src={nativePreviewUrl} alt="VisCo native preview" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
@@ -1070,7 +1070,7 @@ export function App() {
               </div>
             </div>
             <div className="monitor program-monitor">
-              <div className="monitor-head"><span>PROGRAM</span><span className="on-air">ON AIR</span></div>
+              <div className="monitor-head"><span>PROGRAM</span><span className="on-air">ON AIR</span><div className="monitor-tools"><button onClick={() => setWorkspaceZoom((value) => Math.max(50, value - 10))}>−</button><b>{workspaceZoom}%</b><button onClick={() => setWorkspaceZoom((value) => Math.min(200, value + 10))}>+</button><button onClick={() => setWorkspaceZoom(100)}>FIT</button></div></div>
               <div className="program-canvas">
                 {nativeHostState === "online" && nativeCaptureDevice
                   ? <img src={nativePreviewUrl} alt="VisCo native program" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
