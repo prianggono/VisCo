@@ -868,7 +868,7 @@ export function App() {
       id,
       name: "Composition " + (compositions.length + 1),
       format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
-      deckIds: sourceDeck ? [sourceDeck.id] : [],
+      deckIds: [],
       groupIds: [],
       sliceIds: slices.map((slice) => slice.id),
       locked: false
@@ -876,6 +876,21 @@ export function App() {
     setCompositions((items) => [...items, composition]);
     if (sourceDeck) setSelectedLayer({ deckId: sourceDeck.id, layerId: sourceDeck.layers[0]?.id ?? "" });
     setProjectMessage(composition.name + " created.");
+  };
+
+  const assignSelectedDeckToComposition = (compositionId: string) => {
+    if (!selectedDeck) {
+      setProjectMessage("Select a Deck first.");
+      return;
+    }
+    setCompositions((items) => items.map((composition) => ({
+      ...composition,
+      deckIds: composition.id === compositionId
+        ? [...new Set([...composition.deckIds, selectedDeck.id])]
+        : composition.deckIds.filter((id) => id !== selectedDeck.id)
+    })));
+    setSelectedLayer({ deckId: selectedDeck.id, layerId: selectedDeck.layers[0]?.id ?? "" });
+    setProjectMessage(selectedDeck.name + " assigned to Composition.");
   };
 
   const renameComposition = (compositionId: string, name: string) => {
