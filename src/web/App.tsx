@@ -707,6 +707,8 @@ export function App() {
   const outputState = outputEngine.getState("production");
   const mediaSettings = outputState.target.media!;
   const fullscreenState = outputEngine.getState("display-1");
+  const productionFeaturesEnabled = mediaSettings.streaming || mediaSettings.recording || mediaSettings.virtual;
+  const productionRouteActive = outputState.active;
 
   const currentScenes = () => sceneRuntime.list();
 
@@ -784,14 +786,21 @@ export function App() {
     outputEngine.setEnabled(targetId, enabled);
     if (enabled) {
       const program = programEngine.getState("default");
-      const scene = sceneRuntime.getActive(program.compositionId);
-      if (program.source && scene) {
+      if (program.source) {
         try {
-          outputEngine.syncFromScene(scene, program.source);
+          // Physical display is independent from the shared Production/Virtual media pipeline.
+          if (state.target.kind === "display") {
+            outputEngine.route(targetId, program.source);
+          } else {
+            const scene = sceneRuntime.getActive(program.compositionId);
+            if (scene?.target.kind === "production") outputEngine.syncFromScene(scene, program.source);
+          }
         } catch (error) {
           setProjectMessage(error instanceof Error ? error.message : "Output routing failed.");
         }
       }
+    } else {
+      outputEngine.stop(targetId);
     }
     setOutputRevision((value) => value + 1);
   };
@@ -1298,7 +1307,7 @@ export function App() {
             <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
           ))}
         </div>
-        <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { const next = !blackout; setBlackout(next); outputEngine.setEnabled("display-1", !next); setOutputRevision((v) => v + 1); setProjectMessage(next ? "Display blackout active." : "Display blackout cleared."); }}>{blackout ? "CLEAR" : "BLACKOUT"}</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
+        <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { const next = !blackout; setBlackout(next); outputEngine.setEnabled("display-1", !next); setOutputRevision((v) => v + 1); setProjectMessage(next ? "Display blackout active." : "Display blackout cleared."); }}>{blackout ? "CLEAR" : "BLACKOUT"}</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>{mediaSettings.resolution[0]} × {mediaSettings.resolution[1]}</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span><span className="output-status-pill">{mediaSettings.virtual ? "VIRTUAL ON" : "VIRTUAL OFF"}</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
@@ -1328,7 +1337,7 @@ export function App() {
             <div><span>Preview</span><b>{getPreviewRef().layerId ? "CUE READY" : "EMPTY"}</b></div>
             <div><span>Program</span><b>{getProgramRef().layerId ? "ON AIR" : "EMPTY"}</b></div>
             <div><span>Display</span><b>{fullscreenState.target.enabled ? "ENABLED" : "DISABLED"}</b></div>
-            <div><span>Production</span><b>{mediaSettings.streaming || mediaSettings.recording || mediaSettings.virtual ? "ACTIVE" : "IDLE"}</b></div>
+            <div><span>Production</span><b className={productionRouteActive ? "diag-ok" : productionFeaturesEnabled ? "diag-warn" : ""}>{productionRouteActive ? "ACTIVE" : productionFeaturesEnabled ? "ARMED" : "IDLE"}</b></div>
           </div>
           <div className="input-select-footer"><div className="modal-drop">Diagnostics are read-only. Backend/runtime implementation remains separate from this operator view.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setDiagnosticsOpen(false)}>CLOSE</button></div></div>
         </div>
@@ -1374,10 +1383,10 @@ export function App() {
           <div className="add-input-modal output-settings-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head"><div><strong>{outputSettings.toUpperCase()} SETTINGS</strong><span>Encoder and output configuration. The active Scene remains the routing authority.</span></div><button onClick={() => setOutputSettings(null)}>×</button></div>
             <div className="property-grid">
-              <label>Resolution<select defaultValue="1920x1080" onChange={(event) => { const [w,h]=event.target.value.split("x").map(Number); applyOutputSettings({ resolution: [w,h] as [number,number] }); }}><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="3840x2160">3840 × 2160</option></select></label>
+              <label>Resolution<select defaultValue={mediaSettings.resolution.join("x")} onChange={(event) => { const [w,h]=event.target.value.split("x").map(Number); applyOutputSettings({ resolution: [w,h] as [number,number] }); }}><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="3840x2160">3840 × 2160</option></select></label>
               <label>FPS<select defaultValue={String(mediaSettings.fps)} onChange={(event) => applyOutputSettings({ fps: Number(event.target.value) })}><option value="30">30</option><option value="25">25</option><option value="24">24</option><option value="60">60</option></select></label>
               {outputSettings !== "display" && <label>Codec<select defaultValue={outputSettings === "stream" ? mediaSettings.stream?.codec ?? "h264" : mediaSettings.record?.codec ?? "h264"} onChange={(event) => applyOutputSettings({ codec: event.target.value })}><option value="h264">H.264</option><option value="hevc">HEVC / H.265</option></select></label>}
-              {outputSettings !== "display" && <label>Bitrate<select defaultValue="auto" onChange={(event) => applyOutputSettings({ bitrate: event.target.value === "auto" ? "auto" : Number(event.target.value) })}><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
+              {outputSettings !== "display" && <label>Bitrate<select defaultValue={String((outputSettings === "stream" ? mediaSettings.stream?.bitrate : mediaSettings.record?.bitrate) ?? "auto")} onChange={(event) => applyOutputSettings({ bitrate: event.target.value === "auto" ? "auto" : Number(event.target.value) })}><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
             </div>
             <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
           </div>
