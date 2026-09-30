@@ -34,7 +34,7 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(6);
+    expect(result.errors).toHaveLength(9);
   });
 });
 
@@ -49,4 +49,26 @@ it("rejects duplicate IDs across the same collection", () => {
   });
   expect(result.valid).toBe(false);
   expect(result.errors.some((error) => error.includes('Duplicate layer id "layer-1"'))).toBe(true);
+});
+
+
+it("rejects orphan and multiply-owned composition objects", () => {
+  const sharedDeck = { id: "deck-shared", name: "Shared", layers: [{ id: "layer-shared", name: "Layer" }], transition: { type: "cut" as const, durationMs: 0 } };
+  const orphanGroup = { id: "group-orphan", name: "Orphan", layerIds: ["layer-shared"], collapsed: false };
+  const orphanSlice = { id: "slice-orphan", name: "Orphan", transform: { x: 0, y: 0, width: 10, height: 10, rotation: 0 }, layerRefs: [{ deckId: "deck-shared", layerId: "layer-shared" }], locked: false };
+  const result = validateRelationships({
+    compositions: [
+      { id: "comp-a", name: "A", format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 }, deckIds: ["deck-shared"], groupIds: [], sliceIds: [], locked: false },
+      { id: "comp-b", name: "B", format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 }, deckIds: ["deck-shared"], groupIds: [], sliceIds: [], locked: false }
+    ],
+    decks: [sharedDeck],
+    groups: [orphanGroup],
+    layers: sharedDeck.layers,
+    slices: [orphanSlice]
+  });
+
+  expect(result.valid).toBe(false);
+  expect(result.errors.some((error) => error.includes('deck "deck-shared" belongs to multiple Compositions'))).toBe(true);
+  expect(result.errors.some((error) => error.includes('group "group-orphan" is not owned'))).toBe(true);
+  expect(result.errors.some((error) => error.includes('slice "slice-orphan" is not owned'))).toBe(true);
 });
