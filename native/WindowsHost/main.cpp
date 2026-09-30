@@ -92,6 +92,18 @@ static std::string jsonEscape(const std::wstring& input) {
   return out;
 }
 
+static std::string jsonEscape(const std::string& input) {
+  std::string out;
+  out.reserve(input.size());
+  for (const char ch : input) {
+    if (ch == '\\') out += "\\\\";
+    else if (ch == '"') out += "\\"";
+    else if (static_cast<unsigned char>(ch) >= 32) out.push_back(ch);
+    else out += "?";
+  }
+  return out;
+}
+
 class HttpControlServer {
   SOCKET listener_ = INVALID_SOCKET;
   std::atomic<bool> running_{false};
@@ -142,11 +154,6 @@ class HttpControlServer {
     auto value = requestLine.substr(q + key.size() + 1);
     const auto amp = value.find("&"); if (amp != std::string::npos) value.resize(amp);
     return urlDecode(value);
-  }
-
-  std::vector<NativeRenderLayer> renderLayersSnapshot() {
-    std::lock_guard<std::mutex> lock(renderMutex_);
-    return renderLayers_;
   }
 
   void handle(SOCKET client) {
@@ -385,6 +392,11 @@ class HttpControlServer {
   }
 
 public:
+  std::vector<NativeRenderLayer> renderLayersSnapshot() const {
+    std::lock_guard<std::mutex> lock(renderMutex_);
+    return renderLayers_;
+  }
+
   void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
     media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
