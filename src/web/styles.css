@@ -120,3 +120,11 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
 
 /* Scene Manager CRUD */
 .scene-manager-actions{display:flex;justify-content:flex-end;margin-bottom:4px}.scene-manager-row>div:first-child{min-width:0;flex:1}.scene-name-input{width:100%;box-sizing:border-box;background:transparent;border:1px solid transparent;border-radius:3px;color:#dce3eb;font-size:10px;padding:3px 4px}.scene-name-input:hover,.scene-name-input:focus{background:#10161d;border-color:#34404e;outline:none}.scene-row-actions{display:flex;gap:4px}.scene-row-actions button:disabled{opacity:.35;cursor:not-allowed}
+
+.monitor-tools{display:flex;align-items:center;gap:3px;margin-left:auto}
+.monitor-tools button{min-width:20px;height:18px;padding:0 4px;border:1px solid #303742;background:#15191f;color:#aeb7c3;font-size:8px;font-weight:800}
+.monitor-tools button:hover{background:#242b34;color:#fff}
+.monitor-tools b{min-width:38px;text-align:center;color:#dce3eb;font-size:8px}
+.shortcuts-modal{max-width:620px}
+.shortcuts-grid{grid-template-columns:1fr 1fr}
+.shortcuts-grid .settings-row b{font-family:monospace;letter-spacing:.03em}
