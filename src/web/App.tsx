@@ -356,7 +356,7 @@ export function App() {
         decks: new Map(decks.map((deck) => [deck.id, deck])),
         controller: deckProgramController,
         output: outputEngine,
-        scene: sceneRuntime.getActive("default") ?? undefined,
+        scene: sceneRuntime.getActive(activeCompositionId) ?? undefined,
         compositionIdForDeck
       });
       setRuntimeRevision((value) => value + 1);
@@ -473,6 +473,7 @@ export function App() {
 
   const updateDeck = (deckId: string, patch: Partial<Deck>) => {
     setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, ...patch } : deck));
+    setProjectDirty(true);
   };
 
   const moveLayer = (deckId: string, layerId: string, direction: -1 | 1) => {
@@ -487,6 +488,7 @@ export function App() {
     nextLayers[index] = nextLayers[targetIndex]!;
     nextLayers[targetIndex] = current;
     setDecks((items) => items.map((item) => item.id === deckId ? { ...item, layers: nextLayers } : item));
+    setProjectDirty(true);
     setRuntimeRevision((value) => value + 1);
   };
 
@@ -503,6 +505,7 @@ export function App() {
     recordHistory();
     setDecks((current) => current.map((deck) => deck.id === selectedDeck.id ? { ...deck, layers: [...deck.layers.slice(0, deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1), copy, ...deck.layers.slice(deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1)] } : deck));
     setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
+    setProjectDirty(true);
   };
   const deleteSelectedLayer = () => {
     if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1 || selectedLayerModel.locked) {
@@ -523,7 +526,8 @@ export function App() {
       ? { ...group, layerIds: group.layerIds.filter((id) => id !== selectedLayerModel.id) }
       : group));
     try {
-      if (programEngine.getState("default").source?.layerId === selectedLayerModel.id) programEngine.clear("default");
+      const selectedComposition = compositionIdForDeck(selectedDeck.id);
+      if (programEngine.getState(selectedComposition).source?.layerId === selectedLayerModel.id) programEngine.clear(selectedComposition);
       const runtime = deckRuntime.getState(selectedDeck.id);
       if (runtime.activeLayerId === selectedLayerModel.id) deckRuntime.clearActiveLayer(selectedDeck.id);
       if (runtime.previewLayerId === selectedLayerModel.id) deckRuntime.clearPreview(selectedDeck.id);
@@ -748,6 +752,7 @@ export function App() {
       const source = libraryEngine.get(relinkSourceId);
       libraryEngine.update({ ...source, uri: URL.createObjectURL(file), name: file.name, metadata: { ...source.metadata, fileType: file.type, size: file.size } });
       setLibraryItems([...libraryEngine.list()]);
+      setProjectDirty(true);
       setProjectMessage(source.name + " relinked.");
     }
     event.target.value = "";
@@ -824,9 +829,7 @@ export function App() {
       };
     });
     return createProjectSnapshot({
-    compositions: compositions.map((composition) => composition.id === "default"
-      ? { ...composition, deckIds: persistedDecks.map((deck) => deck.id), sliceIds: slices.map((slice) => slice.id) }
-      : composition),
+    compositions: compositions.map((composition) => ({ ...composition, deckIds: [...composition.deckIds], groupIds: [...composition.groupIds], sliceIds: [...composition.sliceIds] })),
     decks: persistedDecks,
     groups,
     layers: persistedDecks.flatMap((deck) => deck.layers),
@@ -850,7 +853,7 @@ export function App() {
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
     const loadedDecks = snapshot.decks as Deck[];
-    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); setSelectedCompositionId(snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId) ? snapshot.selectedCompositionId : (snapshot.compositions[0]?.id ?? "default")); deckRuntime.replaceAll(loadedDecks); programEngine.clear("default");
+    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); setSelectedCompositionId(snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId) ? snapshot.selectedCompositionId : (snapshot.compositions[0]?.id ?? "default")); deckRuntime.replaceAll(loadedDecks); for (const composition of compositions) programEngine.clear(composition.id);
     setSlices([...snapshot.slices]); setGroups([...snapshot.groups]); groupEngine.replaceAll(snapshot.groups);
     libraryEngine.replaceAll(snapshot.sources); setLibraryItems([...snapshot.sources]); setLibrarySearch("");
     const persistedOutputs = snapshot.outputs.length ? snapshot.outputs : outputEngine.list(); const byId = new Map(persistedOutputs.map((o) => [o.id, o]));
@@ -921,7 +924,7 @@ export function App() {
   const sourceUsage = (sourceId: string) => decks.some((deck) => deck.layers.some((layer) => layer.sourceId === sourceId));
   const duplicateSource = (source: Source) => {
     const copy = { ...source, id: "source-" + Date.now(), name: source.name + " Copy" };
-    libraryEngine.add(copy); setLibraryItems([...libraryEngine.list()]); setSelectedSourceId(copy.id); setProjectMessage("Source duplicated.");
+    libraryEngine.add(copy); setLibraryItems([...libraryEngine.list()]); setSelectedSourceId(copy.id); setProjectDirty(true); setProjectMessage("Source duplicated.");
   };
   const removeSource = (source: Source) => {
     if (sourceUsage(source.id)) { setProjectMessage("Source is still used by a Layer. Remove the Layer reference first."); return; }
@@ -929,7 +932,7 @@ export function App() {
   };
   const renameSource = (source: Source, name: string) => {
     const trimmed = name.trim(); if (!trimmed) return;
-    libraryEngine.update({ ...source, name: trimmed }); setLibraryItems([...libraryEngine.list()]); setEditingSourceId(null);
+    libraryEngine.update({ ...source, name: trimmed }); setLibraryItems([...libraryEngine.list()]); setEditingSourceId(null); setProjectDirty(true);
   };
 
   const outputState = outputEngine.getState("production");
@@ -1124,7 +1127,7 @@ export function App() {
     const enabled = !state.target.enabled;
     outputEngine.setEnabled(targetId, enabled);
     if (enabled) {
-      const program = programEngine.getState("default");
+      const program = programEngine.getState(activeCompositionId);
       if (program.source) {
         try {
           // Physical display is independent from the shared Production/Virtual media pipeline.
