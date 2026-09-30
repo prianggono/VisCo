@@ -680,7 +680,7 @@ export function App() {
       : composition),
     decks: persistedDecks,
     groups,
-    layers: decks.flatMap((deck) => deck.layers),
+    layers: persistedDecks.flatMap((deck) => deck.layers),
     slices,
     scenes: sceneRuntime.list(),
     sources: libraryEngine.list(),
@@ -695,7 +695,8 @@ export function App() {
     })),
     deckPreviewLayerIds: Object.fromEntries(decks.map((deck) => [deck.id, deckRuntime.getState(deck.id).previewLayerId])),
     deckActiveLayerIds: Object.fromEntries(decks.map((deck) => [deck.id, deckRuntime.getState(deck.id).activeLayerId]))
-  });
+    });
+  };
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
     const loadedDecks = snapshot.decks as Deck[];
