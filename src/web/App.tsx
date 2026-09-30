@@ -1488,6 +1488,18 @@ export function App() {
           </div>
         </div>;
       })()}
+      {showShortcuts && (
+        <div className="modal-backdrop" onClick={() => setShowShortcuts(false)}>
+          <div className="add-input-modal shortcuts-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>KEYBOARD SHORTCUTS</strong><span>Operator workflow</span></div><button onClick={() => setShowShortcuts(false)}>×</button></div>
+            <div className="settings-grid shortcuts-grid">
+              <section><h4>PROJECT</h4><div className="settings-row"><span>Save</span><b>Ctrl/Cmd + S</b></div><div className="settings-row"><span>Undo</span><b>Ctrl/Cmd + Z</b></div><div className="settings-row"><span>Redo</span><b>Ctrl/Cmd + Shift + Z</b></div><div className="settings-row"><span>Redo</span><b>Ctrl/Cmd + Y</b></div></section>
+              <section><h4>VIEW</h4><div className="settings-row"><span>Shortcuts</span><b>F1</b></div><div className="settings-row"><span>Monitor zoom</span><b>− / + / FIT</b></div><div className="settings-row"><span>Operator Mode</span><b>View menu</b></div></section>
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Shortcuts are disabled while typing in an input field.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setShowShortcuts(false)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
       {showSettings && (
         <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
           <div className="add-input-modal settings-modal" onClick={(event) => event.stopPropagation()}>
