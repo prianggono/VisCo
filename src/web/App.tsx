@@ -229,7 +229,7 @@ export function App() {
   };
 
   const getProgramRef = () => {
-    const state = programEngine.getState("default").source;
+    const state = programEngine.getState(activeCompositionId).source;
     return state ?? { deckId: "", layerId: "" };
   };
 
@@ -529,6 +529,7 @@ export function App() {
   const cloneDeck = (deckId: string) => {
     const source = decks.find((deck) => deck.id === deckId);
     if (!source) return;
+    const sourceCompositionId = compositionIdForDeck(deckId);
     const newDeckId = "deck-" + Date.now();
     const cloned: Deck = {
       ...source,
@@ -539,11 +540,13 @@ export function App() {
     setDecks((items) => [...items, cloned]);
     deckRuntime.register(cloned);
     if (cloned.kind === "audio") audioEngine.registerDeck(cloned.id);
-    setCompositions((items) => items.map((composition) => composition.id === activeCompositionId
+    setCompositions((items) => items.map((composition) => composition.id === sourceCompositionId
       ? { ...composition, deckIds: [...composition.deckIds, cloned.id] }
       : composition));
+    setSelectedCompositionId(sourceCompositionId);
     setSelectedLayer({ deckId: cloned.id, layerId: cloned.layers[0]?.id ?? "" });
-    setProjectMessage(cloned.name + " cloned.");
+    setProjectDirty(true);
+    setProjectMessage(cloned.name + " cloned into " + sourceCompositionId + ".");
   };
 
   const deleteDeck = (deckId: string) => {
