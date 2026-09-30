@@ -859,7 +859,14 @@ export function App() {
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
     const loadedDecks = snapshot.decks as Deck[];
-    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); setSelectedCompositionId(snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId) ? snapshot.selectedCompositionId : (snapshot.compositions[0]?.id ?? "default")); deckRuntime.replaceAll(loadedDecks); for (const composition of compositions) programEngine.clear(composition.id);
+    setDecks(loadedDecks);
+    setCompositions([...snapshot.compositions]);
+    const restoredCompositionId = snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId)
+      ? snapshot.selectedCompositionId
+      : (snapshot.compositions[0]?.id ?? "default");
+    setSelectedCompositionId(restoredCompositionId);
+    deckRuntime.replaceAll(loadedDecks);
+    for (const composition of snapshot.compositions) programEngine.clear(composition.id);
     setSlices([...snapshot.slices]); setGroups([...snapshot.groups]); groupEngine.replaceAll(snapshot.groups);
     libraryEngine.replaceAll(snapshot.sources); setLibraryItems([...snapshot.sources]); setLibrarySearch("");
     const persistedOutputs = snapshot.outputs.length ? snapshot.outputs : outputEngine.list(); const byId = new Map(persistedOutputs.map((o) => [o.id, o]));
@@ -892,17 +899,17 @@ export function App() {
       const layer = deck?.layers.find((item) => item.id === ref.layerId);
       if (deck && layer) programEngine.program(deck, layer.id, compositionId);
     }
-    const restoredCompositionId = snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId)
-      ? snapshot.selectedCompositionId
-      : (snapshot.compositions[0]?.id ?? "default");
     const restoredActiveScene = sceneRuntime.getActive(restoredCompositionId);
-    setSelectedCompositionId(restoredCompositionId);
-    setActiveSceneId(restoredActiveScene?.id ?? restoredScenes.find((scene) => scene.compositionId === restoredCompositionId)?.id ?? "scene-display-1");
+    setActiveSceneId(restoredActiveScene?.id ?? restoredScenes.find((scene) => scene.compositionId === restoredCompositionId)?.id ?? "");
+    const restoredComposition = snapshot.compositions.find((composition) => composition.id === restoredCompositionId);
+    const restoredDeck = restoredComposition ? loadedDecks.find((deck) => restoredComposition.deckIds.includes(deck.id)) : undefined;
+    setSelectedLayer({ deckId: restoredDeck?.id ?? "", layerId: restoredDeck?.layers[0]?.id ?? "" });
+    setSelectedGroupId(restoredComposition?.groupIds[0] ?? null);
     const restoredProgram = programEngine.getState(restoredCompositionId);
     if (restoredActiveScene && restoredProgram.source) {
       try { outputEngine.syncFromScene(restoredActiveScene, restoredProgram.source); } catch {}
     }
-    audioEngine.replaceAll(loadedDecks.filter((d) => d.kind === "audio").map((d) => d.id)); setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
+    audioEngine.replaceAll(loadedDecks.filter((d) => d.kind === "audio").map((d) => d.id));
     setRuntimeRevision((v) => v + 1); setOutputRevision((v) => v + 1); setProjectMessage(message);
   };
   const undo = () => { const h=historyRef.current; const p=h.past.pop(); if(!p)return; h.future.push(serializeProject(buildProjectSnapshot())); restoreSnapshot(parseProject(p),"Undo"); setHistoryRevision((v)=>v+1); };
@@ -1430,7 +1437,7 @@ export function App() {
                       className={active ? "column-toggle active" : "column-toggle"}
                       onClick={() => {
                         const enabled = !active;
-                        decks.forEach((deck) => {
+                        decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).forEach((deck) => {
                           if (deck.layers[column - 1]) {
                             deckRuntime.setColumnEnabled(deck.id, column, enabled);
                             if (deck.kind === "audio") {
