@@ -152,8 +152,12 @@ export class NativeHostHttpBridge implements NativeDeviceDiscoveryBridge {
     if (!response.ok || !payload.ok) throw new Error(payload.message ?? "Failed to bind render source.");
   }
 
-  async setRenderLayers(layers: readonly { readonly id: string; readonly sourceId?: string | null; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rotation: number; readonly scaleX: number; readonly scaleY: number; readonly opacity: number; readonly order: number; readonly cropLeft?: number; readonly cropTop?: number; readonly cropRight?: number; readonly cropBottom?: number; readonly sliceId?: string }[]): Promise<void> {
-    const value = layers.map((layer) => [layer.id, layer.sourceId ?? "", layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.scaleX, layer.scaleY, layer.opacity, layer.order, layer.cropLeft ?? "", layer.cropTop ?? "", layer.cropRight ?? "", layer.cropBottom ?? "", layer.sliceId ?? ""].join("|")).join(";");
+  async setRenderLayers(layers: readonly { readonly id: string; readonly sourceId?: string | null; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rotation: number; readonly scaleX: number; readonly scaleY: number; readonly opacity: number; readonly order: number; readonly cropLeft?: number; readonly cropTop?: number; readonly cropRight?: number; readonly cropBottom?: number; readonly sliceId?: string; readonly mappingMode?: "rectangle" | "corner-pin" | "bezier" | "polygon"; readonly mappingPoints?: readonly { readonly x: number; readonly y: number }[] }[]): Promise<void> {
+    const value = layers.map((layer) => {
+      const points = layer.mappingPoints ?? [];
+      const pointFields = [0, 1, 2, 3].flatMap((index) => [points[index]?.x ?? "", points[index]?.y ?? ""]);
+      return [layer.id, layer.sourceId ?? "", layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.scaleX, layer.scaleY, layer.opacity, layer.order, layer.cropLeft ?? "", layer.cropTop ?? "", layer.cropRight ?? "", layer.cropBottom ?? "", layer.sliceId ?? "", layer.mappingMode ?? "rectangle", ...pointFields].join("|");
+    }).join(";");
     const response = await fetch(this.baseUrl + `/render/layers?value=${encodeURIComponent(value)}`, { cache: "no-store" });
     const payload = await response.json() as { ok?: boolean; message?: string };
     if (!response.ok || !payload.ok) throw new Error(payload.message ?? "Failed to set native render layers.");
