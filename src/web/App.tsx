@@ -861,6 +861,52 @@ export function App() {
   const productionFeaturesEnabled = mediaSettings.streaming || mediaSettings.recording || mediaSettings.virtual;
   const productionRouteActive = outputState.active;
 
+  const createComposition = () => {
+    const id = "composition-" + Date.now();
+    const sourceDeck = selectedDeck ?? decks[0];
+    const composition: Composition = {
+      id,
+      name: "Composition " + (compositions.length + 1),
+      format: { width: 1920, height: 1080, fps: 30, bitDepth: 8 },
+      deckIds: sourceDeck ? [sourceDeck.id] : [],
+      groupIds: [],
+      sliceIds: slices.map((slice) => slice.id),
+      locked: false
+    };
+    setCompositions((items) => [...items, composition]);
+    if (sourceDeck) setSelectedLayer({ deckId: sourceDeck.id, layerId: sourceDeck.layers[0]?.id ?? "" });
+    setProjectMessage(composition.name + " created.");
+  };
+
+  const renameComposition = (compositionId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCompositions((items) => items.map((composition) =>
+      composition.id === compositionId ? { ...composition, name: trimmed } : composition
+    ));
+  };
+
+  const updateCompositionFormat = (compositionId: string, patch: Partial<Composition["format"]>) => {
+    setCompositions((items) => items.map((composition) =>
+      composition.id === compositionId ? { ...composition, format: { ...composition.format, ...patch } } : composition
+    ));
+  };
+
+  const deleteComposition = (compositionId: string) => {
+    if (compositions.length <= 1) {
+      setProjectMessage("At least one Composition must remain.");
+      return;
+    }
+    const target = compositions.find((composition) => composition.id === compositionId);
+    if (!target) return;
+    if (target.deckIds.length > 0) {
+      setProjectMessage("Move Decks to another Composition before deleting this Composition.");
+      return;
+    }
+    setCompositions((items) => items.filter((composition) => composition.id !== compositionId));
+    setCompositionManagerOpen(false);
+  };
+
   const currentScenes = () => sceneRuntime.list();
 
   const createScene = () => {
