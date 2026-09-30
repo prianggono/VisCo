@@ -1241,6 +1241,8 @@ export function App() {
                       ))}
                     </div>
                     <div className="deck-actions">
+                      <button className="deck-action" title="Clone Deck" onClick={() => cloneDeck(deck.id)}>⧉</button>
+                      <button className="deck-action" title="Delete Deck" onClick={() => deleteDeck(deck.id)}>×</button>
                       <button className="deck-action" title="Deck settings" onClick={() => setDeckSettingsId(deck.id)}>⚙</button>
                     </div>
                   </div>
