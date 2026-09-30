@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 #include <cstdint>
+#include <array>
 
 using Microsoft::WRL::ComPtr;
 
@@ -45,6 +46,8 @@ struct NativeRenderLayer {
   float cropRight = 0.0f;
   float cropBottom = 0.0f;
   std::string sliceId;
+  std::string mappingMode = "rectangle";
+  std::array<float, 8> mappingPoints{};
 };
 
 class MediaFoundationHost {
@@ -95,6 +98,8 @@ private:
   ComPtr<ID3D11Texture2D> readbackTexture_;
   ComPtr<ID3D11VertexShader> vertexShader_;
   ComPtr<ID3D11PixelShader> pixelShader_;
+  ComPtr<ID3D11InputLayout> inputLayout_;
+  ComPtr<ID3D11Buffer> geometryVertexBuffer_;
   ComPtr<ID3D11Buffer> transformBuffer_;
   ComPtr<ID3D11BlendState> blendState_;
   mutable std::mutex finalMutex_;
