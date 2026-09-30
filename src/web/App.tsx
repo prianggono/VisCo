@@ -660,11 +660,25 @@ export function App() {
     setShowAddInput(true);
   };
 
-  const buildProjectSnapshot = () => createProjectSnapshot({
+  const buildProjectSnapshot = () => {
+    const persistedDecks = decks.map((deck) => {
+      const runtime = deckRuntime.getState(deck.id);
+      return {
+        ...deck,
+        masterLevel: runtime.masterLevel,
+        audioLevel: runtime.audioLevel,
+        visualLevel: runtime.visualLevel,
+        layers: deck.layers.map((layer) => {
+          const playback = runtime.playback.get(layer.id);
+          return playback ? { ...layer, playback: { ...layer.playback, playing: playback.playing, loop: playback.loop, speed: playback.speed } } : layer;
+        })
+      };
+    });
+    return createProjectSnapshot({
     compositions: compositions.map((composition) => composition.id === "default"
-      ? { ...composition, deckIds: decks.map((deck) => deck.id), sliceIds: slices.map((slice) => slice.id) }
+      ? { ...composition, deckIds: persistedDecks.map((deck) => deck.id), sliceIds: slices.map((slice) => slice.id) }
       : composition),
-    decks,
+    decks: persistedDecks,
     groups,
     layers: decks.flatMap((deck) => deck.layers),
     slices,
