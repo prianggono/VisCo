@@ -702,17 +702,84 @@ export function App() {
   };
 
   const addDiscoveredDevice = async (device: DiscoveredDevice) => {
-    addInternalInput(sourceKindForDevice(device.kind), device);
-    if (device.kind === "camera" || device.kind === "video-capture") {
-      try {
+    const sourceKind = sourceKindForDevice(device.kind);
+    addInternalInput(sourceKind, device);
+    try {
+      if (device.kind === "camera" || device.kind === "video-capture") {
         const capture = await nativeHost.startCapture(device.id);
-        if (capture.ok) setNativeCaptureDevice(device.id);
-        else setDiscoveryMessage(capture.message ?? "Native capture start failed.");
-      } catch (error) {
-        setDiscoveryMessage(error instanceof Error ? error.message : "Native capture start failed.");
+        if (capture.ok) {
+          setNativeCaptureDevice(device.id);
+          setDiscoveryMessage(`Native capture active: ${device.name}`);
+        } else {
+          setDiscoveryMessage(capture.message ?? "Native capture start failed.");
+        }
+      } else if (device.kind === "ndi" || device.kind === "omt") {
+        const started = await nativeHost.startNetwork(device.kind, device.id);
+        if (started.ok) {
+          setNativeCaptureDevice(device.id);
+          setDiscoveryMessage(`${device.kind.toUpperCase()} source active: ${device.name}`);
+        } else {
+          setDiscoveryMessage(started.message ?? `${device.kind.toUpperCase()} network start failed.`);
+        }
       }
+    } catch (error) {
+      setDiscoveryMessage(error instanceof Error ? error.message : "Native source start failed.");
     }
   };
+
+  useEffect(() => {
+    if (nativeHostState !== "online") return;
+    const composition = compositions.find((item) => item.id === activeCompositionId);
+    if (!composition) return;
+    const program = programEngine.getState(activeCompositionId);
+    const programLayers = compositeProgram(program);
+    const selectedSlices = slices.filter((slice) =>
+      composition.sliceIds.includes(slice.id) &&
+      (slice.layerRefs.length === 0 || programLayers.some((item) =>
+        slice.layerRefs.some((ref) => ref.layerId === item.layerId)
+      ))
+    );
+    const renderable = programLayers.flatMap((item) => {
+      const deck = decks.find((candidate) => candidate.layers.some((layer) => layer.id === item.layerId));
+      const layer = deck?.layers.find((candidate) => candidate.id === item.layerId);
+      if (!deck || !layer?.sourceId) return [];
+      const source = libraryEngine.get(layer.sourceId);
+      const deviceKind = source.metadata?.deviceKind;
+      const nativeSourceId =
+        deviceKind === "ndi" || deviceKind === "omt" || source.kind === "ndi" || source.kind === "omt"
+          ? "network"
+          : deviceKind === "camera" || deviceKind === "video-capture" || source.kind === "camera" || source.kind === "video-capture"
+            ? "capture"
+            : null;
+      if (!nativeSourceId) return [];
+      const transform = layer.transform ?? { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1 };
+      const matchingSlices = selectedSlices.filter((slice) =>
+        slice.layerRefs.length === 0 || slice.layerRefs.some((ref) => ref.deckId === deck.id && ref.layerId === layer.id)
+      );
+      const targets = matchingSlices.length > 0 ? matchingSlices : [null];
+      return targets.map((slice) => ({
+        id: `${layer.id}-${slice?.id ?? "full"}`,
+        sourceId: layer.sourceId,
+        x: transform.x,
+        y: transform.y,
+        width: composition.format.width,
+        height: composition.format.height,
+        rotation: transform.rotation,
+        scaleX: transform.scaleX,
+        scaleY: transform.scaleY,
+        opacity: transform.opacity,
+        order: item.renderOrder,
+        sliceId: slice?.id,
+        mappingMode: slice?.mapping.mode ?? "rectangle",
+        mappingPoints: slice?.mapping.points ?? []
+      }));
+    });
+    let cancelled = false;
+    nativeHost.setRenderLayers(renderable).catch((error) => {
+      if (!cancelled) setProjectMessage(error instanceof Error ? error.message : "Native render bridge failed.");
+    });
+    return () => { cancelled = true; };
+  }, [nativeHost, nativeHostState, activeCompositionId, compositions, decks, slices, libraryItems, programEngine, libraryEngine]);
 
   useEffect(() => {
     nativeHost.status().then(async (status) => {
