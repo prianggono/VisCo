@@ -986,7 +986,19 @@ export function App() {
   }, []);
   useEffect(() => { const raw=localStorage.getItem("visco-autosave-v1"); if(raw){try{const saved=JSON.parse(raw) as {project?:string}; if(saved.project)setRecoveryAvailable(true);}catch{localStorage.removeItem("visco-autosave-v1");}}}, []);
   useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
-  useEffect(() => { const onKeyDown=(event:KeyboardEvent)=>{if(!(event.ctrlKey||event.metaKey)||event.altKey)return; const target=event.target as HTMLElement|null; if(target&&["INPUT","TEXTAREA","SELECT"].includes(target.tagName))return; if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown);}, []);
+  useEffect(() => {
+    const onKeyDown=(event:KeyboardEvent)=>{
+      const target=event.target as HTMLElement|null;
+      if(target&&["INPUT","TEXTAREA","SELECT"].includes(target.tagName))return;
+      if(event.key === "F1"){ event.preventDefault(); setShowShortcuts((value) => !value); return; }
+      if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+      if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}
+      else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}
+      else if(event.key.toLowerCase()==="s"){event.preventDefault();saveProject();}
+    };
+    window.addEventListener("keydown",onKeyDown);
+    return()=>window.removeEventListener("keydown",onKeyDown);
+  }, []);
   const recoverAutosave=()=>{const raw=localStorage.getItem("visco-autosave-v1");if(!raw)return;try{const saved=JSON.parse(raw) as {project?:string};if(saved.project)restoreSnapshot(parseProject(saved.project),"Autosave recovered.");historyRef.current={past:[],future:[]};setRecoveryAvailable(false);setHistoryRevision((v)=>v+1);}catch(error){setProjectMessage(error instanceof Error?error.message:"Autosave recovery failed.");}};
   const discardAutosave=()=>{localStorage.removeItem("visco-autosave-v1");setRecoveryAvailable(false);setProjectMessage("Autosave discarded.");};
   return (
