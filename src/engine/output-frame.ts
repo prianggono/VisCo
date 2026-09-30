@@ -15,6 +15,8 @@ export interface OutputFrameLayer {
   readonly cropRight?: number;
   readonly cropBottom?: number;
   readonly sliceId?: string;
+  readonly mappingMode?: "rectangle" | "corner-pin" | "bezier" | "polygon";
+  readonly mappingPoints?: readonly { readonly x: number; readonly y: number }[];
 }
 
 export interface OutputFrameSource {
