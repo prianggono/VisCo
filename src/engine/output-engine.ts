@@ -119,10 +119,14 @@ export class OutputEngine {
   syncFromScene(scene: Scene, source: DeckLayerRef): readonly OutputState[] {
     if (!scene.enabled) throw new Error(`Scene "${scene.id}" is disabled.`);
 
-    // Scene is the routing authority. Clear other canonical outputs first so
-    // switching Scene cannot leave a previous display/production route active.
+    // Display and Production/Virtual are separate output families. Switching
+    // one Scene family must not silently deactivate the other family.
+    const sceneKind = scene.target.kind;
     for (const state of this.states.values()) {
-      if (state.active && state.target.enabled) {
+      const sameFamily =
+        (sceneKind === "display" && state.target.kind === "display") ||
+        (sceneKind === "production" && state.target.kind === "media");
+      if (sameFamily && state.active && state.target.enabled) {
         this.states.set(state.target.id, { ...state, active: false });
       }
     }
