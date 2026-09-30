@@ -20,6 +20,27 @@ export class SceneRuntime {
     this.scenes.set(scene.id, scene);
   }
 
+  update(scene: Scene): void {
+    if (!this.scenes.has(scene.id)) throw new Error(`Scene "${scene.id}" does not exist.`);
+    if (!scene.id.trim() || !scene.name.trim() || !scene.compositionId.trim()) throw new Error(`Scene "${scene.id}" is invalid.`);
+    if (scene.target.kind === "display" && !scene.target.displayId.trim()) throw new Error(`Scene "${scene.id}" requires a display target.`);
+    if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) throw new Error(`Production Scene "${scene.id}" must enable at least one production output.`);
+    this.scenes.set(scene.id, scene);
+    if (this.activeByComposition.get(scene.compositionId) === scene.id && !scene.enabled) {
+      this.activeByComposition.delete(scene.compositionId);
+    }
+  }
+
+  remove(sceneId: string): Scene | null {
+    const scene = this.scenes.get(sceneId);
+    if (!scene) return null;
+    this.scenes.delete(sceneId);
+    if (this.activeByComposition.get(scene.compositionId) === sceneId) {
+      this.activeByComposition.delete(scene.compositionId);
+    }
+    return scene;
+  }
+
   replaceAll(scenes: readonly Scene[]): void {
     const next = new Map<string, Scene>();
     for (const scene of scenes) {
@@ -29,9 +50,16 @@ export class SceneRuntime {
       if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) throw new Error(`Production Scene "${scene.id}" must enable at least one production output.`);
       next.set(scene.id, scene);
     }
+    const previousActive = new Map(this.activeByComposition);
     this.scenes.clear();
     this.activeByComposition.clear();
     for (const [id, value] of next) this.scenes.set(id, value);
+    for (const [compositionId, sceneId] of previousActive) {
+      const scene = next.get(sceneId);
+      if (scene && scene.compositionId === compositionId && scene.enabled) {
+        this.activeByComposition.set(compositionId, sceneId);
+      }
+    }
   }
 
   setEnabled(sceneId: string, enabled: boolean): SceneRuntimeState {
