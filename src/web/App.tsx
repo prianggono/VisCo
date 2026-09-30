@@ -1411,7 +1411,8 @@ export function App() {
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
         <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button>
-          {currentScenes().filter((scene) => scene.compositionId === "default").map((scene) => (
+          <span className="output-status-pill">COMP {activeCompositionId.toUpperCase()}</span>
+          {currentScenes().filter((scene) => scene.compositionId === activeCompositionId).map((scene) => (
             <button key={scene.id} className={activeSceneId === scene.id ? "output-button enabled" : "output-button"} onClick={() => activateScene(scene.id)} disabled={!scene.enabled}>
               {scene.name.toUpperCase()}
             </button>
