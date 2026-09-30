@@ -1350,7 +1350,13 @@ export function App() {
 })()}
                   {item === "Slice" && (() => {
                     const selectedSlices = slices.filter((slice) => slice.layerRefs.some((ref) => ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel?.id));
-                    const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => { recordHistory(); setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice)); };
+                    const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => {
+    const target = slices.find((slice) => slice.id === sliceId);
+    if (!target) return;
+    if (target.locked) { setProjectMessage("Slice is locked."); return; }
+    recordHistory();
+    setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
+  };
                     return <>
                       <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
                       <div className="slice-editor-options"><label className="property-toggle"><span>Snap to Grid</span><input type="checkbox" checked={selectedSlices[0]?.mapping?.snapToGrid ?? true} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { snapToGrid: event.target.checked }))} /></label><label>Grid Size<input type="number" min="1" max="512" value={selectedSlices[0]?.mapping?.gridSize ?? 16} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { gridSize: Math.max(1, Number(event.target.value) || 1) }))} /></label><label className="property-toggle"><span>Guides</span><input type="checkbox" checked={sliceGuides} onChange={(event) => setSliceGuides(event.target.checked)} /></label></div>
