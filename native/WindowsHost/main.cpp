@@ -220,7 +220,7 @@ class HttpControlServer {
           if (item.empty()) continue;
           std::stringstream fields(item); std::string f; std::vector<std::string> v;
           while (std::getline(fields, f, '|')) v.push_back(f);
-          if (v.size() != 16) throw std::runtime_error("Invalid render layer descriptor.");
+          if (v.size() != 25) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
           layer.sourceId = v[1];
           layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
@@ -232,6 +232,16 @@ class HttpControlServer {
           if (!v[13].empty()) layer.cropRight=std::stof(v[13]);
           if (!v[14].empty()) layer.cropBottom=std::stof(v[14]);
           layer.sliceId=v[15];
+          layer.mappingMode=v[16].empty() ? "rectangle" : v[16];
+          for (int i=0; i<4; ++i) {
+            if (!v[17 + i*2].empty()) layer.mappingPoints[static_cast<size_t>(i*2)] = std::stof(v[17 + i*2]);
+            if (!v[18 + i*2].empty()) layer.mappingPoints[static_cast<size_t>(i*2 + 1)] = std::stof(v[18 + i*2]);
+          }
+          if (layer.mappingMode == "corner-pin") {
+            for (int i=0; i<4; ++i) {
+              if (v[17 + i*2].empty() || v[18 + i*2].empty()) throw std::runtime_error("Corner-pin layer requires four mapping points.");
+            }
+          }
           parsed.push_back(std::move(layer));
         }
         { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
