@@ -863,7 +863,6 @@ export function App() {
 
   const createComposition = () => {
     const id = "composition-" + Date.now();
-    const sourceDeck = selectedDeck ?? decks[0];
     const composition: Composition = {
       id,
       name: "Composition " + (compositions.length + 1),
@@ -874,7 +873,6 @@ export function App() {
       locked: false
     };
     setCompositions((items) => [...items, composition]);
-    if (sourceDeck) setSelectedLayer({ deckId: sourceDeck.id, layerId: sourceDeck.layers[0]?.id ?? "" });
     setProjectMessage(composition.name + " created.");
   };
 
