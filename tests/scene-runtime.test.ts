@@ -20,6 +20,15 @@ describe("scene runtime", () => {
     expect(runtime.getActive("comp-1")?.id).toBe("scene-2");
   });
 
+  it("preserves the active scene when an active scene is updated", () => {
+    const runtime = new SceneRuntime();
+    runtime.register(baseScene);
+    runtime.activate("scene-1");
+    runtime.update({ ...baseScene, name: "Display 1 Renamed" });
+    expect(runtime.getActive("comp-1")?.id).toBe("scene-1");
+    expect(runtime.getActive("comp-1")?.name).toBe("Display 1 Renamed");
+  });
+
   it("rejects empty production scenes", () => {
     const runtime = new SceneRuntime();
     expect(() => runtime.register({
