@@ -196,3 +196,10 @@ The earlier conclusion that CI was unverified is no longer current. The latest b
 - [ ] Full native Preview/Program desktop transport bridge.
 - [ ] Windows packaging/EXE installer and update/recovery workflow.
 - [ ] License verification/enforcement/watermark remains intentionally postponed.
+
+
+## Deployment verification — 2026-10-01
+
+- Current audited source is main at commit 3bc431abfdc1e2e206ee0ef9a98d7fccab6b3109.
+- The existing Vercel visco-web production deployment predates this source and is not the current audited UI.
+- This marker exists to trigger a fresh Vercel Git deployment when the project is connected to the repository.
