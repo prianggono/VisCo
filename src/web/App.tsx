@@ -734,9 +734,10 @@ export function App() {
   const renameScene = (sceneId: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const scenes = currentScenes().map((scene) => scene.id === sceneId ? { ...scene, name: trimmed } : scene);
+    const scene = currentScenes().find((item) => item.id === sceneId);
+    if (!scene) return;
     try {
-      sceneRuntime.replaceAll(scenes);
+      sceneRuntime.update({ ...scene, name: trimmed });
       setSceneManagerRevision((v) => v + 1);
     } catch (error) {
       setProjectMessage(error instanceof Error ? error.message : "Scene rename failed.");
@@ -749,14 +750,26 @@ export function App() {
       setProjectMessage("At least one Scene must remain.");
       return;
     }
-    const next = scenes.filter((scene) => scene.id !== sceneId);
+    const removed = scenes.find((scene) => scene.id === sceneId);
+    if (!removed) return;
     try {
-      sceneRuntime.replaceAll(next);
-      const nextActive = next.find((scene) => scene.enabled) ?? next[0];
-      if (nextActive) {
-        sceneRuntime.activate(nextActive.id);
-        setActiveSceneId(nextActive.id);
+      sceneRuntime.remove(sceneId);
+      const remaining = sceneRuntime.list(removed.compositionId);
+      const activeForComposition = sceneRuntime.getActive(removed.compositionId);
+      if (!activeForComposition) {
+        const nextActive = remaining.find((scene) => scene.enabled) ?? remaining[0];
+        if (nextActive) {
+          sceneRuntime.activate(nextActive.id);
+          if (removed.compositionId === "default") {
+            setActiveSceneId(nextActive.id);
+            const program = programEngine.getState(nextActive.compositionId);
+            if (program.source) outputEngine.syncFromScene(nextActive, program.source);
+          }
+        }
+      } else if (removed.compositionId === "default") {
+        setActiveSceneId(activeForComposition.id);
       }
+      setOutputRevision((value) => value + 1);
       setSceneManagerRevision((v) => v + 1);
       setProjectMessage("Scene removed.");
     } catch (error) {
