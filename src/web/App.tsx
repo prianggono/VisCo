@@ -150,6 +150,8 @@ export function App() {
   const [blackout, setBlackout] = useState(false);
   const [audioMeters, setAudioMeters] = useState([18, 32]);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [workspaceZoom, setWorkspaceZoom] = useState(100);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [slices, setSlices] = useState<Slice[]>([{
     id: "slice-default",
     name: "Full Composition",
