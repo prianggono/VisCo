@@ -222,6 +222,7 @@ export function App() {
 
   const getPreviewRef = () => {
     for (const deck of decks) {
+      if (compositionIdForDeck(deck.id) !== activeCompositionId) continue;
       const layerId = deckRuntime.getState(deck.id).previewLayerId;
       if (layerId) return { deckId: deck.id, layerId };
     }
@@ -861,12 +862,15 @@ export function App() {
       const layer = deck?.layers.find((item) => item.id === ref.layerId);
       if (deck && layer) programEngine.program(deck, layer.id, compositionId);
     }
-    const defaultActiveScene = sceneRuntime.getActive("default");
-    const restoredSceneId = defaultActiveScene?.id ?? restoredScenes[0]?.id ?? "scene-display-1";
-    setActiveSceneId(restoredSceneId);
-    const restoredProgram = programEngine.getState("default");
-    if (defaultActiveScene && restoredProgram.source) {
-      try { outputEngine.syncFromScene(defaultActiveScene, restoredProgram.source); } catch {}
+    const restoredCompositionId = snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId)
+      ? snapshot.selectedCompositionId
+      : (snapshot.compositions[0]?.id ?? "default");
+    const restoredActiveScene = sceneRuntime.getActive(restoredCompositionId);
+    setSelectedCompositionId(restoredCompositionId);
+    setActiveSceneId(restoredActiveScene?.id ?? restoredScenes.find((scene) => scene.compositionId === restoredCompositionId)?.id ?? "scene-display-1");
+    const restoredProgram = programEngine.getState(restoredCompositionId);
+    if (restoredActiveScene && restoredProgram.source) {
+      try { outputEngine.syncFromScene(restoredActiveScene, restoredProgram.source); } catch {}
     }
     audioEngine.replaceAll(loadedDecks.filter((d) => d.kind === "audio").map((d) => d.id)); setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
     setRuntimeRevision((v) => v + 1); setOutputRevision((v) => v + 1); setProjectMessage(message);
@@ -1066,6 +1070,7 @@ export function App() {
       if (!scene || !composition) throw new Error(`Scene "${sceneId}" has no matching composition.`);
       resolveAdvancedOutput(scene, composition, outputEngine.list(), slices);
       if (program.source) outputEngine.syncFromScene(scene, program.source);
+      setSelectedCompositionId(state.compositionId);
       setActiveSceneId(sceneId);
       setOutputRevision((value) => value + 1);
       setProjectMessage("Scene " + sceneId + " active.");
