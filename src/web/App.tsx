@@ -536,7 +536,7 @@ export function App() {
     })));
     try { deckRuntime.replaceAll(nextDecks); } catch {}
     if (target.kind === "audio") {
-      try { audioEngine.removeDeck(deckId); } catch {}
+      audioEngine.replaceAll(nextDecks.filter((deck) => deck.kind === "audio").map((deck) => deck.id));
     }
     const nextSelected = nextDecks[0];
     if (nextSelected) setSelectedLayer({ deckId: nextSelected.id, layerId: nextSelected.layers[0]?.id ?? "" });
