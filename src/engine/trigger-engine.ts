@@ -4,10 +4,11 @@ import { DeckProgramController } from "./deck-program-controller.js";
 import type { ProgramState } from "./program-engine.js";
 import { OutputEngine } from "./output-engine.js";
 import { assertValidTriggerAction } from "./trigger-validator.js";
+import type { Scene } from "../domain/scene.js";
 
 export type { TriggerAction } from "../domain/trigger.js";
 
-export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; readonly compositionIdForDeck?: (deckId: string) => string; }
+export interface TriggerContext { readonly decks: ReadonlyMap<string, Deck>; readonly controller: DeckProgramController; readonly output?: OutputEngine; readonly scene?: Scene; readonly compositionIdForDeck?: (deckId: string) => string; }
 
 export class TriggerEngine {
   execute(action: TriggerAction, context: TriggerContext): ProgramState {
@@ -45,6 +46,10 @@ export class TriggerEngine {
   }
   private syncOutputs(state: ProgramState, context: TriggerContext): void {
     if(!context.output || !state.source) return;
+    if (context.scene && context.scene.compositionId === state.compositionId) {
+      context.output.syncFromScene(context.scene, state.source);
+      return;
+    }
     context.output.syncFromProgram(state.source,state.compositionId);
     context.output.syncFromDeck(state.source.deckId,state.source,state.compositionId);
   }
