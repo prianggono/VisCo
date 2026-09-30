@@ -812,6 +812,7 @@ export function App() {
     scenes: sceneRuntime.list(),
     sources: libraryEngine.list(),
     outputs: outputEngine.list(),
+    selectedCompositionId: activeCompositionId,
     activeSceneIds: Object.fromEntries(compositions.map((composition) => {
       const active = sceneRuntime.getActive(composition.id);
       return active ? [composition.id, active.id] : [];
@@ -827,7 +828,7 @@ export function App() {
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
     const loadedDecks = snapshot.decks as Deck[];
-    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); deckRuntime.replaceAll(loadedDecks); programEngine.clear("default");
+    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); setSelectedCompositionId(snapshot.selectedCompositionId && snapshot.compositions.some((composition) => composition.id === snapshot.selectedCompositionId) ? snapshot.selectedCompositionId : (snapshot.compositions[0]?.id ?? "default")); deckRuntime.replaceAll(loadedDecks); programEngine.clear("default");
     setSlices([...snapshot.slices]); setGroups([...snapshot.groups]); groupEngine.replaceAll(snapshot.groups);
     libraryEngine.replaceAll(snapshot.sources); setLibraryItems([...snapshot.sources]); setLibrarySearch("");
     const persistedOutputs = snapshot.outputs.length ? snapshot.outputs : outputEngine.list(); const byId = new Map(persistedOutputs.map((o) => [o.id, o]));
@@ -941,21 +942,28 @@ export function App() {
         : composition.deckIds.filter((id) => id !== selectedDeck.id)
     })));
     setSelectedLayer({ deckId: selectedDeck.id, layerId: selectedDeck.layers[0]?.id ?? "" });
+    setProjectDirty(true);
     setProjectMessage(selectedDeck.name + " assigned to Composition.");
   };
 
   const renameComposition = (compositionId: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
+    const target = compositions.find((composition) => composition.id === compositionId);
+    if (target?.locked) { setProjectMessage("Composition is locked."); return; }
     setCompositions((items) => items.map((composition) =>
       composition.id === compositionId ? { ...composition, name: trimmed } : composition
     ));
+    setProjectDirty(true);
   };
 
   const updateCompositionFormat = (compositionId: string, patch: Partial<Composition["format"]>) => {
+    const target = compositions.find((composition) => composition.id === compositionId);
+    if (target?.locked) { setProjectMessage("Composition is locked."); return; }
     setCompositions((items) => items.map((composition) =>
       composition.id === compositionId ? { ...composition, format: { ...composition.format, ...patch } } : composition
     ));
+    setProjectDirty(true);
   };
 
   const deleteComposition = (compositionId: string) => {
