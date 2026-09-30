@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Slice, SlicePoint } from "../domain/slice.js";
 
@@ -12,8 +13,9 @@ export interface SliceCanvasProps {
 }
 
 export function SliceCanvas({ slice, width = 360, height = 200, guides = true, onMovePoint, onAddPoint, onRemovePoint }: SliceCanvasProps) {
+  const [zoom, setZoom] = useState(1);
   if (!slice) return <div className="property-empty">Select a Slice to edit mapping.</div>;
-  const sx = width / Math.max(1, slice.transform.width), sy = height / Math.max(1, slice.transform.height);
+  const sx = (width / Math.max(1, slice.transform.width)) * zoom, sy = (height / Math.max(1, slice.transform.height)) * zoom;
   const snap = (value: number, size: number) => Math.round(value / size) * size;
   const toPoint = (clientX: number, clientY: number, rect: DOMRect): SlicePoint => {
     const raw = { x: (clientX - rect.left) / sx + slice.transform.x, y: (clientY - rect.top) / sy + slice.transform.y };
@@ -25,7 +27,7 @@ export function SliceCanvas({ slice, width = 360, height = 200, guides = true, o
   const gridSize = Math.max(1, slice.mapping?.gridSize ?? 16);
   const gridX = Math.max(1, Math.floor(slice.transform.width / gridSize)), gridY = Math.max(1, Math.floor(slice.transform.height / gridSize));
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="slice-editor-canvas"
+    <div className="slice-canvas-wrap"><div className="slice-canvas-nav"><button onClick={() => setZoom((v) => Math.max(.5, v - .25))}>−</button><span>{Math.round(zoom * 100)}%</span><button onClick={() => setZoom((v) => Math.min(3, v + .25))}>+</button><button onClick={() => setZoom(1)}>FIT</button></div><svg width={width} height={height} viewBox={"0 0 " + width / zoom + " " + height / zoom} className="slice-editor-canvas"
       onDoubleClick={(event) => onAddPoint(toPoint(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect()))}>
       <rect x="0" y="0" width={width} height={height} fill="none" stroke="currentColor" strokeOpacity=".35" />
       {slice.mapping?.snapToGrid && <g className="slice-grid">
@@ -37,7 +39,7 @@ export function SliceCanvas({ slice, width = 360, height = 200, guides = true, o
       {(slice.mapping?.points ?? []).map((point,index) => { const p=svgPoint(point); return <circle key={index} cx={p.x} cy={p.y} r="6" fill="currentColor"
         onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => { event.currentTarget.setPointerCapture(event.pointerId); const rect=event.currentTarget.ownerSVGElement?.getBoundingClientRect(); if(!rect)return; const move=(e:PointerEvent)=>onMovePoint(index,toPoint(e.clientX,e.clientY,rect)); const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);}; window.addEventListener("pointermove",move);window.addEventListener("pointerup",up); }}
         onDoubleClick={(event)=>{event.stopPropagation();onRemovePoint(index);}}/>; })}
-    </svg>
+    </svg></div>
   );
 }
 
