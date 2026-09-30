@@ -379,18 +379,19 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::renderComposition(const std::
     for(UINT y=0;y<layer.frame->height;++y) memcpy((unsigned char*)mapped.pData+(size_t)y*mapped.RowPitch,layer.frame->bgra.data()+(size_t)y*rowBytes,rowBytes);
     context_->Unmap(videoTexture_.Get(),0);
     std::array<Vertex,6> vertices{};
+    const float radians = layer.rotation * 3.14159265358979323846f / 180.0f;
     if(layer.mappingMode=="corner-pin"){
       const float* p=layer.mappingPoints.data();
       vertices={{{p[0],p[1],0,0},{p[2],p[3],1,0},{p[4],p[5],1,1},{p[0],p[1],0,0},{p[4],p[5],1,1},{p[6],p[7],0,1}}};
     } else {
-      const float cx=layer.x+layer.width*0.5f, cy=layer.y+layer.height*0.5f, sx=layer.scaleX, sy=layer.scaleY, r=layer.rotation*3.14159265358979323846f/180.0f, cc=std::cos(r), ss=std::sin(r);
+      const float cx=layer.x+layer.width*0.5f, cy=layer.y+layer.height*0.5f, sx=layer.scaleX, sy=layer.scaleY, cc=std::cos(radians), ss=std::sin(radians);
       const auto tp=[&](float px,float py){float lx=(px-cx)*sx,ly=(py-cy)*sy;return std::pair<float,float>{cx+lx*cc-ly*ss,cy+lx*ss+ly*cc};};
       const auto a=tp(layer.x,layer.y),b=tp(layer.x+layer.width,layer.y),d=tp(layer.x,layer.y+layer.height),e2=tp(layer.x+layer.width,layer.y+layer.height);
       vertices={{{a.first,a.second,0,0},{b.first,b.second,1,0},{e2.first,e2.second,1,1},{a.first,a.second,0,0},{e2.first,e2.second,1,1},{d.first,d.second,0,1}}};
     }
     D3D11_MAPPED_SUBRESOURCE gm{}; if(FAILED(context_->Map(geometryVertexBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&gm))) continue; memcpy(gm.pData,vertices.data(),sizeof(vertices)); context_->Unmap(geometryVertexBuffer_.Get(),0);
     UINT stride=sizeof(Vertex),offset=0; ID3D11Buffer* vb=geometryVertexBuffer_.Get(); context_->IASetVertexBuffers(0,1,&vb,&stride,&offset);
-    cb.rect[0]=layer.x;cb.rect[1]=layer.y;cb.rect[2]=layer.width;cb.rect[3]=layer.height; cb.rotation[0]=r; cb.scaleOpacity[0]=layer.scaleX;cb.scaleOpacity[1]=layer.scaleY;cb.scaleOpacity[2]=layer.opacity;
+    cb.rect[0]=layer.x;cb.rect[1]=layer.y;cb.rect[2]=layer.width;cb.rect[3]=layer.height; cb.rotation[0]=radians; cb.scaleOpacity[0]=layer.scaleX;cb.scaleOpacity[1]=layer.scaleY;cb.scaleOpacity[2]=layer.opacity;
     cb.crop[0]=std::clamp(layer.cropLeft,0.0f,1.0f);cb.crop[1]=std::clamp(layer.cropTop,0.0f,1.0f);cb.crop[2]=std::clamp(layer.cropRight,0.0f,1.0f);cb.crop[3]=std::clamp(layer.cropBottom,0.0f,1.0f);
     D3D11_MAPPED_SUBRESOURCE cm{}; if(FAILED(context_->Map(transformBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&cm))) continue; memcpy(cm.pData,&cb,sizeof(cb)); context_->Unmap(transformBuffer_.Get(),0);
     context_->VSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf()); context_->PSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf()); context_->PSSetShaderResources(0,1,videoView_.GetAddressOf()); context_->Draw(6,0); ID3D11ShaderResourceView* nullSrv=nullptr; context_->PSSetShaderResources(0,1,&nullSrv);
