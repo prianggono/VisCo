@@ -121,6 +121,7 @@ export function App() {
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const [outputSettings, setOutputSettings] = useState<"stream" | "record" | "display" | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const groupEngine = useMemo(() => new GroupEngine(), []);
   const nativeHost = useMemo(() => new NativeHostHttpBridge(), []);
@@ -771,10 +772,10 @@ export function App() {
         <nav className="topnav">
           <button onClick={saveProject}>Save</button><button className="history-button" disabled={historyRef.current.past.length === 0} onClick={undo} title="Ctrl/Cmd+Z">↶ Undo</button><button className="history-button" disabled={historyRef.current.future.length === 0} onClick={redo} title="Ctrl/Cmd+Shift+Z">↷ Redo</button><button className={autoSaveEnabled ? "autosave-button enabled" : "autosave-button"} onClick={() => setAutoSaveEnabled((v) => !v)}>{autoSaveEnabled ? "AUTO" : "AUTO OFF"}</button>
           <label className="topnav-file">Open<input type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) loadProject(file); event.target.value = ""; }} /></label>
-          <button>Edit</button><button>View</button><button>Settings</button>
+          <button>Edit</button><button>View</button><button onClick={() => setShowSettings(true)}>Settings</button>
           {recoveryAvailable && <span className="recovery-controls"><button onClick={recoverAutosave}>Recover</button><button onClick={discardAutosave}>Discard</button></span>}{projectMessage && <span className="project-message">{projectMessage}</span>}
         </nav>
-        <div className="status"><span className="status-dot" /> SYSTEM READY</div>
+        <div className="status"><span className="status-dot" /> SYSTEM READY <small className="top-status-detail">{nativeHostState.toUpperCase()} · {runtimeAdapters.filter((adapter) => adapter.available).length}/3</small></div>
       </header>
 
       <section
