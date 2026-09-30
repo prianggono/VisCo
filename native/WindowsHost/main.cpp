@@ -220,7 +220,7 @@ class HttpControlServer {
           if (item.empty()) continue;
           std::stringstream fields(item); std::string f; std::vector<std::string> v;
           while (std::getline(fields, f, '|')) v.push_back(f);
-          if (v.size() != 25) throw std::runtime_error("Invalid render layer descriptor.");
+          if (v.size() < 17 || ((v.size() - 17) % 2) != 0) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
           layer.sourceId = v[1];
           layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
@@ -233,14 +233,15 @@ class HttpControlServer {
           if (!v[14].empty()) layer.cropBottom=std::stof(v[14]);
           layer.sliceId=v[15];
           layer.mappingMode=v[16].empty() ? "rectangle" : v[16];
-          for (int i=0; i<4; ++i) {
-            if (!v[17 + i*2].empty()) layer.mappingPoints[static_cast<size_t>(i*2)] = std::stof(v[17 + i*2]);
-            if (!v[18 + i*2].empty()) layer.mappingPoints[static_cast<size_t>(i*2 + 1)] = std::stof(v[18 + i*2]);
+          for (size_t i=17; i<v.size(); i+=2) {
+            if (v[i].empty() || v[i+1].empty()) throw std::runtime_error("Mapping point requires x and y.");
+            layer.mappingPoints.emplace_back(std::stof(v[i]), std::stof(v[i+1]));
           }
-          if (layer.mappingMode == "corner-pin") {
-            for (int i=0; i<4; ++i) {
-              if (v[17 + i*2].empty() || v[18 + i*2].empty()) throw std::runtime_error("Corner-pin layer requires four mapping points.");
-            }
+          if (layer.mappingMode == "corner-pin" && layer.mappingPoints.size() != 4) {
+            throw std::runtime_error("Corner-pin layer requires four mapping points.");
+          }
+          if (layer.mappingMode == "polygon" && layer.mappingPoints.size() < 3) {
+            throw std::runtime_error("Polygon layer requires at least three mapping points.");
           }
           parsed.push_back(std::move(layer));
         }
