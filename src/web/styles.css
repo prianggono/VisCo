@@ -117,3 +117,6 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .operator-mode .media-bar{padding:8px 14px}.operator-mode .deck-row{min-height:155px}.operator-mode .layer-card{width:128px;flex-basis:128px}.operator-mode .layer-name{font-size:10px}.operator-mode .layer-tools{font-size:9px}
 .topbar button:focus-visible,.output-button:focus-visible,.layer-card button:focus-visible,.library-item:focus-visible,.property-row:focus-visible{outline:1px solid #8ba9cb;outline-offset:1px}
 @media (max-width:900px){.settings-grid,.deck-settings-grid{grid-template-columns:1fr}.diagnostic-grid{grid-template-columns:1fr}.media-bar{gap:4px}.resolution{display:none}.safety-controls{margin-left:auto}}
+
+/* Scene Manager CRUD */
+.scene-manager-actions{display:flex;justify-content:flex-end;margin-bottom:4px}.scene-manager-row>div:first-child{min-width:0;flex:1}.scene-name-input{width:100%;box-sizing:border-box;background:transparent;border:1px solid transparent;border-radius:3px;color:#dce3eb;font-size:10px;padding:3px 4px}.scene-name-input:hover,.scene-name-input:focus{background:#10161d;border-color:#34404e;outline:none}.scene-row-actions{display:flex;gap:4px}.scene-row-actions button:disabled{opacity:.35;cursor:not-allowed}
