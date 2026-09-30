@@ -71,6 +71,8 @@ export function App() {
   }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
   const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
 
   const [workspace, setWorkspace] = useState({ library: 190, properties: 220 });
   const outputEngine = useMemo(() => {
@@ -332,6 +334,67 @@ export function App() {
   const toggleSelectedGroup = (groupId: string) => {
     groupEngine.toggleCollapsed(groupId);
     setGroups([...groupEngine.list()]);
+    setSelectedGroupId(groupId);
+  };
+
+  const addLayerToGroup = (groupId: string, layerId: string) => {
+    try {
+      groupEngine.addLayer(groupId, layerId);
+      setGroups([...groupEngine.list()]);
+      setSelectedGroupId(groupId);
+      setProjectMessage("Layer added to group.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Unable to add layer to group.");
+    }
+  };
+
+  const removeLayerFromGroup = (groupId: string, layerId: string) => {
+    groupEngine.removeLayer(groupId, layerId);
+    setGroups([...groupEngine.list()]);
+  };
+
+  const renameGroup = (groupId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    groupEngine.update(groupId, { name: trimmed });
+    setGroups([...groupEngine.list()]);
+    setEditingGroupId(null);
+  };
+
+  const cloneGroup = (groupId: string) => {
+    try {
+      const clone = groupEngine.clone(groupId, "group-" + Date.now());
+      setGroups([...groupEngine.list()]);
+      setSelectedGroupId(clone.id);
+      setProjectMessage(clone.name + " created.");
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Group clone failed.");
+    }
+  };
+
+  const deleteGroup = (groupId: string) => {
+    groupEngine.replaceAll(groupEngine.list().filter((group) => group.id !== groupId));
+    setGroups([...groupEngine.list()]);
+    if (selectedGroupId === groupId) setSelectedGroupId(null);
+    if (editingGroupId === groupId) setEditingGroupId(null);
+  };
+
+  const reorderGroupLayer = (groupId: string, layerId: string, direction: -1 | 1) => {
+    const group = groupEngine.get(groupId);
+    const index = group.layerIds.indexOf(layerId);
+    if (index < 0) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= group.layerIds.length) return;
+    const layerIds = [...group.layerIds];
+    [layerIds[index], layerIds[nextIndex]] = [layerIds[nextIndex], layerIds[index]];
+    groupEngine.update(groupId, { layerIds });
+    setGroups([...groupEngine.list()]);
+  };
+
+  const handleGroupDrop = (event: DragEvent<HTMLDivElement>, groupId: string) => {
+    event.preventDefault();
+    const layerId = event.dataTransfer.getData("text/visco-layer-id");
+    if (layerId) addLayerToGroup(groupId, layerId);
   };
 
   const updateSelectedScale = (axis: "scaleX" | "scaleY", value: number) => {
@@ -783,6 +846,38 @@ export function App() {
           <div className="decks">
             <div className="deck-toolbar">
               <button className="add-deck-button" onClick={() => setShowAddDeck((value) => !value)}>+ Add Deck</button>
+              {groups.length > 0 && (
+                <div className="group-toolbar" aria-label="Group controls">
+                  <span className="group-toolbar-label">GROUPS</span>
+                  {groups.map((group) => (
+                    <div
+                      key={group.id}
+                      className={selectedGroupId === group.id ? "group-chip selected" : "group-chip"}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => handleGroupDrop(event, group.id)}
+                    >
+                      {editingGroupId === group.id ? (
+                        <input
+                          className="group-rename-input"
+                          autoFocus
+                          defaultValue={group.name}
+                          onBlur={(event) => renameGroup(group.id, event.currentTarget.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") renameGroup(group.id, event.currentTarget.value);
+                            if (event.key === "Escape") setEditingGroupId(null);
+                          }}
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                      ) : (
+                        <button className="group-chip-name" onClick={() => setSelectedGroupId(group.id)}>{group.name}</button>
+                      )}
+                      <button className="group-chip-action" title={group.collapsed ? "Expand group" : "Collapse group"} onClick={() => toggleSelectedGroup(group.id)}>{group.collapsed ? "▸" : "▾"}</button>
+                      <button className="group-chip-action" title="Rename group" onClick={() => { setSelectedGroupId(group.id); setEditingGroupId(group.id); }}>✎</button>
+                      <button className="group-chip-action" title="Clone group" onClick={() => cloneGroup(group.id)}>⧉</button>
+                    </div>
+                  ))}
+                </div>
+              )}
               {showAddDeck && (
                 <div className="add-deck-menu">
                   <button onClick={() => addDeck("visual")}><b>Visual Deck</b><small>Video, image, capture & composition</small></button>
@@ -863,7 +958,12 @@ export function App() {
                         ? libraryEngine.get(layer.sourceId).name
                         : undefined;
                       return (
-                        <article className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")} key={layer.id}>
+                        <article
+                          className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
+                          key={layer.id}
+                          draggable
+                          onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
+                        >
                           <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
                             <span>{layer.name}</span>{isPreview && <small>PREVIEW</small>}
                           </button>
@@ -961,11 +1061,36 @@ export function App() {
                       />
                     </label>
                   </div>}
-                  {item === "Layering" && <><div className="property-grid">
-                    <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
-                    <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
-                    <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
-                  </div><div className="property-buttons"><button onClick={createGroupFromSelectedLayer}>+ Group Selected Layer</button>{groups.filter((group) => group.layerIds.includes(selectedLayerModel?.id ?? "")).map((group) => <button key={group.id} onClick={() => toggleSelectedGroup(group.id)}>{group.collapsed ? "Expand" : "Collapse"} {group.name}</button>)}</div></>}
+                  {item === "Layering" && <>
+                    <div className="property-grid">
+                      <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
+                      <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
+                      <label>Blend<input value={selectedLayerModel?.blendMode ?? "Normal"} onChange={(event) => updateSelectedLayer({ blendMode: event.target.value })} /></label>
+                    </div>
+                    <div className="property-buttons"><button onClick={createGroupFromSelectedLayer}>+ Group Selected Layer</button></div>
+                    {selectedGroupId && (() => {
+                      const group = groups.find((item) => item.id === selectedGroupId);
+                      if (!group) return null;
+                      return <div className="group-manager">
+                        <div className="group-manager-head">
+                          <strong>{group.name}</strong>
+                          <button onClick={() => deleteGroup(group.id)} title="Remove group">Remove</button>
+                        </div>
+                        <div className="group-manager-note">Drag Layer cards onto the group chip above to add them.</div>
+                        {group.layerIds.length === 0 ? <div className="property-empty">No layers in this group.</div> : group.layerIds.map((layerId, index) => {
+                          const layer = decks.flatMap((deck) => deck.layers).find((item) => item.id === layerId);
+                          return <div className="group-member-row" key={layerId}>
+                            <span>{index + 1}. {layer?.name ?? layerId}</span>
+                            <div>
+                              <button disabled={index === 0} onClick={() => reorderGroupLayer(group.id, layerId, -1)}>↑</button>
+                              <button disabled={index === group.layerIds.length - 1} onClick={() => reorderGroupLayer(group.id, layerId, 1)}>↓</button>
+                              <button onClick={() => removeLayerFromGroup(group.id, layerId)}>×</button>
+                            </div>
+                          </div>;
+                        })}
+                      </div>;
+                    })()}
+                  </>}
                   {item === "Audio" && (() => {
                     const audio = selectedLayerModel?.audio ?? { volume: 100, pan: 0 };
                     return <><label>Volume<input type="range" min="0" max="100" value={audio.volume} onChange={(event) => updateSelectedAudio({ volume: Number(event.target.value) })} /></label><label>Pan<input type="range" min="-100" max="100" value={audio.pan} onChange={(event) => updateSelectedAudio({ pan: Number(event.target.value) })} /></label><div className="property-value">{audio.volume}% · Pan {audio.pan}</div></>;
