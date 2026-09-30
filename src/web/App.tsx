@@ -1583,6 +1583,28 @@ export function App() {
           <div className="input-select-footer"><div className="modal-drop">Diagnostics are read-only. Backend/runtime implementation remains separate from this operator view.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setDiagnosticsOpen(false)}>CLOSE</button></div></div>
         </div>
       </div>}
+      {compositionManagerOpen && (
+        <div className="modal-backdrop" onClick={() => setCompositionManagerOpen(false)}>
+          <div className="add-input-modal composition-manager-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>COMPOSITION MANAGER</strong><span>Render canvas and deck membership.</span></div><button onClick={() => setCompositionManagerOpen(false)}>×</button></div>
+            <div className="scene-manager-list">
+              <div className="scene-manager-actions"><button className="modal-add" onClick={createComposition}>+ NEW COMPOSITION</button></div>
+              {compositions.map((composition) => <div className={activeCompositionId === composition.id ? "scene-manager-row active" : "scene-manager-row"} key={composition.id}>
+                <div className="composition-manager-main">
+                  <input className="scene-name-input" value={composition.name} onChange={(event) => renameComposition(composition.id, event.target.value)} />
+                  <small>{composition.format.width}×{composition.format.height} · {composition.format.fps} FPS · {composition.format.bitDepth}-bit · {composition.deckIds.length} DECKS</small>
+                  <div className="settings-row"><span>Width</span><input type="number" min="320" max="16384" value={composition.format.width} onChange={(event) => updateCompositionFormat(composition.id, { width: Math.max(320, Number(event.target.value) || 320) })}/></div>
+                  <div className="settings-row"><span>Height</span><input type="number" min="240" max="16384" value={composition.format.height} onChange={(event) => updateCompositionFormat(composition.id, { height: Math.max(240, Number(event.target.value) || 240) })}/></div>
+                  <div className="settings-row"><span>FPS</span><input type="number" min="1" max="120" value={composition.format.fps} onChange={(event) => updateCompositionFormat(composition.id, { fps: Math.max(1, Math.min(120, Number(event.target.value) || 30)) })}/></div>
+                  <div className="settings-row"><span>Bit Depth</span><select value={composition.format.bitDepth} onChange={(event) => updateCompositionFormat(composition.id, { bitDepth: Number(event.target.value) as 8 | 10 })}><option value={8}>8-bit</option><option value={10}>10-bit</option></select></div>
+                </div>
+                <div className="scene-row-actions"><button onClick={() => { const deck = decks.find((item) => composition.deckIds.includes(item.id)); if (deck) setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" }); setCompositionManagerOpen(false); }}>ACTIVATE</button><button onClick={() => deleteComposition(composition.id)} disabled={compositions.length <= 1 || composition.deckIds.length > 0}>DELETE</button></div>
+              </div>)}
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Composition owns format and canvas membership. Scene owns output routing.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setCompositionManagerOpen(false)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
       {sceneManagerOpen && <div className="modal-backdrop" onClick={() => setSceneManagerOpen(false)}>
         <div className="add-input-modal scene-manager-modal" onClick={(event) => event.stopPropagation()}>
           <div className="modal-head"><div><strong>SCENE MANAGER</strong><span>Output routing presets.</span></div><button onClick={() => setSceneManagerOpen(false)}>×</button></div>
