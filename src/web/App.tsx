@@ -164,6 +164,7 @@ export function App() {
   }]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const relinkInputRef = useRef<HTMLInputElement>(null);
   const [pendingInputKind, setPendingInputKind] = useState<SourceKind | null>(null);
   const [selectedInputKind, setSelectedInputKind] = useState<SourceKind>("video");
   const [discoveredDevices, setDiscoveredDevices] = useState<readonly DiscoveredDevice[]>([]);
@@ -1199,6 +1200,7 @@ export function App() {
               <div className="library-inspector-head"><strong>{source.name}</strong><small>{source.kind.toUpperCase()}</small></div>
               <div className="library-actions">
                 <button onClick={() => setEditingSourceId(source.id)}>RENAME</button>
+                <button onClick={() => { setRelinkSourceId(source.id); relinkInputRef.current?.click(); }}>RELINK</button>
                 <button onClick={() => duplicateSource(source)}>DUPLICATE</button>
                 <button onClick={() => removeSource(source)}>REMOVE</button>
               </div>
@@ -1774,6 +1776,7 @@ export function App() {
             </div>
             <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
             <input ref={folderInputRef} type="file" multiple hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={handleInputFiles} />
+            <input ref={relinkInputRef} type="file" hidden onChange={handleRelinkFile} />
           </div>
         </div>
       )}
