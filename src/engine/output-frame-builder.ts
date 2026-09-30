@@ -46,7 +46,9 @@ export function createOutputFrame(
   }
 
   // Slice owns canonical Layer references. A Slice never duplicates Layer state.
-  const programLayerIds = new Set(program.layers.map((layer) => layer.id));
+  const hasSolo = program.layers.some((layer) => layer.solo === true);
+  const renderableProgramLayers = program.layers.filter((layer) => layer.visible !== false && (!hasSolo || layer.solo === true));
+  const programLayerIds = new Set(renderableProgramLayers.map((layer) => layer.id));
   const layerIds = [...new Set(
     selectedSlices.flatMap((slice) => slice.layerRefs
       .filter((ref) => programLayerIds.has(ref.layerId) && ref.deckId === program.source?.deckId)
@@ -55,7 +57,7 @@ export function createOutputFrame(
   const selectedLayerIds = new Set(layerIds);
   const layers = selectedSlices.length > 0
     ? selectedSlices.flatMap((slice, sliceIndex) =>
-        program.layers
+        renderableProgramLayers
           .filter((layer) => slice.layerRefs.some((ref) =>
             ref.deckId === program.source?.deckId && ref.layerId === layer.id))
           .map((layer, layerIndex) => {
@@ -83,7 +85,7 @@ export function createOutputFrame(
             };
           })
       )
-    : program.layers
+    : renderableProgramLayers
         .filter((layer) => selectedLayerIds.has(layer.id))
         .map((layer, index) => {
           const t = layer.transform;
