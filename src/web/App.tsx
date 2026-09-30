@@ -775,9 +775,20 @@ export function App() {
       }));
     });
     let cancelled = false;
-    nativeHost.setRenderLayers(renderable).catch((error) => {
-      if (!cancelled) setProjectMessage(error instanceof Error ? error.message : "Native render bridge failed.");
+    const bindings = [...new Set(renderable.map((layer) => layer.sourceId))].map((sourceId) => {
+      const source = libraryEngine.get(sourceId);
+      const deviceKind = source.metadata?.deviceKind;
+      const nativeSourceId =
+        deviceKind === "ndi" || deviceKind === "omt" || source.kind === "ndi" || source.kind === "omt"
+          ? "network"
+          : "capture";
+      return nativeHost.bindRenderSource(sourceId, nativeSourceId);
     });
+    Promise.all(bindings)
+      .then(() => nativeHost.setRenderLayers(renderable))
+      .catch((error) => {
+        if (!cancelled) setProjectMessage(error instanceof Error ? error.message : "Native render bridge failed.");
+      });
     return () => { cancelled = true; };
   }, [nativeHost, nativeHostState, activeCompositionId, compositions, decks, slices, libraryItems, programEngine, libraryEngine, runtimeRevision]);
 
