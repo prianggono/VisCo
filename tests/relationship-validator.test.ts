@@ -34,7 +34,7 @@ describe("relationship validation", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(9);
+    expect(result.errors).toHaveLength(10);
   });
 });
 
