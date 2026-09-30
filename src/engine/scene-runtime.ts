@@ -25,9 +25,14 @@ export class SceneRuntime {
     if (!scene.id.trim() || !scene.name.trim() || !scene.compositionId.trim()) throw new Error(`Scene "${scene.id}" is invalid.`);
     if (scene.target.kind === "display" && !scene.target.displayId.trim()) throw new Error(`Scene "${scene.id}" requires a display target.`);
     if (scene.target.kind === "production" && !(scene.target.record || scene.target.stream || scene.target.virtual)) throw new Error(`Production Scene "${scene.id}" must enable at least one production output.`);
+    const previous = this.scenes.get(scene.id)!;
     this.scenes.set(scene.id, scene);
-    if (this.activeByComposition.get(scene.compositionId) === scene.id && !scene.enabled) {
-      this.activeByComposition.delete(scene.compositionId);
+    const wasActive = this.activeByComposition.get(previous.compositionId) === scene.id;
+    if (wasActive && (previous.compositionId !== scene.compositionId || !scene.enabled)) {
+      this.activeByComposition.delete(previous.compositionId);
+    }
+    if (wasActive && scene.enabled) {
+      this.activeByComposition.set(scene.compositionId, scene.id);
     }
   }
 
