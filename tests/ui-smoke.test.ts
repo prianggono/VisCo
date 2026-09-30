@@ -43,9 +43,10 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await layering.scrollIntoViewIfNeeded();
   await layering.click();
   await page.getByRole("button", { name: "+ Group Selected Layer", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Collapse Group 1/ })).toBeVisible();
-  await page.getByRole("button", { name: /Collapse Group 1/ }).click();
-  await expect(page.getByRole("button", { name: /Expand Group 1/ })).toBeVisible();
+  const collapseGroup = page.getByTitle("Collapse group").first();
+  await expect(collapseGroup).toBeVisible();
+  await collapseGroup.click();
+  await expect(page.getByTitle("Expand group").first()).toBeVisible();
 
   // Slice editor: create a slice and exercise mapping mode.
   const sliceProperty = page.locator(".property-row").filter({ hasText: "Slice" }).first();
