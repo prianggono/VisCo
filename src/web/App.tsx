@@ -18,6 +18,7 @@ import { SliceCanvas } from "./SliceCanvas.js";
 import type { Group } from "../domain/group.js";
 import { createProjectSnapshot, serializeProject, parseProject } from "../engine/project-persistence.js";
 import { DeviceDiscoveryEngine, NativeDeviceDiscoveryProvider } from "../engine/device-discovery.js";
+import { validateRelationships } from "../engine/relationship-validator.js";
 import { NativeHostHttpBridge } from "../native/native-host-http.js";
 import { sourceKindForDevice, type DiscoveredDevice } from "../domain/device.js";
 import type { Deck as DomainDeck, Layer, Transition } from "../domain/deck.js";
@@ -874,6 +875,19 @@ export function App() {
   };
 
   const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
+    const validation = validateRelationships({
+      compositions: snapshot.compositions,
+      decks: snapshot.decks,
+      groups: snapshot.groups,
+      layers: snapshot.layers,
+      slices: snapshot.slices,
+      sources: snapshot.sources,
+      scenes: snapshot.scenes
+    });
+    if (!validation.valid) {
+      setProjectMessage("Project rejected: " + validation.errors.join(" "));
+      return;
+    }
     const loadedDecks = snapshot.decks as Deck[];
     setDecks(loadedDecks);
     setCompositions([...snapshot.compositions]);
