@@ -1173,6 +1173,8 @@ export function App() {
   }, []);
   useEffect(() => { const raw=localStorage.getItem("visco-autosave-v1"); if(raw){try{const saved=JSON.parse(raw) as {project?:string}; if(saved.project)setRecoveryAvailable(true);}catch{localStorage.removeItem("visco-autosave-v1");}}}, []);
   useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
+  const saveProjectRef = useRef(saveProject);
+  useEffect(() => { saveProjectRef.current = saveProject; });
   useEffect(() => {
     const onKeyDown=(event:KeyboardEvent)=>{
       const target=event.target as HTMLElement|null;
@@ -1181,7 +1183,7 @@ export function App() {
       if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
       if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}
       else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}
-      else if(event.key.toLowerCase()==="s"){event.preventDefault();saveProject();}
+      else if(event.key.toLowerCase()==="s"){event.preventDefault();saveProjectRef.current();}
     };
     window.addEventListener("keydown",onKeyDown);
     return()=>window.removeEventListener("keydown",onKeyDown);
@@ -1480,8 +1482,6 @@ export function App() {
                       <button onClick={() => updateSelectedPlayback({ playing: true })}>▶ Play</button>
                       <button onClick={() => updateSelectedPlayback({ playing: false })}>Ⅱ Pause</button>
                       <button className={playback?.loop ? "active" : ""} onClick={() => updateSelectedPlayback({ loop: !playback?.loop })}>↻ Loop</button>
-                      <button onClick={() => updateSelectedPlayback({ playing: false })}>⏮ Start</button>
-                      <button onClick={() => updateSelectedPlayback({ playing: true })}>↺ Restart</button>
                     </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
                   })()}
                   {item === "Transform" && <>
