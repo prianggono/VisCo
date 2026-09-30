@@ -118,6 +118,7 @@ export function App() {
   }, []);
   const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
   const [showAddDeck, setShowAddDeck] = useState(false);
+  const [compositionManagerOpen, setCompositionManagerOpen] = useState(false);
   const [projectMessage, setProjectMessage] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   const [outputSettings, setOutputSettings] = useState<"stream" | "record" | "display" | null>(null);
