@@ -1158,7 +1158,7 @@ export function App() {
             onDragOver={(event) => event.preventDefault()}
             onDrop={handleLibraryDrop}
           >
-            <button className="add-input-button" onClick={openInputDialog}>+ ADD INPUT</button>
+            <button className="add-input-button" onClick={openInputDialog}>+ ADD INPUT</button><button className="add-input-button" onClick={() => folderInputRef.current?.click()}>+ ADD FOLDER</button>
 
             {libraryItems.length === 0 ? (
               <div className="library-empty">Drag & drop files here</div>
@@ -1760,6 +1760,7 @@ export function App() {
               </div>
             </div>
             <input ref={fileInputRef} type="file" multiple hidden onChange={handleInputFiles} />
+            <input ref={folderInputRef} type="file" multiple hidden {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={handleInputFiles} />
           </div>
         </div>
       )}
