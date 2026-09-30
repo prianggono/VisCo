@@ -54,3 +54,26 @@ describe("output pipeline", () => {
     expect(pipeline.getFrameNumber()).toBe(0);
   });
 });
+
+
+describe("output pipeline layer state", () => {
+  it("does not emit invisible layers", () => {
+    const hidden = { ...layer, visible: false };
+    const p = { ...program, layer: hidden, layers: [hidden] };
+    const frame = new OutputPipeline().nextFrame(p, scene, composition, slices);
+    expect(frame.layerIds).toEqual([]);
+    expect(frame.layers).toEqual([]);
+  });
+
+  it("emits only solo layers when solo mode is active", () => {
+    const first = { ...layer, id: "layer-1", solo: false };
+    const second = { ...layer, id: "layer-2", order: 1, solo: true };
+    const p = { ...program, source: { deckId: "deck-1", layerId: "layer-2" }, layer: second, layers: [first, second] };
+    const scopedSlices = [{ ...slices[0], layerRefs: [
+      { deckId: "deck-1", layerId: "layer-1" },
+      { deckId: "deck-1", layerId: "layer-2" }
+    ] }];
+    const frame = new OutputPipeline().nextFrame(p, scene, composition, scopedSlices);
+    expect(frame.layerIds).toEqual(["layer-2"]);
+  });
+});
