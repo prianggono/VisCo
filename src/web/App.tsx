@@ -555,7 +555,6 @@ export function App() {
     if (!target) return;
     const nextDecks = decks.filter((deck) => deck.id !== deckId);
     setDecks(nextDecks);
-    setSelectedCompositionId(compositionId);
     setProjectDirty(true);
     setCompositions((items) => items.map((composition) => ({
       ...composition,
