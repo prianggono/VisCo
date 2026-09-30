@@ -122,6 +122,10 @@ export function App() {
   const [showAddInput, setShowAddInput] = useState(false);
   const [outputSettings, setOutputSettings] = useState<"stream" | "record" | "display" | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEditMenu, setShowEditMenu] = useState(false);
+  const [showViewMenu, setShowViewMenu] = useState(false);
+  const [operatorMode, setOperatorMode] = useState(false);
+  const [deckSettingsId, setDeckSettingsId] = useState<string | null>(null);
   const libraryEngine = useMemo(() => new LibraryEngine(), []);
   const groupEngine = useMemo(() => new GroupEngine(), []);
   const nativeHost = useMemo(() => new NativeHostHttpBridge(), []);
@@ -410,6 +414,10 @@ export function App() {
     if (!selectedLayerModel) return;
     const transform = setLayerScale(selectedLayerModel.transform, axis, value);
     updateSelectedLayer({ transform });
+  };
+
+  const updateDeck = (deckId: string, patch: Partial<Deck>) => {
+    setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, ...patch } : deck));
   };
 
   const addDeck = (kind: DeckKind) => {
@@ -763,7 +771,7 @@ export function App() {
   const recoverAutosave=()=>{const raw=localStorage.getItem("visco-autosave-v1");if(!raw)return;try{const saved=JSON.parse(raw) as {project?:string};if(saved.project)restoreSnapshot(parseProject(saved.project),"Autosave recovered.");historyRef.current={past:[],future:[]};setRecoveryAvailable(false);setHistoryRevision((v)=>v+1);}catch(error){setProjectMessage(error instanceof Error?error.message:"Autosave recovery failed.");}};
   const discardAutosave=()=>{localStorage.removeItem("visco-autosave-v1");setRecoveryAvailable(false);setProjectMessage("Autosave discarded.");};
   return (
-    <main className="app-shell">
+    <main className={operatorMode ? "app-shell operator-mode" : "app-shell"}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">V</div>
@@ -772,7 +780,7 @@ export function App() {
         <nav className="topnav">
           <button onClick={saveProject}>Save</button><button className="history-button" disabled={historyRef.current.past.length === 0} onClick={undo} title="Ctrl/Cmd+Z">↶ Undo</button><button className="history-button" disabled={historyRef.current.future.length === 0} onClick={redo} title="Ctrl/Cmd+Shift+Z">↷ Redo</button><button className={autoSaveEnabled ? "autosave-button enabled" : "autosave-button"} onClick={() => setAutoSaveEnabled((v) => !v)}>{autoSaveEnabled ? "AUTO" : "AUTO OFF"}</button>
           <label className="topnav-file">Open<input type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) loadProject(file); event.target.value = ""; }} /></label>
-          <button>Edit</button><button>View</button><button onClick={() => setShowSettings(true)}>Settings</button>
+          <div className="topnav-menu"><button onClick={() => { setShowEditMenu((v) => !v); setShowViewMenu(false); }}>Edit</button>{showEditMenu && <div className="topnav-dropdown"><button onClick={() => { undo(); setShowEditMenu(false); }}>Undo</button><button onClick={() => { redo(); setShowEditMenu(false); }}>Redo</button><button onClick={() => { saveProject(); setShowEditMenu(false); }}>Save Project</button></div>}</div><div className="topnav-menu"><button onClick={() => { setShowViewMenu((v) => !v); setShowEditMenu(false); }}>View</button>{showViewMenu && <div className="topnav-dropdown"><button onClick={() => { setOperatorMode((v) => !v); setShowViewMenu(false); }}>{operatorMode ? "Exit Operator Mode" : "Operator Mode"}</button><button onClick={() => { setShowViewMenu(false); setProjectMessage("Preview/Program workspace active."); }}>Preview / Program</button></div>}</div><button onClick={() => setShowSettings(true)}>Settings</button>
           {recoveryAvailable && <span className="recovery-controls"><button onClick={recoverAutosave}>Recover</button><button onClick={discardAutosave}>Discard</button></span>}{projectMessage && <span className="project-message">{projectMessage}</span>}
         </nav>
         <div className="status"><span className="status-dot" /> SYSTEM READY <small className="top-status-detail">{nativeHostState.toUpperCase()} · {runtimeAdapters.filter((adapter) => adapter.available).length}/3</small></div>
@@ -944,7 +952,7 @@ export function App() {
                       ))}
                     </div>
                     <div className="deck-actions">
-                      <button className="deck-action" title="Deck settings">⚙</button>
+                      <button className="deck-action" title="Deck settings" onClick={() => setDeckSettingsId(deck.id)}>⚙</button>
                     </div>
                   </div>
 
@@ -957,7 +965,7 @@ export function App() {
                         : undefined;
                       return (
                         <article
-                          className={"layer-card " + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
+                          className={"layer-card " + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
                           key={layer.id}
                           draggable
                           onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
@@ -974,7 +982,7 @@ export function App() {
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                selectPreview(deck.id, layer.id);
+                                setSelectedLayer({ deckId: deck.id, layerId: layer.id });
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
@@ -1183,6 +1191,21 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {deckSettingsId && (() => {
+        const deck = decks.find((item) => item.id === deckSettingsId);
+        if (!deck) return null;
+        return <div className="modal-backdrop" onClick={() => setDeckSettingsId(null)}>
+          <div className="add-input-modal deck-settings-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>DECK SETTINGS</strong><span>{deck.name} · {deck.kind.toUpperCase()}</span></div><button onClick={() => setDeckSettingsId(null)}>×</button></div>
+            <div className="settings-grid deck-settings-grid">
+              <section><h4>IDENTITY</h4><label className="deck-setting-field">Deck Name<input value={deck.name} onChange={(event) => updateDeck(deck.id, { name: event.target.value })} /></label><label className="deck-setting-field">Loop<input type="checkbox" checked={Boolean(deck.loop)} onChange={(event) => updateDeck(deck.id, { loop: event.target.checked })} /></label></section>
+              <section><h4>TRANSITION</h4><label className="deck-setting-field">Type<select value={deck.transition.type} onChange={(event) => updateDeck(deck.id, { transition: { ...deck.transition, type: event.target.value as Transition["type"] } })}><option value="cut">Cut</option><option value="fade">Fade</option><option value="wipe">Wipe</option></select></label><label className="deck-setting-field">Duration (ms)<input type="number" min="0" max="10000" value={deck.transition.durationMs} onChange={(event) => updateDeck(deck.id, { transition: { ...deck.transition, durationMs: Math.max(0, Number(event.target.value) || 0) } })} /></label></section>
+              <section><h4>STATUS</h4><div className="settings-row"><span>Master</span><b>{deckRuntime.getState(deck.id).masterLevel}%</b></div><div className="settings-row"><span>Sources</span><b>{deck.layers.filter((layer) => layer.sourceId).length}</b></div><div className="settings-row"><span>Transition</span><b>{deck.transition.type.toUpperCase()}</b></div></section>
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Transition belongs to this Deck and is used when the Deck enters Program.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setDeckSettingsId(null)}>CLOSE</button></div></div>
+          </div>
+        </div>;
+      })()}
       {showSettings && (
         <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
           <div className="add-input-modal settings-modal" onClick={(event) => event.stopPropagation()}>
