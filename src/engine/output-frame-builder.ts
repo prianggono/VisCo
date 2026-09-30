@@ -77,7 +77,9 @@ export function createOutputFrame(
               ...(st.cropTop !== undefined ? { cropTop: st.cropTop } : {}),
               ...(st.cropRight !== undefined ? { cropRight: st.cropRight } : {}),
               ...(st.cropBottom !== undefined ? { cropBottom: st.cropBottom } : {}),
-              sliceId: slice.id
+              sliceId: slice.id,
+              mappingMode: slice.mapping?.mode ?? "rectangle",
+              ...(slice.mapping?.points ? { mappingPoints: slice.mapping.points.map((point) => ({ x: point.x, y: point.y })) } : {})
             };
           })
       )
