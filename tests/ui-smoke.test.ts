@@ -59,8 +59,8 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await expect(sliceSelect).toHaveValue("corner-pin");
 
   // Scene routing and output controls.
-  await page.getByRole("button", { name: "SCENE 2", exact: true }).click();
-  await expect(page.getByRole("button", { name: "SCENE 2", exact: true })).toHaveClass(/enabled/);
+  await page.getByRole("button", { name: "DISPLAY 2", exact: true }).click();
+  await expect(page.getByRole("button", { name: "DISPLAY 2", exact: true })).toHaveClass(/enabled/);
   await page.getByRole("button", { name: "FULLSCREEN", exact: true }).click();
   await page.getByRole("button", { name: "STREAM", exact: true }).click();
   await page.getByRole("button", { name: "RECORD", exact: true }).click();
