@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <numeric>
 #include <cstring>
 #include <cmath>
 #include <utility>
@@ -247,7 +248,7 @@ float4 ps(VSOut input) : SV_Target { float4 c=tex0.Sample(samp0,input.uv); c.a*=
   requireHr(device_->CreateInputLayout(layout,2,vsBlob->GetBufferPointer(),vsBlob->GetBufferSize(),&inputLayout_),"Input layout creation failed");
   D3D11_BUFFER_DESC cb{}; cb.ByteWidth=80; cb.Usage=D3D11_USAGE_DYNAMIC; cb.BindFlags=D3D11_BIND_CONSTANT_BUFFER; cb.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
   requireHr(device_->CreateBuffer(&cb,nullptr,&transformBuffer_),"Transform buffer creation failed");
-  D3D11_BUFFER_DESC geometry{}; geometry.ByteWidth=sizeof(float)*4*6; geometry.Usage=D3D11_USAGE_DYNAMIC; geometry.BindFlags=D3D11_BIND_VERTEX_BUFFER; geometry.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
+  D3D11_BUFFER_DESC geometry{}; geometry.ByteWidth=sizeof(float)*4*4096; geometry.Usage=D3D11_USAGE_DYNAMIC; geometry.BindFlags=D3D11_BIND_VERTEX_BUFFER; geometry.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
   requireHr(device_->CreateBuffer(&geometry,nullptr,&geometryVertexBuffer_),"Geometry vertex buffer creation failed");
   D3D11_BLEND_DESC blend{}; blend.RenderTarget[0].BlendEnable=TRUE; blend.RenderTarget[0].SrcBlend=D3D11_BLEND_SRC_ALPHA; blend.RenderTarget[0].DestBlend=D3D11_BLEND_INV_SRC_ALPHA; blend.RenderTarget[0].BlendOp=D3D11_BLEND_OP_ADD; blend.RenderTarget[0].SrcBlendAlpha=D3D11_BLEND_ONE; blend.RenderTarget[0].DestBlendAlpha=D3D11_BLEND_INV_SRC_ALPHA; blend.RenderTarget[0].BlendOpAlpha=D3D11_BLEND_OP_ADD; blend.RenderTarget[0].RenderTargetWriteMask=D3D11_COLOR_WRITE_ENABLE_ALL;
   requireHr(device_->CreateBlendState(&blend,&blendState_),"Blend state creation failed");
@@ -381,8 +382,48 @@ std::shared_ptr<const NativeVideoFrame> D3D11Host::renderComposition(const std::
     std::array<Vertex,6> vertices{};
     const float radians = layer.rotation * 3.14159265358979323846f / 180.0f;
     if(layer.mappingMode=="corner-pin"){
-      const float* p=layer.mappingPoints.data();
-      vertices={{{p[0],p[1],0,0},{p[2],p[3],1,0},{p[4],p[5],1,1},{p[0],p[1],0,0},{p[4],p[5],1,1},{p[6],p[7],0,1}}};
+      const auto& p=layer.mappingPoints;
+      vertices={{{p[0].first,p[0].second,0,0},{p[1].first,p[1].second,1,0},{p[2].first,p[2].second,1,1},{p[0].first,p[0].second,0,0},{p[2].first,p[2].second,1,1},{p[3].first,p[3].second,0,1}}};
+    } else if(layer.mappingMode=="polygon" && layer.mappingPoints.size() >= 3) {
+      // Simple ear clipping produces a robust triangle list for concave polygons.
+      struct PolyPoint { float x,y,u,v; };
+      std::vector<PolyPoint> pts;
+      float minX=layer.mappingPoints[0].first,maxX=minX,minY=layer.mappingPoints[0].second,maxY=minY;
+      for(const auto& point:layer.mappingPoints){ minX=std::min(minX,point.first);maxX=std::max(maxX,point.first);minY=std::min(minY,point.second);maxY=std::max(maxY,point.second); }
+      const float spanX=std::max(maxX-minX,0.0001f), spanY=std::max(maxY-minY,0.0001f);
+      for(const auto& point:layer.mappingPoints) pts.push_back({point.first,point.second,(point.first-minX)/spanX,(point.second-minY)/spanY});
+      std::vector<size_t> indices(pts.size()); std::iota(indices.begin(),indices.end(),0);
+      float area=0; for(size_t i=0;i<indices.size();++i){const auto& a=pts[indices[i]];const auto& b=pts[indices[(i+1)%indices.size()]];area+=a.x*b.y-b.x*a.y;}
+      if(area<0) std::reverse(indices.begin(),indices.end());
+      auto cross=[](const PolyPoint&a,const PolyPoint&b,const PolyPoint&c){return (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);};
+      auto inside=[](const PolyPoint&p,const PolyPoint&a,const PolyPoint&b,const PolyPoint&c){const float c1=(b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x),c2=(c.x-b.x)*(p.y-b.y)-(c.y-b.y)*(p.x-b.x),c3=(a.x-c.x)*(p.y-c.y)-(a.y-c.y)*(p.x-c.x);return c1>=-0.0001f&&c2>=-0.0001f&&c3>=-0.0001f;};
+      while(indices.size()>=3){
+        bool clipped=false;
+        for(size_t i=0;i<indices.size();++i){
+          const size_t ia=indices[(i+indices.size()-1)%indices.size()],ib=indices[i],ic=indices[(i+1)%indices.size()];
+          if(cross(pts[ia],pts[ib],pts[ic])<=0) continue;
+          bool contains=false; for(size_t j=0;j<indices.size();++j){size_t k=indices[j];if(k==ia||k==ib||k==ic)continue;if(inside(pts[k],pts[ia],pts[ib],pts[ic])){contains=true;break;}}
+          if(contains) continue;
+          const auto&a=pts[ia],&b=pts[ib],&ccp=pts[ic];
+          vertices.push_back({a.x,a.y,a.u,a.v}); vertices.push_back({b.x,b.y,b.u,b.v}); vertices.push_back({ccp.x,ccp.y,ccp.u,ccp.v});
+          indices.erase(indices.begin()+i); clipped=true; break;
+        }
+        if(!clipped) break;
+      }
+      if(vertices.empty()) continue;
+      D3D11_MAPPED_SUBRESOURCE geometryMapped{};
+      if(FAILED(context_->Map(geometryVertexBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&geometryMapped))) continue;
+      memcpy(geometryMapped.pData,vertices.data(),std::min(sizeof(Vertex)*vertices.size(),static_cast<size_t>(sizeof(Vertex)*4096)));
+      context_->Unmap(geometryVertexBuffer_.Get(),0);
+      UINT stride=sizeof(Vertex),offset=0; ID3D11Buffer* vb=geometryVertexBuffer_.Get(); context_->IASetVertexBuffers(0,1,&vb,&stride,&offset);
+      // Polygon geometry is already final; upload constants and draw its generated triangle list below.
+      D3D11_MAPPED_SUBRESOURCE cbMapped{};
+      cb.rect[0]=layer.x;cb.rect[1]=layer.y;cb.rect[2]=layer.width;cb.rect[3]=layer.height; cb.scaleOpacity[2]=layer.opacity;
+      cb.crop[0]=std::clamp(layer.cropLeft,0.0f,1.0f);cb.crop[1]=std::clamp(layer.cropTop,0.0f,1.0f);cb.crop[2]=std::clamp(layer.cropRight,0.0f,1.0f);cb.crop[3]=std::clamp(layer.cropBottom,0.0f,1.0f);
+      if(FAILED(context_->Map(transformBuffer_.Get(),0,D3D11_MAP_WRITE_DISCARD,0,&cbMapped))) continue; memcpy(cbMapped.pData,&cb,sizeof(cb));context_->Unmap(transformBuffer_.Get(),0);
+      context_->VSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf());context_->PSSetConstantBuffers(0,1,transformBuffer_.GetAddressOf());context_->PSSetShaderResources(0,1,videoView_.GetAddressOf());context_->Draw(static_cast<UINT>(std::min(vertices.size(),static_cast<size_t>(4096))),0);ID3D11ShaderResourceView* nullSrv=nullptr;context_->PSSetShaderResources(0,1,&nullSrv);continue;
+      const auto& p=layer.mappingPoints;
+      vertices={{{p[0].first,p[0].second,0,0},{p[1].first,p[1].second,1,0},{p[2].first,p[2].second,1,1},{p[0].first,p[0].second,0,0},{p[2].first,p[2].second,1,1},{p[3].first,p[3].second,0,1}}};
     } else {
       const float cx=layer.x+layer.width*0.5f, cy=layer.y+layer.height*0.5f, sx=layer.scaleX, sy=layer.scaleY, cc=std::cos(radians), ss=std::sin(radians);
       const auto tp=[&](float px,float py){float lx=(px-cx)*sx,ly=(py-cy)*sy;return std::pair<float,float>{cx+lx*cc-ly*ss,cy+lx*ss+ly*cc};};
