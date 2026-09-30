@@ -443,6 +443,21 @@ export function App() {
     setDecks((current) => current.map((deck) => deck.id === deckId ? { ...deck, ...patch } : deck));
   };
 
+  const moveLayer = (deckId: string, layerId: string, direction: -1 | 1) => {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck) return;
+    const index = deck.layers.findIndex((layer) => layer.id === layerId);
+    if (index < 0 || deck.layers[index]?.locked) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= deck.layers.length || deck.layers[targetIndex]?.locked) return;
+    const nextLayers = [...deck.layers];
+    const current = nextLayers[index]!;
+    nextLayers[index] = nextLayers[targetIndex]!;
+    nextLayers[targetIndex] = current;
+    setDecks((items) => items.map((item) => item.id === deckId ? { ...item, layers: nextLayers } : item));
+    setRuntimeRevision((value) => value + 1);
+  };
+
   const toggleLayerFlag = (flag: "visible" | "locked" | "muted" | "solo") => {
     if (!selectedLayerModel) return;
     updateSelectedLayer({ [flag]: !(selectedLayerModel[flag] ?? (flag === "visible")) });
