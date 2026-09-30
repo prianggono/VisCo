@@ -1,7 +1,11 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  plugins: [react()],
-  test: { exclude: ["tests/ui-smoke.test.ts", "node_modules/**"] }
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    base: env.VITE_BASE || "/",
+    plugins: [react()],
+    test: { exclude: ["tests/ui-smoke.test.ts", "node_modules/**"] }
+  };
 });
