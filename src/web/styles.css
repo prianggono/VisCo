@@ -156,6 +156,9 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .audio-routing-grid span{color:#687483;font-size:8px;line-height:1.4}
 .audio-routing-arrow{color:#68788c;font-size:18px}
 .audio-routing-controls select{width:100%;padding:7px;border:1px solid #2b333e;border-radius:4px;background:#151a21;color:#dce2ea;font-size:9px}
+.audio-routing-note{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;border:1px solid #29313b;border-radius:6px;background:#0b1016}
+.audio-routing-note strong{color:#aeb9c8;font-size:8px;letter-spacing:.08em;white-space:nowrap}
+.audio-routing-note span{color:#687483;font-size:8px;line-height:1.4}
 .confirm-modal{width:min(520px,calc(100vw - 60px));min-height:auto}
 .confirm-message{padding:22px 4px;color:#9da8b6;font-size:10px;line-height:1.5}
 .confirm-actions{justify-content:flex-end;padding-top:8px}
