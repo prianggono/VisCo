@@ -75,13 +75,9 @@ This is the handoff checklist for future revisions.
 8. License work remains excluded while VisCo is in try-and-error.
 9. Before a Supabase backup, audit GitHub state and record unresolved native implementation items instead of marking them complete.
 
-## Current audit conclusion — 2026-09-29
+## Current audit conclusion — superseded
 
-Core domain/engine contracts are internally aligned across Source → Layer → Group → Composition → Program → Scene → Output Frame → Output Transport. The remaining unchecked runtime items are native Windows/backend implementations, not unresolved architecture choices.
-
-The current repository has not been verified by a successful CI run after the latest direct commits; GitHub returned no workflow runs for the latest checked commit. Therefore this document does not claim build/test success.
-
-Supabase is used as the VisCo history/decision backup. A backup should capture this audit conclusion, current decisions, unresolved native implementation queue, and the exact GitHub commit being backed up.
+The earlier conclusion that CI was unverified is no longer current. The latest baseline commit was validated by GitHub Actions before the current audit pass.
 
 
 ## Audit continuation — 2026-09-29 (runtime/UI pass)
@@ -167,3 +163,36 @@ Supabase is used as the VisCo history/decision backup. A backup should capture t
 - [x] Output submission is fed from the same native frame selected for the D3D11 host in this runtime pass.
 - [ ] The final Composition/Slice GPU frame is not yet the source of these sinks; they currently consume the acquired native BGRA frame.
 - [ ] ASIO callback -> Audio Engine remains the next SDK-dependent native audio step.
+
+
+## Full A-T audit pass — 2026-10-01
+
+- [x] A — Object ownership audit: Composition → Deck → Group → Layer → Slice → Scene references reviewed; validator now rejects orphan/multiply-owned Deck/Group/Slice objects and orphan persisted Layers.
+- [x] B — Composition lifecycle: create/activate/delete rules reviewed; deletion cleans Composition-owned Group/Slice/Scene state and refuses locked/non-empty compositions.
+- [x] C — Deck lifecycle: create/clone/delete/move membership reviewed; Composition membership remains the owner.
+- [x] D — Group lifecycle: create/clone/delete/member operations reviewed; active Composition membership guards are enforced.
+- [x] E — Layer lifecycle: source attachment, duplicate/delete/reorder and runtime cleanup reviewed.
+- [x] F — Slice lifecycle: Composition-scoped editor and Layer references reviewed; cross-Composition editing is rejected.
+- [x] G — Scene lifecycle: Composition-scoped activation/deletion reviewed.
+- [x] H — Library/Source lifecycle: add/duplicate/relink/remove/reference guards reviewed.
+- [x] I — UI state vs application state: remaining default-Composition coupling in Program/Output UI paths removed.
+- [x] J — Composition navigation: activation now clears stale Layer/Scene selection when the target Composition has no members.
+- [x] K — Persistence: Project snapshot builder no longer rewrites the default Composition to contain every Deck/Slice; persisted Composition membership remains authoritative.
+- [x] L — Command/mutation boundary: no new duplicate owner introduced; UI mutations continue to call canonical engines where they already exist.
+- [x] M — Trigger/Program/Transition: Trigger Scene lookup and Program state are now Composition-scoped in the UI adapter.
+- [x] N — Preview/Program: Program monitor now reads the active Composition state.
+- [x] O — Output: media/physical routing UI paths now use the active Composition instead of hard-coded default state.
+- [x] P — Performance: 30 FPS remains the default target; no 60 FPS default introduced.
+- [x] Q — UI/UX smoke: existing smoke coverage retained; Composition-scoped state changes are covered by the new audit path.
+- [x] R — Regression: relationship validation expanded to catch orphan and multiply-owned objects.
+- [x] S — CI: latest baseline CI and Native Windows CI were both successful before this audit; new commits will trigger the same pipelines.
+- [x] T — Native/backend boundary: native code remains outside React; this pass fixes UI/state contracts without faking native SDK behavior.
+
+### Remaining implementation items intentionally not marked complete
+
+- [ ] Real multi-layer Composition/Slice GPU compositing into the native frame pipeline.
+- [ ] Final rendered GPU frame feeding native Record/Stream/Virtual sinks.
+- [ ] Native ASIO callback integration.
+- [ ] Full native Preview/Program desktop transport bridge.
+- [ ] Windows packaging/EXE installer and update/recovery workflow.
+- [ ] License verification/enforcement/watermark remains intentionally postponed.
