@@ -965,16 +965,19 @@ export function App() {
                           draggable
                           onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
                         >
-                          <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
-                            <span>{layer.name}</span>{isPreview && <small>PREVIEW</small>}
-                          </button>
+                          <div className="layer-name-row">
+                            <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
+                              <span>{layer.name}</span>{isPreview && <small>CUE</small>}
+                            </button>
+                            {deck.kind === "visual" && <button className={isProgram ? "layer-program-button active" : "layer-program-button"} onClick={() => programLayer(deck.id, layer.id)} title="Send this layer to Program">PROGRAM</button>}
+                          </div>
                           <button
                             className="layer-box"
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                programLayer(deck.id, layer.id);
+                                selectPreview(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
@@ -985,9 +988,9 @@ export function App() {
                             }}
                           >
                             <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
-                            <div className="layer-tools"><span>◌</span><span className={isProgram ? "eye on" : "eye"}>◉</span></div>
+                            <div className="layer-tools"><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : "eye"}>{isProgram ? "PROGRAM" : "◉"}</span></div>
                             <div className="overlay-number">{index + 1}</div>
-                            {isProgram && <div className="program-badge">PROGRAM</div>}
+                            {isProgram && <div className="program-badge">ON AIR</div>}
                           </button>
                         </article>
                       );
