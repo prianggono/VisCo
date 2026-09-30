@@ -157,7 +157,7 @@ export function App() {
   const [sliceGuides, setSliceGuides] = useState(true);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [recoveryAvailable, setRecoveryAvailable] = useState(false);
-  const [historyRevision, setHistoryRevision] = useState(0);
+  const [, setHistoryRevision] = useState(0);
   const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
   const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
 
@@ -757,7 +757,7 @@ export function App() {
   };
 
   useEffect(() => { const raw=localStorage.getItem("visco-autosave-v1"); if(raw){try{const saved=JSON.parse(raw) as {project?:string}; if(saved.project)setRecoveryAvailable(true);}catch{localStorage.removeItem("visco-autosave-v1");}}}, []);
-  useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));setRecoveryAvailable(true);}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
+  useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
   useEffect(() => { const onKeyDown=(event:KeyboardEvent)=>{if(!(event.ctrlKey||event.metaKey)||event.altKey)return; const target=event.target as HTMLElement|null; if(target&&["INPUT","TEXTAREA","SELECT"].includes(target.tagName))return; if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown);}, []);
   const recoverAutosave=()=>{const raw=localStorage.getItem("visco-autosave-v1");if(!raw)return;try{const saved=JSON.parse(raw) as {project?:string};if(saved.project)restoreSnapshot(parseProject(saved.project),"Autosave recovered.");historyRef.current={past:[],future:[]};setRecoveryAvailable(false);setHistoryRevision((v)=>v+1);}catch(error){setProjectMessage(error instanceof Error?error.message:"Autosave recovery failed.");}};
   const discardAutosave=()=>{localStorage.removeItem("visco-autosave-v1");setRecoveryAvailable(false);setProjectMessage("Autosave discarded.");};
@@ -1103,7 +1103,7 @@ export function App() {
 })()}
                   {item === "Slice" && (() => {
                     const selectedSlices = slices.filter((slice) => slice.layerRefs.some((ref) => ref.deckId === selectedLayer.deckId && ref.layerId === selectedLayerModel?.id));
-                    const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
+                    const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => { recordHistory(); setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice)); };
                     return <>
                       <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
                       <div className="slice-editor-options"><label className="property-toggle"><span>Snap to Grid</span><input type="checkbox" checked={selectedSlices[0]?.mapping?.snapToGrid ?? true} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { snapToGrid: event.target.checked }))} /></label><label>Grid Size<input type="number" min="1" max="512" value={selectedSlices[0]?.mapping?.gridSize ?? 16} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { gridSize: Math.max(1, Number(event.target.value) || 1) }))} /></label><label className="property-toggle"><span>Guides</span><input type="checkbox" checked={sliceGuides} onChange={(event) => setSliceGuides(event.target.checked)} /></label></div>
