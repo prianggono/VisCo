@@ -175,6 +175,41 @@ describe("Output Engine", () => {
     expect(output.getState("display-media").source).toEqual(deck1Layer2);
   });
 
+  it("routes an active Display Scene without changing media family state", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-1", kind: "display", enabled: true, compositionId: "comp-1" });
+    output.register({ id: "display-2", kind: "display", enabled: true, compositionId: "comp-1" });
+    output.register(mediaTarget({ id: "production", deckId: undefined, compositionId: "comp-1", media: { resolution: [1920, 1080], fps: 30, streaming: true, recording: false, virtual: false } }));
+    output.route("display-2", deck2Layer1);
+    output.route("production", deck2Layer1);
+
+    const states = output.syncFromScene(
+      { id: "scene-display", name: "Display 1", compositionId: "comp-1", target: { kind: "display", displayId: "display-1" }, enabled: true },
+      deck2Layer2
+    );
+
+    expect(states.map((state) => state.target.id)).toEqual(["display-1"]);
+    expect(output.getState("display-1").source).toEqual(deck2Layer2);
+    expect(output.getState("display-2").active).toBe(false);
+    expect(output.getState("production").active).toBe(true);
+    expect(output.getState("production").source).toEqual(deck2Layer1);
+  });
+
+  it("does not deactivate outputs from another composition when a Scene is synced", () => {
+    const output = new OutputEngine();
+    output.register({ id: "display-1", kind: "display", enabled: true, compositionId: "comp-1" });
+    output.register({ id: "display-2", kind: "display", enabled: true, compositionId: "comp-2" });
+    output.route("display-2", deck2Layer1);
+
+    output.syncFromScene(
+      { id: "scene-display", name: "Display 1", compositionId: "comp-1", target: { kind: "display", displayId: "display-1" }, enabled: true },
+      deck2Layer2
+    );
+
+    expect(output.getState("display-2").active).toBe(true);
+    expect(output.getState("display-2").source).toEqual(deck2Layer1);
+  });
+
   it("does not route to a disabled output", () => {
     const output = new OutputEngine();
     output.register({
