@@ -849,11 +849,21 @@ export function App() {
 
   const createScene = () => {
     const scenes = currentScenes();
+    const compositionId = activeCompositionId;
+    const compositionScenes = scenes.filter((scene) => scene.compositionId === compositionId);
+    const displayTarget = outputEngine.list().find((target) =>
+      target.kind === "display" &&
+      (target.compositionId === undefined || target.compositionId === compositionId)
+    );
+    if (!displayTarget || displayTarget.kind !== "display") {
+      setProjectMessage("No compatible display output exists for this Composition.");
+      return;
+    }
     const scene: Scene = {
       id: "scene-" + Date.now(),
-      name: "Scene " + (scenes.length + 1),
-      compositionId: "default",
-      target: { kind: "display", displayId: "display-1" },
+      name: "Scene " + (compositionScenes.length + 1),
+      compositionId,
+      target: { kind: "display", displayId: displayTarget.id },
       enabled: true
     };
     try {
