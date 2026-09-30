@@ -148,6 +148,7 @@ export function App() {
   const [panicArmed, setPanicArmed] = useState(false);
   const [blackout, setBlackout] = useState(false);
   const [audioMeters, setAudioMeters] = useState([18, 32]);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [slices, setSlices] = useState<Slice[]>([{
     id: "slice-default",
     name: "Full Composition",
@@ -1243,7 +1244,7 @@ export function App() {
             <button key={id} className={activeSceneId === id ? "output-button enabled" : "output-button"} onClick={() => activateScene(id)}>{label}</button>
           ))}
         </div>
-        <div className="safety-controls"><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { setBlackout((v) => !v); if (!blackout) outputEngine.setEnabled("display-1", false); }}>BLACKOUT</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
+        <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { setBlackout((v) => !v); if (!blackout) outputEngine.setEnabled("display-1", false); }}>BLACKOUT</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>1920 × 1080</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
@@ -1262,6 +1263,22 @@ export function App() {
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       }} />
+      {diagnosticsOpen && <div className="modal-backdrop" onClick={() => setDiagnosticsOpen(false)}>
+        <div className="add-input-modal diagnostics-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-head"><div><strong>RUNTIME DIAGNOSTICS</strong><span>Operator-facing health summary.</span></div><button onClick={() => setDiagnosticsOpen(false)}>×</button></div>
+          <div className="diagnostic-grid">
+            <div><span>Native Host</span><b className={nativeHostState === "online" ? "diag-ok" : "diag-warn"}>{nativeHostState.toUpperCase()}</b></div>
+            <div><span>NDI</span><b>{runtimeAdapters.find((a) => a.name === "NDI")?.available ? "READY" : "OFFLINE"}</b></div>
+            <div><span>OMT</span><b>{runtimeAdapters.find((a) => a.name === "OMT")?.available ? "READY" : "OFFLINE"}</b></div>
+            <div><span>ASIO</span><b>{runtimeAdapters.find((a) => a.name === "ASIO")?.available ? "READY" : "OFFLINE"}</b></div>
+            <div><span>Preview</span><b>{getPreviewRef().layerId ? "CUE READY" : "EMPTY"}</b></div>
+            <div><span>Program</span><b>{getProgramRef().layerId ? "ON AIR" : "EMPTY"}</b></div>
+            <div><span>Display</span><b>{fullscreenState.target.enabled ? "ENABLED" : "DISABLED"}</b></div>
+            <div><span>Production</span><b>{mediaSettings.streaming || mediaSettings.recording || mediaSettings.virtual ? "ACTIVE" : "IDLE"}</b></div>
+          </div>
+          <div className="input-select-footer"><div className="modal-drop">Diagnostics are read-only. Backend/runtime implementation remains separate from this operator view.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setDiagnosticsOpen(false)}>CLOSE</button></div></div>
+        </div>
+      </div>}
       {sceneManagerOpen && <div className="modal-backdrop" onClick={() => setSceneManagerOpen(false)}>
         <div className="add-input-modal scene-manager-modal" onClick={(event) => event.stopPropagation()}>
           <div className="modal-head"><div><strong>SCENE MANAGER</strong><span>Output routing presets.</span></div><button onClick={() => setSceneManagerOpen(false)}>×</button></div>
