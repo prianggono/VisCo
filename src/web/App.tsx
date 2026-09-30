@@ -366,6 +366,8 @@ export function App() {
   };
 
   const addLayerToGroup = (groupId: string, layerId: string) => {
+    const layer = decks.flatMap((deck) => deck.layers).find((item) => item.id === layerId);
+    if (layer?.locked) { setProjectMessage("Layer is locked."); return; }
     try {
       groupEngine.addLayer(groupId, layerId);
       setGroups([...groupEngine.list()]);
@@ -377,6 +379,8 @@ export function App() {
   };
 
   const removeLayerFromGroup = (groupId: string, layerId: string) => {
+    const layer = decks.flatMap((deck) => deck.layers).find((item) => item.id === layerId);
+    if (layer?.locked) { setProjectMessage("Layer is locked."); return; }
     groupEngine.removeLayer(groupId, layerId);
     setGroups([...groupEngine.list()]);
   };
@@ -440,14 +444,20 @@ export function App() {
     updateSelectedLayer({ [flag]: !(selectedLayerModel[flag] ?? (flag === "visible")) });
   };
   const duplicateSelectedLayer = () => {
-    if (!selectedDeck || !selectedLayerModel) return;
+    if (!selectedDeck || !selectedLayerModel || selectedLayerModel.locked) {
+      if (selectedLayerModel?.locked) setProjectMessage("Layer is locked.");
+      return;
+    }
     const copy = { ...selectedLayerModel, id: selectedLayerModel.id + "-copy-" + Date.now(), name: selectedLayerModel.name + " Copy" };
     recordHistory();
     setDecks((current) => current.map((deck) => deck.id === selectedDeck.id ? { ...deck, layers: [...deck.layers.slice(0, deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1), copy, ...deck.layers.slice(deck.layers.findIndex((l) => l.id === selectedLayerModel.id) + 1)] } : deck));
     setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
   };
   const deleteSelectedLayer = () => {
-    if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1) return;
+    if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1 || selectedLayerModel.locked) {
+      if (selectedLayerModel?.locked) setProjectMessage("Layer is locked.");
+      return;
+    }
     recordHistory();
     const deletedRef = { deckId: selectedDeck.id, layerId: selectedLayerModel.id };
     const remaining = selectedDeck.layers.filter((layer) => layer.id !== selectedLayerModel.id);
@@ -461,7 +471,12 @@ export function App() {
     groupEngine.replaceAll(groups.map((group) => group.layerIds.includes(selectedLayerModel.id)
       ? { ...group, layerIds: group.layerIds.filter((id) => id !== selectedLayerModel.id) }
       : group));
-    try { if (programEngine.getState("default").source?.layerId === selectedLayerModel.id) programEngine.clear("default"); } catch {}
+    try {
+      if (programEngine.getState("default").source?.layerId === selectedLayerModel.id) programEngine.clear("default");
+      const runtime = deckRuntime.getState(selectedDeck.id);
+      if (runtime.activeLayerId === selectedLayerModel.id) deckRuntime.clearActiveLayer(selectedDeck.id);
+      if (runtime.previewLayerId === selectedLayerModel.id) deckRuntime.clearPreview(selectedDeck.id);
+    } catch {}
     const next = remaining[0];
     if (next) setSelectedLayer({ deckId: selectedDeck.id, layerId: next.id });
   };
