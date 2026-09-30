@@ -81,6 +81,7 @@ test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {
 
   await expect(page.locator(".top-status-detail")).toContainText("COMP composition-");
   await expect(manager.locator(".scene-manager-row")).toHaveCount(2);
+  await manager.getByRole("button", { name: "CLOSE", exact: true }).click();
 
   await page.getByRole("button", { name: "+ Add Deck", exact: true }).click();
   await expect(page.locator(".deck-row")).toHaveCount(1);
