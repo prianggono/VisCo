@@ -119,7 +119,12 @@ export function App() {
   const [activeSceneId, setActiveSceneId] = useState("scene-display-1");
   const [showAddDeck, setShowAddDeck] = useState(false);
   const [compositionManagerOpen, setCompositionManagerOpen] = useState(false);
+  const [selectedCompositionId, setSelectedCompositionId] = useState("default");
   const [projectMessage, setProjectMessage] = useState("");
+  const [projectDirty, setProjectDirty] = useState(false);
+  const [displayManagerOpen, setDisplayManagerOpen] = useState(false);
+  const [audioRoutingOpen, setAudioRoutingOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; confirmLabel: string; action: () => void } | null>(null);
   const [showAddInput, setShowAddInput] = useState(false);
   const [outputSettings, setOutputSettings] = useState<"stream" | "record" | "display" | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -185,7 +190,9 @@ export function App() {
   const compositionIdForDeck = (deckId: string): string =>
     compositions.find((composition) => composition.deckIds.includes(deckId))?.id ?? "default";
 
-  const activeCompositionId = selectedDeck ? compositionIdForDeck(selectedDeck.id) : "default";
+  const selectedDeck = decks.find((deck) => deck.id === selectedLayer.deckId);
+  const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
+  const activeCompositionId = selectedCompositionId;
 
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
@@ -226,8 +233,6 @@ export function App() {
     return state ?? { deckId: "", layerId: "" };
   };
 
-  const selectedDeck = decks.find((deck) => deck.id === selectedLayer.deckId);
-  const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
   const recordHistory = () => { try { const snapshot = serializeProject(buildProjectSnapshot()); const history = historyRef.current; if (history.past[history.past.length - 1] !== snapshot) { history.past = [...history.past.slice(-49), snapshot]; history.future = []; setHistoryRevision((v) => v + 1); } } catch {} };
   const updateSelectedLayer = (patch: Partial<Layer>) => {
     if (selectedLayerModel?.locked && !Object.prototype.hasOwnProperty.call(patch, "locked")) {
@@ -235,6 +240,7 @@ export function App() {
       return;
     }
     recordHistory();
+    setProjectDirty(true);
     setDecks((current) => current.map((deck) =>
       deck.id !== selectedLayer.deckId
         ? deck
@@ -549,6 +555,8 @@ export function App() {
     if (!target) return;
     const nextDecks = decks.filter((deck) => deck.id !== deckId);
     setDecks(nextDecks);
+    setSelectedCompositionId(compositionId);
+    setProjectDirty(true);
     setCompositions((items) => items.map((composition) => ({
       ...composition,
       deckIds: composition.deckIds.filter((id) => id !== deckId)
@@ -593,7 +601,7 @@ export function App() {
       libraryEngine.add(source);
       return source;
     });
-    if (sources.length) setLibraryItems((items) => [...items, ...sources]);
+    if (sources.length) { setLibraryItems((items) => [...items, ...sources]); setProjectDirty(true); }
   };
 
   const addInternalInput = (kind: SourceKind, device?: DiscoveredDevice) => {
@@ -614,6 +622,7 @@ export function App() {
     };
     libraryEngine.add(source);
     setLibraryItems((items) => [...items, source]);
+    setProjectDirty(true);
     setShowAddInput(false);
     setDiscoveredDevices([]);
     setDiscoveryMessage("");
@@ -747,6 +756,30 @@ export function App() {
     }
   };
 
+  const attachSourceToSelectedLayer = (sourceId: string) => {
+    if (!selectedDeck || !selectedLayerModel) return;
+    if (selectedLayerModel.locked) { setProjectMessage("Layer is locked."); return; }
+    const source = libraryEngine.get(sourceId);
+    setDecks((current) => current.map((deck) => deck.id === selectedDeck.id
+      ? { ...deck, layers: deck.layers.map((layer) => layer.id === selectedLayerModel.id ? { ...layer, sourceId } : layer) }
+      : deck
+    ));
+    setSelectedSourceId(sourceId);
+    setProjectDirty(true);
+    setProjectMessage(source.name + " loaded to " + selectedLayerModel.name + ".");
+  };
+
+  const clearSelectedLayerSource = () => {
+    if (!selectedDeck || !selectedLayerModel) return;
+    if (selectedLayerModel.locked) { setProjectMessage("Layer is locked."); return; }
+    setDecks((current) => decks.map((deck) => deck.id === selectedDeck.id
+      ? { ...deck, layers: deck.layers.map((layer) => layer.id === selectedLayerModel.id ? { ...layer, sourceId: null } : layer) }
+      : deck
+    ));
+    setProjectDirty(true);
+    setProjectMessage("Layer source cleared.");
+  };
+
   const openInputDialog = () => {
     setSelectedInputKind("video");
     setShowAddInput(true);
@@ -838,6 +871,7 @@ export function App() {
   const undo = () => { const h=historyRef.current; const p=h.past.pop(); if(!p)return; h.future.push(serializeProject(buildProjectSnapshot())); restoreSnapshot(parseProject(p),"Undo"); setHistoryRevision((v)=>v+1); };
   const redo = () => { const h=historyRef.current; const n=h.future.pop(); if(!n)return; h.past.push(serializeProject(buildProjectSnapshot())); restoreSnapshot(parseProject(n),"Redo"); setHistoryRevision((v)=>v+1); };
   const saveProject = () => {
+    setProjectDirty(false);
     const blob = new Blob([serializeProject(buildProjectSnapshot())], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -888,6 +922,8 @@ export function App() {
       locked: false
     };
     setCompositions((items) => [...items, composition]);
+    setSelectedCompositionId(id);
+    setProjectDirty(true);
     setProjectMessage(composition.name + " created.");
   };
 
@@ -1055,7 +1091,7 @@ export function App() {
 
   const openOutputSettings = (kind: "stream" | "record" | "display") => setOutputSettings(kind);
 
-  const applyOutputSettings = (patch: { resolution?: [number, number]; fps?: number; codec?: string; bitrate?: number | "auto" }) => {
+  const applyOutputSettings = (patch: { resolution?: [number, number]; fps?: number; codec?: string; bitrate?: number | "auto"; server?: string; key?: string; targetFolder?: string; segmentMinutes?: number }) => {
     try {
       const media = outputEngine.getState("production").target.media;
       if (!media) return;
@@ -1067,6 +1103,13 @@ export function App() {
       if (patch.resolution) mediaPatch.resolution = patch.resolution;
       if (patch.fps !== undefined) mediaPatch.fps = patch.fps;
       if (Object.keys(mediaPatch).length) outputEngine.updateMediaSettings("production", mediaPatch);
+      if (outputSettings === "stream" && (patch.server !== undefined || patch.key !== undefined)) {
+        outputEngine.updateMediaSettings("production", { stream: { ...(media.stream ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", server: "", key: "" }), ...(patch.server !== undefined ? { server: patch.server } : {}), ...(patch.key !== undefined ? { key: patch.key } : {}) } });
+      }
+      if (outputSettings === "record" && (patch.targetFolder !== undefined || patch.segmentMinutes !== undefined)) {
+        outputEngine.updateMediaSettings("production", { record: { ...(media.record ?? { resolution: media.resolution, fps: media.fps, codec: "h264", bitrate: "auto", segmentMinutes: 60, targetFolder: "" }), ...(patch.targetFolder !== undefined ? { targetFolder: patch.targetFolder } : {}), ...(patch.segmentMinutes !== undefined ? { segmentMinutes: patch.segmentMinutes } : {}) } });
+      }
+      setProjectDirty(true);
       if (patch.codec !== undefined || patch.bitrate !== undefined) {
         if (outputSettings === "stream") {
           outputEngine.updateMediaSettings("production", {
@@ -1156,7 +1199,7 @@ export function App() {
           <div className="topnav-menu"><button onClick={() => { setShowEditMenu((v) => !v); setShowViewMenu(false); }}>Edit</button>{showEditMenu && <div className="topnav-dropdown"><button onClick={() => { undo(); setShowEditMenu(false); }}>Undo</button><button onClick={() => { redo(); setShowEditMenu(false); }}>Redo</button><button onClick={() => { saveProject(); setShowEditMenu(false); }}>Save Project</button></div>}</div><div className="topnav-menu"><button onClick={() => { setShowViewMenu((v) => !v); setShowEditMenu(false); }}>View</button>{showViewMenu && <div className="topnav-dropdown"><button onClick={() => { setOperatorMode((v) => !v); setShowViewMenu(false); }}>{operatorMode ? "Exit Operator Mode" : "Operator Mode"}</button><button onClick={() => { setShowViewMenu(false); setProjectMessage("Preview/Program workspace active."); }}>Preview / Program</button><button onClick={() => { setShowShortcuts(true); setShowViewMenu(false); }}>Keyboard Shortcuts</button></div>}</div><button onClick={() => setShowSettings(true)}>Settings</button>
           {recoveryAvailable && <span className="recovery-controls"><button onClick={recoverAutosave}>Recover</button><button onClick={discardAutosave}>Discard</button></span>}{projectMessage && <span className="project-message">{projectMessage}</span>}
         </nav>
-        <div className="status"><span className="status-dot" /> SYSTEM READY <small className="top-status-detail">{nativeHostState.toUpperCase()} · {runtimeAdapters.filter((adapter) => adapter.available).length}/3</small></div>
+        <div className="status"><span className={projectDirty ? "status-dot dirty" : "status-dot"} /> {projectDirty ? "UNSAVED" : "SAVED"} <small className="top-status-detail">{nativeHostState.toUpperCase()} · {runtimeAdapters.filter((adapter) => adapter.available).length}/3 · COMP {activeCompositionId}</small></div>
       </header>
 
       <section
@@ -1175,7 +1218,7 @@ export function App() {
             <button className="add-input-button" onClick={openInputDialog}>+ ADD INPUT</button><button className="add-input-button" onClick={() => folderInputRef.current?.click()}>+ ADD FOLDER</button>
 
             {libraryItems.length === 0 ? (
-              <div className="library-empty">Drag & drop files here</div>
+              <div className="library-empty"><strong>LIBRARY EMPTY</strong><span>Add media, capture, NDI or OMT input to begin.</span><button onClick={openInputDialog}>+ ADD INPUT</button></div>
             ) : (
               <div className="library-items">
                 {filteredLibraryItems.map((item) => (
@@ -1185,6 +1228,7 @@ export function App() {
                     draggable
                     onDragStart={(event) => event.dataTransfer.setData("text/library-id", item.id)}
                     onClick={() => setSelectedSourceId(item.id)}
+                    onDoubleClick={() => attachSourceToSelectedLayer(item.id)}
                   >
                     <span className="library-icon">{item.name.slice(0, 1).toUpperCase()}</span>
                     {editingSourceId === item.id ? <input autoFocus value={item.name} onChange={(event) => libraryEngine.update({ ...item, name: event.target.value })} onBlur={(event) => renameSource(item, event.currentTarget.value)} onClick={(event) => event.stopPropagation()} /> : <span>{item.name}</span>}
@@ -1201,8 +1245,9 @@ export function App() {
               <div className="library-actions">
                 <button onClick={() => setEditingSourceId(source.id)}>RENAME</button>
                 <button onClick={() => { setRelinkSourceId(source.id); relinkInputRef.current?.click(); }}>RELINK</button>
+                <button onClick={() => attachSourceToSelectedLayer(source.id)} disabled={!selectedLayerModel}>LOAD TO LAYER</button>
                 <button onClick={() => duplicateSource(source)}>DUPLICATE</button>
-                <button onClick={() => removeSource(source)}>REMOVE</button>
+                <button onClick={() => setConfirmAction({ title: "REMOVE SOURCE", message: "Remove " + source.name + " from the Library?", confirmLabel: "REMOVE", action: () => removeSource(source) })}>REMOVE</button>
               </div>
               <div className="library-meta"><span>Used: {sourceUsage(source.id) ? "YES" : "NO"}</span><span>{source.uri ? "URI READY" : "NO URI"}</span></div>
             </div>;
@@ -1433,6 +1478,8 @@ export function App() {
                       <button onClick={() => updateSelectedPlayback({ playing: true })}>▶ Play</button>
                       <button onClick={() => updateSelectedPlayback({ playing: false })}>Ⅱ Pause</button>
                       <button className={playback?.loop ? "active" : ""} onClick={() => updateSelectedPlayback({ loop: !playback?.loop })}>↻ Loop</button>
+                      <button onClick={() => updateSelectedPlayback({ positionMs: 0 })}>⏮ Start</button>
+                      <button onClick={() => updateSelectedPlayback({ playing: true, positionMs: 0 })}>↺ Restart</button>
                     </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
                   })()}
                   {item === "Transform" && <>
@@ -1557,7 +1604,7 @@ export function App() {
         <div className="output-group">
           <div className="output-control">
             <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("display-1")}>FULLSCREEN</button>
-            <button className="output-gear" title="Fullscreen settings" onClick={() => openOutputSettings("display")}>⚙</button>
+            <button className="output-gear" title="Display manager" onClick={() => setDisplayManagerOpen(true)}>▦</button><button className="output-gear" title="Fullscreen settings" onClick={() => openOutputSettings("display")}>⚙</button>
           </div>
           <div className="output-control">
             <button className={mediaSettings.streaming ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("stream")}>STREAM</button>
@@ -1569,7 +1616,7 @@ export function App() {
           </div>
           <button className={mediaSettings.virtual ? "output-button enabled" : "output-button"} onClick={() => toggleMediaFeature("virtual")}>VIRTUAL OUT</button>
         </div>
-        <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button>
+        <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button><button className="output-button" onClick={() => setAudioRoutingOpen(true)}>AUDIO ROUTING</button>
           <span className="output-status-pill">COMP {activeCompositionId.toUpperCase()}</span>
           {currentScenes().filter((scene) => scene.compositionId === activeCompositionId).map((scene) => (
             <button key={scene.id} className={activeSceneId === scene.id ? "output-button enabled" : "output-button"} onClick={() => activateScene(scene.id)} disabled={!scene.enabled}>
@@ -1577,7 +1624,7 @@ export function App() {
             </button>
           ))}
         </div>
-        <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { const next = !blackout; setBlackout(next); outputEngine.setEnabled("display-1", !next); setOutputRevision((v) => v + 1); setProjectMessage(next ? "Display blackout active." : "Display blackout cleared."); }}>{blackout ? "CLEAR" : "BLACKOUT"}</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>{mediaSettings.resolution[0]} × {mediaSettings.resolution[1]}</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span><span className="output-status-pill">{mediaSettings.virtual ? "VIRTUAL ON" : "VIRTUAL OFF"}</span></div>
+        <div className="safety-controls"><button className="safety-button" onClick={() => setDiagnosticsOpen(true)}>DIAG</button><button className={blackout ? "safety-button danger active" : "safety-button"} onClick={() => { const next = !blackout; if (next) { setConfirmAction({ title: "BLACKOUT DISPLAY", message: "The active physical display will be disabled.", confirmLabel: "BLACKOUT", action: () => { setBlackout(true); outputEngine.setEnabled("display-1", false); setOutputRevision((v) => v + 1); setProjectDirty(true); setProjectMessage("Display blackout active."); } }); return; } setBlackout(false); outputEngine.setEnabled("display-1", true); setOutputRevision((v) => v + 1); setProjectDirty(true); setProjectMessage("Display blackout cleared."); }>{blackout ? "CLEAR" : "BLACKOUT"}</button><button className={panicArmed ? "safety-button danger active" : "safety-button"} onClick={() => { setPanicArmed((v) => !v); setProjectMessage(panicArmed ? "Panic disarmed." : "Panic armed."); }}>PANIC</button></div><div className="resolution"><span>{mediaSettings.resolution[0]} × {mediaSettings.resolution[1]}</span><span>{mediaSettings.fps} FPS</span><span className="output-status-pill">{mediaSettings.streaming ? "STREAM ON" : "STREAM OFF"}</span><span className="output-status-pill">{mediaSettings.recording ? "REC ON" : "REC OFF"}</span><span className="output-status-pill">{mediaSettings.virtual ? "VIRTUAL ON" : "VIRTUAL OFF"}</span></div>
       </footer>
 
       <div className="resize-handle left-handle" onMouseDown={(event) => {
@@ -1627,7 +1674,13 @@ export function App() {
                   <div className="settings-row"><span>FPS</span><input type="number" min="1" max="120" value={composition.format.fps} onChange={(event) => updateCompositionFormat(composition.id, { fps: Math.max(1, Math.min(120, Number(event.target.value) || 30)) })}/></div>
                   <div className="settings-row"><span>Bit Depth</span><select value={composition.format.bitDepth} onChange={(event) => updateCompositionFormat(composition.id, { bitDepth: Number(event.target.value) as 8 | 10 })}><option value={8}>8-bit</option><option value={10}>10-bit</option></select></div>
                 </div>
-                <div className="scene-row-actions"><button onClick={() => assignSelectedDeckToComposition(composition.id)}>USE SELECTED DECK</button><button onClick={() => { const deck = decks.find((item) => composition.deckIds.includes(item.id)); if (deck) setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" }); setCompositionManagerOpen(false); }}>ACTIVATE</button><button onClick={() => deleteComposition(composition.id)} disabled={compositions.length <= 1 || composition.deckIds.length > 0}>DELETE</button></div>
+                <div className="scene-row-actions"><button onClick={() => assignSelectedDeckToComposition(composition.id)}>USE SELECTED DECK</button><button onClick={() => {
+  setSelectedCompositionId(composition.id);
+  const deck = decks.find((item) => composition.deckIds.includes(item.id));
+  if (deck) setSelectedLayer({ deckId: deck.id, layerId: deck.layers[0]?.id ?? "" });
+  setCompositionManagerOpen(false);
+  setProjectMessage(composition.name + " active.");
+}}>ACTIVATE</button><button onClick={() => deleteComposition(composition.id)} disabled={compositions.length <= 1 || composition.deckIds.length > 0}>DELETE</button></div>
               </div>)}
             </div>
             <div className="input-select-footer"><div className="modal-drop">Composition owns format and canvas membership. Scene owns output routing.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setCompositionManagerOpen(false)}>CLOSE</button></div></div>
@@ -1668,6 +1721,38 @@ export function App() {
           </div>
         </div>
       )}
+      {displayManagerOpen && (
+        <div className="modal-backdrop" onClick={() => setDisplayManagerOpen(false)}>
+          <div className="add-input-modal display-manager-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>DISPLAY MANAGER</strong><span>Physical display targets and active Composition routing.</span></div><button onClick={() => setDisplayManagerOpen(false)}>×</button></div>
+            <div className="display-manager-list">
+              {outputEngine.list().filter((target) => target.kind === "display").map((target) => <div className="display-manager-row" key={target.id}><div><strong>{target.id.toUpperCase()}</strong><small>Composition: {target.compositionId ?? "ANY"} · {outputEngine.getState(target.id).active ? "ACTIVE" : "IDLE"}</small></div><div className="scene-row-actions"><button className={target.enabled ? "output-button enabled" : "output-button"} onClick={() => { outputEngine.setEnabled(target.id, !target.enabled); setOutputRevision((v) => v + 1); setProjectDirty(true); }}>{target.enabled ? "ENABLED" : "DISABLED"}</button><button onClick={() => setProjectMessage(target.id + " test signal requested.")}>TEST</button></div></div>)}
+            </div>
+            <div className="input-select-footer"><div className="modal-drop">Display selection is UI-level here; native physical display binding remains in the runtime.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setDisplayManagerOpen(false)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
+
+      {audioRoutingOpen && (
+        <div className="modal-backdrop" onClick={() => setAudioRoutingOpen(false)}>
+          <div className="add-input-modal audio-routing-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>AUDIO ROUTING</strong><span>Operator view of the canonical audio path.</span></div><button onClick={() => setAudioRoutingOpen(false)}>×</button></div>
+            <div className="audio-routing-grid"><div><strong>AUDIO INPUT</strong><span>{audioDevices.length ? audioDevices.map((d) => d.name).join(", ") : "No discovered input"}</span></div><div className="audio-routing-arrow">→</div><div><strong>VISCO MIX BUS</strong><span>Master / Deck / Layer</span></div><div className="audio-routing-arrow">→</div><div><strong>OUTPUTS</strong><span>Record · Stream · Virtual · Zoom</span></div></div>
+            <div className="property-grid audio-routing-controls"><label>Input Device<select value={selectedAudioDevice} onChange={(event) => setSelectedAudioDevice(event.target.value)}><option value="">Auto / None</option>{audioDevices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Bus<select defaultValue="main"><option value="main">Main</option><option value="aux-1">Aux 1</option><option value="aux-2">Aux 2</option></select></label><label>Mode<select defaultValue="stereo"><option value="stereo">Stereo</option><option value="mono">Mono</option></select></label><label>Monitor<select defaultValue="program"><option value="program">Program</option><option value="preview">Preview</option></select></label></div>
+            <div className="input-select-footer"><div className="modal-drop">Meters are operator UI; hardware fanout remains owned by the native Audio Engine.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setAudioRoutingOpen(false)}>CLOSE</button></div></div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="modal-backdrop" onClick={() => setConfirmAction(null)}>
+          <div className="add-input-modal confirm-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><strong>{confirmAction.title}</strong><span>Confirm this operator action.</span></div><button onClick={() => setConfirmAction(null)}>×</button></div><div className="confirm-message">{confirmAction.message}</div>
+            <div className="input-select-actions confirm-actions"><button className="modal-cancel" onClick={() => setConfirmAction(null)}>CANCEL</button><button className="modal-add" onClick={() => { const action = confirmAction.action; setConfirmAction(null); action(); }}>{confirmAction.confirmLabel}</button></div>
+          </div>
+        </div>
+      )}
+
       {showSettings && (
         <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
           <div className="add-input-modal settings-modal" onClick={(event) => event.stopPropagation()}>
@@ -1691,6 +1776,9 @@ export function App() {
               <label>FPS<select defaultValue={String(mediaSettings.fps)} onChange={(event) => applyOutputSettings({ fps: Number(event.target.value) })}><option value="30">30</option><option value="25">25</option><option value="24">24</option><option value="60">60</option></select></label>
               {outputSettings !== "display" && <label>Codec<select defaultValue={outputSettings === "stream" ? mediaSettings.stream?.codec ?? "h264" : mediaSettings.record?.codec ?? "h264"} onChange={(event) => applyOutputSettings({ codec: event.target.value })}><option value="h264">H.264</option><option value="hevc">HEVC / H.265</option></select></label>}
               {outputSettings !== "display" && <label>Bitrate<select defaultValue={String((outputSettings === "stream" ? mediaSettings.stream?.bitrate : mediaSettings.record?.bitrate) ?? "auto")} onChange={(event) => applyOutputSettings({ bitrate: event.target.value === "auto" ? "auto" : Number(event.target.value) })}><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
+              {outputSettings === "stream" && <><label>Server<input defaultValue={mediaSettings.stream?.server ?? ""} placeholder="rtmp://server/app" onBlur={(event) => applyOutputSettings({ server: event.target.value })} /></label><label>Stream Key<input defaultValue={mediaSettings.stream?.key ?? ""} type="password" placeholder="Stream key" onBlur={(event) => applyOutputSettings({ key: event.target.value })} /></label></>}
+              {outputSettings === "record" && <><label>Target Folder<input defaultValue={mediaSettings.record?.targetFolder ?? ""} placeholder="D:\\Recordings" onBlur={(event) => applyOutputSettings({ targetFolder: event.target.value })} /></label><label>Segment (min)<input type="number" min="1" max="240" defaultValue={mediaSettings.record?.segmentMinutes ?? 60} onBlur={(event) => applyOutputSettings({ segmentMinutes: Math.max(1, Number(event.target.value) || 60) })} /></label></>}
+              {outputSettings === "display" && <div className="property-empty">Use DISPLAY MANAGER to choose and test the physical display target.</div>}
             </div>
             <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
           </div>
