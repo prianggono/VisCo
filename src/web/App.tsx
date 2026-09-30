@@ -154,6 +154,11 @@ export function App() {
   const [selectedAudioDevice, setSelectedAudioDevice] = useState("");
   const [ipCameraUri, setIpCameraUri] = useState("");
   const [openProperty, setOpenProperty] = useState("General");
+  const [sliceGuides, setSliceGuides] = useState(true);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [recoveryAvailable, setRecoveryAvailable] = useState(false);
+  const [historyRevision, setHistoryRevision] = useState(0);
+  const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
   const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
 
   const compositionIdForDeck = (deckId: string): string =>
@@ -200,7 +205,9 @@ export function App() {
 
   const selectedDeck = decks.find((deck) => deck.id === selectedLayer.deckId);
   const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
+  const recordHistory = () => { try { const snapshot = serializeProject(buildProjectSnapshot()); const history = historyRef.current; if (history.past[history.past.length - 1] !== snapshot) { history.past = [...history.past.slice(-49), snapshot]; history.future = []; setHistoryRevision((v) => v + 1); } } catch {} };
   const updateSelectedLayer = (patch: Partial<Layer>) => {
+    recordHistory();
     setDecks((current) => current.map((deck) =>
       deck.id !== selectedLayer.deckId
         ? deck
@@ -611,6 +618,20 @@ export function App() {
     outputs: outputEngine.list()
   });
 
+  const restoreSnapshot = (snapshot: ReturnType<typeof createProjectSnapshot>, message: string) => {
+    const loadedDecks = snapshot.decks as Deck[];
+    setDecks(loadedDecks); setCompositions([...snapshot.compositions]); deckRuntime.replaceAll(loadedDecks); programEngine.clear("default");
+    setSlices([...snapshot.slices]); setGroups([...snapshot.groups]); groupEngine.replaceAll(snapshot.groups);
+    libraryEngine.replaceAll(snapshot.sources); setLibraryItems([...snapshot.sources]); setLibrarySearch("");
+    const persistedOutputs = snapshot.outputs.length ? snapshot.outputs : outputEngine.list(); const byId = new Map(persistedOutputs.map((o) => [o.id, o]));
+    outputEngine.replaceAll([...outputEngine.list().map((o) => byId.get(o.id) ?? o), ...persistedOutputs.filter((o) => !outputEngine.list().some((x) => x.id === o.id))]);
+    const restoredScenes = snapshot.scenes.length ? snapshot.scenes : defaultScenes; sceneRuntime.replaceAll(restoredScenes);
+    const restoredSceneId = restoredScenes.find((s) => s.enabled)?.id ?? restoredScenes[0]?.id ?? "scene-display-1"; setActiveSceneId(restoredSceneId); sceneRuntime.activate(restoredSceneId);
+    audioEngine.replaceAll(loadedDecks.filter((d) => d.kind === "audio").map((d) => d.id)); setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
+    setRuntimeRevision((v) => v + 1); setOutputRevision((v) => v + 1); setProjectMessage(message);
+  };
+  const undo = () => { const h=historyRef.current; const p=h.past.pop(); if(!p)return; h.future.push(serializeProject(buildProjectSnapshot())); restoreSnapshot(parseProject(p),"Undo"); setHistoryRevision((v)=>v+1); };
+  const redo = () => { const h=historyRef.current; const n=h.future.pop(); if(!n)return; h.past.push(serializeProject(buildProjectSnapshot())); restoreSnapshot(parseProject(n),"Redo"); setHistoryRevision((v)=>v+1); };
   const saveProject = () => {
     const blob = new Blob([serializeProject(buildProjectSnapshot())], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -622,39 +643,8 @@ export function App() {
     setProjectMessage("Project saved.");
   };
 
-  const loadProject = (file: File) => {
-    file.text().then((text) => {
-      const snapshot = parseProject(text);
-      const loadedDecks = snapshot.decks as Deck[];
-      setDecks(loadedDecks);
-      setCompositions([...snapshot.compositions]);
-      deckRuntime.replaceAll(loadedDecks);
-      programEngine.clear("default");
-      setSlices([...snapshot.slices]);
-      setGroups([...snapshot.groups]);
-      groupEngine.replaceAll(snapshot.groups);
-      libraryEngine.replaceAll(snapshot.sources);
-      setLibraryItems([...snapshot.sources]);
-      setLibrarySearch("");
-      const persistedOutputs = snapshot.outputs.length > 0 ? snapshot.outputs : outputEngine.list();
-      const persistedById = new Map(persistedOutputs.map((output) => [output.id, output]));
-      const canonicalOutputs = outputEngine.list().map((output) => persistedById.get(output.id) ?? output);
-      const extraOutputs = persistedOutputs.filter((output) => !canonicalOutputs.some((canonical) => canonical.id === output.id));
-      outputEngine.replaceAll([...canonicalOutputs, ...extraOutputs]);
-      const restoredScenes = snapshot.scenes.length > 0 ? snapshot.scenes : defaultScenes;
-      sceneRuntime.replaceAll(restoredScenes);
-      const restoredSceneId = restoredScenes.find((scene) => scene.enabled)?.id ?? restoredScenes[0]?.id ?? "scene-display-1";
-      setActiveSceneId(restoredSceneId);
-      if (restoredScenes.some((scene) => scene.id === restoredSceneId && scene.enabled)) sceneRuntime.activate(restoredSceneId);
-      audioEngine.replaceAll(loadedDecks.filter((deck) => deck.kind === "audio").map((deck) => deck.id));
-      setSelectedLayer({ deckId: loadedDecks[0]?.id ?? "", layerId: loadedDecks[0]?.layers[0]?.id ?? "" });
-      setRuntimeRevision((value) => value + 1);
-      setOutputRevision((value) => value + 1);
-      setProjectMessage("Project loaded.");
-    }).catch((error) => {
-      setProjectMessage(error instanceof Error ? error.message : "Project load failed.");
-    });
-  };
+  const loadProject = (file: File) => { file.text().then((text) => { restoreSnapshot(parseProject(text), "Project loaded."); historyRef.current = { past: [], future: [] }; setHistoryRevision((v) => v + 1); }).catch((error) => setProjectMessage(error instanceof Error ? error.message : "Project load failed.")); };
+
 
   const filteredLibraryItems = libraryItems.filter((item) => item.name.toLowerCase().includes(librarySearch.trim().toLowerCase()));
 
@@ -766,6 +756,11 @@ export function App() {
     setRuntimeRevision((value) => value + 1);
   };
 
+  useEffect(() => { const raw=localStorage.getItem("visco-autosave-v1"); if(raw){try{const saved=JSON.parse(raw) as {project?:string}; if(saved.project)setRecoveryAvailable(true);}catch{localStorage.removeItem("visco-autosave-v1");}}}, []);
+  useEffect(() => { if(!autoSaveEnabled)return; const timer=window.setInterval(()=>{try{localStorage.setItem("visco-autosave-v1",JSON.stringify({savedAt:Date.now(),project:serializeProject(buildProjectSnapshot())}));setRecoveryAvailable(true);}catch{}},5000); return()=>window.clearInterval(timer); }, [autoSaveEnabled,decks,compositions,groups,slices,libraryItems,activeSceneId]);
+  useEffect(() => { const onKeyDown=(event:KeyboardEvent)=>{if(!(event.ctrlKey||event.metaKey)||event.altKey)return; const target=event.target as HTMLElement|null; if(target&&["INPUT","TEXTAREA","SELECT"].includes(target.tagName))return; if(event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redo():undo();}else if(event.key.toLowerCase()==="y"){event.preventDefault();redo();}};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown);}, []);
+  const recoverAutosave=()=>{const raw=localStorage.getItem("visco-autosave-v1");if(!raw)return;try{const saved=JSON.parse(raw) as {project?:string};if(saved.project)restoreSnapshot(parseProject(saved.project),"Autosave recovered.");historyRef.current={past:[],future:[]};setRecoveryAvailable(false);setHistoryRevision((v)=>v+1);}catch(error){setProjectMessage(error instanceof Error?error.message:"Autosave recovery failed.");}};
+  const discardAutosave=()=>{localStorage.removeItem("visco-autosave-v1");setRecoveryAvailable(false);setProjectMessage("Autosave discarded.");};
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -774,10 +769,10 @@ export function App() {
           <div><strong>VisCo</strong><span>Visual Control & Live Production System</span></div>
         </div>
         <nav className="topnav">
-          <button onClick={saveProject}>Save</button>
+          <button onClick={saveProject}>Save</button><button className="history-button" disabled={historyRef.current.past.length === 0} onClick={undo} title="Ctrl/Cmd+Z">↶ Undo</button><button className="history-button" disabled={historyRef.current.future.length === 0} onClick={redo} title="Ctrl/Cmd+Shift+Z">↷ Redo</button><button className={autoSaveEnabled ? "autosave-button enabled" : "autosave-button"} onClick={() => setAutoSaveEnabled((v) => !v)}>{autoSaveEnabled ? "AUTO" : "AUTO OFF"}</button>
           <label className="topnav-file">Open<input type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) loadProject(file); event.target.value = ""; }} /></label>
           <button>Edit</button><button>View</button><button>Settings</button>
-          {projectMessage && <span className="project-message">{projectMessage}</span>}
+          {recoveryAvailable && <span className="recovery-controls"><button onClick={recoverAutosave}>Recover</button><button onClick={discardAutosave}>Discard</button></span>}{projectMessage && <span className="project-message">{projectMessage}</span>}
         </nav>
         <div className="status"><span className="status-dot" /> SYSTEM READY</div>
       </header>
@@ -1003,7 +998,8 @@ export function App() {
         </section>
 
         <aside className="properties panel">
-          <div className="panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
+          <div className="panel-title property-panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
+          <div className="property-context"><span>{selectedLayerModel?.name ?? "No layer selected"}</span><small>{selectedDeck?.name ?? "—"} · {selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId) ? libraryEngine.get(selectedLayerModel.sourceId).kind : "media"}</small></div>
           {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Document", "List", "Advanced"].map((item) => (
             <div className="property-section" key={item}>
               <button className={openProperty === item ? "property-row active" : "property-row"} onClick={() => setOpenProperty(openProperty === item ? "" : item)}>
@@ -1036,36 +1032,15 @@ export function App() {
                       <button className={playback?.loop ? "active" : ""} onClick={() => updateSelectedPlayback({ loop: !playback?.loop })}>↻ Loop</button>
                     </div><label>Speed<input type="range" min="0" max="200" value={playback?.speed ?? 100} onChange={(event) => updateSelectedPlayback({ speed: Number(event.target.value) })} /></label><div className="property-value">{playback?.playing ? "PLAYING" : "PAUSED"} · {playback?.speed ?? 100}% · {playback?.loop ? "LOOP" : "NO LOOP"}</div></>;
                   })()}
-                  {item === "Transform" && <div className="property-grid">
-                    {[
-                      ["X", "x", 0], ["Y", "y", 0], ["Rotation", "rotation", 0]
-                    ].map(([label, key, fallback]) => <label key={String(key)}>{label}<input type="number" value={Number(selectedLayerModel?.transform?.[key as keyof NonNullable<Layer["transform"]>] ?? fallback)} onChange={(event) => updateSelectedTransform({ [key]: Number(event.target.value) })} /></label>)}
-                    <label>
-                      Scale X
-                      <input
-                        type="number"
-                        value={Number(selectedLayerModel?.transform?.scaleX ?? 100)}
-                        onChange={(event) => updateSelectedScale("scaleX", Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      Scale Y
-                      <input
-                        type="number"
-                        value={Number(selectedLayerModel?.transform?.scaleY ?? 100)}
-                        onChange={(event) => updateSelectedScale("scaleY", Number(event.target.value))}
-                      />
-                    </label>
-                    <label className="property-toggle">
-                      <span>Link Scale X/Y</span>
-                      <input
-                        type="checkbox"
-                        checked={selectedLayerModel?.transform?.scaleLinked ?? true}
-                        onChange={(event) => updateSelectedTransform({ scaleLinked: event.target.checked })}
-                      />
-                    </label>
-                  </div>}
-                  {item === "Layering" && <>
+                  {item === "Transform" && <>
+                    <div className="inspector-subhead">POSITION & ROTATION</div><div className="property-grid">
+                      {[["X","x",0],["Y","y",0],["Rotation","rotation",0]].map(([label,key,fallback]) => <label key={String(key)}>{label}<input type="number" value={Number(selectedLayerModel?.transform?.[key as keyof NonNullable<Layer["transform"]>] ?? fallback)} onChange={(event) => updateSelectedTransform({ [key]: Number(event.target.value) })} /></label>)}
+                    </div><div className="inspector-subhead">SCALE</div><div className="property-grid">
+                      <label>Scale X<input type="number" value={Number(selectedLayerModel?.transform?.scaleX ?? 100)} onChange={(event) => updateSelectedScale("scaleX", Number(event.target.value))} /></label>
+                      <label>Scale Y<input type="number" value={Number(selectedLayerModel?.transform?.scaleY ?? 100)} onChange={(event) => updateSelectedScale("scaleY", Number(event.target.value))} /></label>
+                    </div><label className="property-toggle"><span>Link Scale X/Y</span><input type="checkbox" checked={selectedLayerModel?.transform?.scaleLinked ?? true} onChange={(event) => updateSelectedTransform({ scaleLinked: event.target.checked })} /></label>
+                  </>}
+                                    {item === "Layering" && <>
                     <div className="property-grid">
                       <label>Order<input type="number" value={selectedLayerModel?.order ?? 0} onChange={(event) => updateSelectedLayer({ order: Number(event.target.value) })} /></label>
                       <label>Opacity<input type="number" min="0" max="100" value={selectedLayerModel?.transform?.opacity ?? 100} onChange={(event) => updateSelectedTransform({ opacity: Number(event.target.value) })} /></label>
@@ -1131,8 +1106,9 @@ export function App() {
                     const updateSlice = (sliceId: string, updater: (slice: Slice) => Slice) => setSlices((current) => current.map((slice) => slice.id === sliceId ? updater(slice) : slice));
                     return <>
                       <SliceEditorToolbar tool={sliceEditorState.tool} onToolChange={setSliceEditorTool} />
+                      <div className="slice-editor-options"><label className="property-toggle"><span>Snap to Grid</span><input type="checkbox" checked={selectedSlices[0]?.mapping?.snapToGrid ?? true} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { snapToGrid: event.target.checked }))} /></label><label>Grid Size<input type="number" min="1" max="512" value={selectedSlices[0]?.mapping?.gridSize ?? 16} disabled={!selectedSlices[0]} onChange={(event) => selectedSlices[0] && updateSlice(selectedSlices[0].id, (current) => patchSliceMapping(current, { gridSize: Math.max(1, Number(event.target.value) || 1) }))} /></label><label className="property-toggle"><span>Guides</span><input type="checkbox" checked={sliceGuides} onChange={(event) => setSliceGuides(event.target.checked)} /></label></div>
                       <div className="property-value">Tool: {sliceEditorState.tool === "pen" ? "Pen / Edit points" : "Move / Pick"} · Slices: {selectedSlices.length}</div>
-                      {selectedSlices[0] && <SliceCanvas slice={selectedSlices[0]} onMovePoint={(index, point) => updateSlice(selectedSlices[0].id, (current) => moveSlicePoint(current, index, point))} onAddPoint={(point) => updateSlice(selectedSlices[0].id, (current) => addSlicePoint(current, point))} onRemovePoint={(index) => updateSlice(selectedSlices[0].id, (current) => removeSlicePoint(current, index))} />}
+                      {selectedSlices[0] && <SliceCanvas slice={selectedSlices[0]} guides={sliceGuides} onMovePoint={(index, point) => updateSlice(selectedSlices[0].id, (current) => moveSlicePoint(current, index, point))} onAddPoint={(point) => updateSlice(selectedSlices[0].id, (current) => addSlicePoint(current, point))} onRemovePoint={(index) => updateSlice(selectedSlices[0].id, (current) => removeSlicePoint(current, index))} />}
                       <div className="property-buttons"><button onClick={addSliceToSelectedLayer}>Add Slice</button><button onClick={resetSelectedLayerSlices} disabled={selectedSlices.length === 0}>Reset Slice</button></div>
                       {selectedSlices.map((slice) => <div key={slice.id}>
                         <div className="property-grid">
