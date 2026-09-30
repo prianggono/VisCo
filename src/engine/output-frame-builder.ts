@@ -49,12 +49,13 @@ export function createOutputFrame(
   const hasSolo = program.layers.some((layer) => layer.solo === true);
   const renderableProgramLayers = program.layers.filter((layer) => layer.visible !== false && (!hasSolo || layer.solo === true));
   const programLayerIds = new Set(renderableProgramLayers.map((layer) => layer.id));
-  const layerIds = [...new Set(
-    selectedSlices.flatMap((slice) => slice.layerRefs
-      .filter((ref) => programLayerIds.has(ref.layerId) && ref.deckId === program.source?.deckId)
-      .map((ref) => ref.layerId))
-  )];
-  const selectedLayerIds = new Set(layerIds);
+  const layerIds = selectedSlices.length > 0
+    ? [...new Set(
+        selectedSlices.flatMap((slice) => slice.layerRefs
+          .filter((ref) => programLayerIds.has(ref.layerId) && ref.deckId === program.source?.deckId)
+          .map((ref) => ref.layerId))
+      )]
+    : renderableProgramLayers.map((layer) => layer.id);
   const layers = selectedSlices.length > 0
     ? selectedSlices.flatMap((slice, sliceIndex) =>
         renderableProgramLayers
@@ -86,7 +87,6 @@ export function createOutputFrame(
           })
       )
     : renderableProgramLayers
-        .filter((layer) => selectedLayerIds.has(layer.id))
         .map((layer, index) => {
           const t = layer.transform;
           return {
