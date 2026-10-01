@@ -196,6 +196,7 @@ export function App() {
   const selectedDeck = decks.find((deck) => deck.id === selectedLayer.deckId);
   const selectedLayerModel = selectedDeck?.layers.find((layer) => layer.id === selectedLayer.layerId);
   const activeCompositionId = selectedCompositionId;
+  const globalSlotCount: number = Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length));
 
   const selectPreview = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
@@ -511,8 +512,6 @@ export function App() {
     setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
     setProjectDirty(true);
   };
-  const globalSlotCount = globalSlotCount;
-
   const addLayerToDeck = (deckId: string) => {
     const activeDecks = decks.filter((item) => compositionIdForDeck(item.id) === activeCompositionId);
     const nextSlot = globalSlotCount + 1;
