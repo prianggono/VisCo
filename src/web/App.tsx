@@ -72,6 +72,7 @@ export function App() {
   }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
   const [propertyTarget, setPropertyTarget] = useState<"layer" | "deck">("layer");
+  const [selectedDisplayId, setSelectedDisplayId] = useState("display-1");
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -1858,7 +1859,7 @@ export function App() {
       <footer className="media-bar">
         <div className="output-group">
           <div className="output-control">
-            <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput("display-1")}>FULLSCREEN</button>
+            <button className={fullscreenState.target.enabled ? "output-button enabled" : "output-button"} onClick={() => toggleOutput(selectedDisplayId)}>FULLSCREEN</button>
             <button className="output-gear" title="Display manager" onClick={() => setDisplayManagerOpen(true)}>▦</button><button className="output-gear" title="Fullscreen settings" onClick={() => openOutputSettings("display")}>⚙</button>
           </div>
           <div className="output-control">
@@ -2036,11 +2037,11 @@ export function App() {
                 <div className="inspector-subhead">PHYSICAL DISPLAYS</div>
                 {outputEngine.list().filter((target) => target.kind === "display").map((target) => {
                   const state = outputEngine.getState(target.id);
-                  const isActive = fullscreenState.target.id === target.id;
+                  const isActive = selectedDisplayId === target.id;
                   return <div className="display-output-row" key={target.id}>
                     <div><strong>{target.id === "display-1" ? "Display 1" : "Display 2"}</strong><small>{isActive ? "ACTIVE TARGET" : "AVAILABLE"} · {state.active ? "OUTPUT ON" : "OUTPUT OFF"}</small></div>
                     <div className="display-output-actions">
-                      <button className={isActive ? "output-button enabled" : "output-button"} onClick={() => { setFullscreenState((current) => ({ ...current, target: { ...current.target, id: target.id } })); setProjectDirty(true); }}>{isActive ? "SELECTED" : "SELECT"}</button>
+                      <button className={isActive ? "output-button enabled" : "output-button"} onClick={() => { setSelectedDisplayId(target.id); setProjectDirty(true); }}>{isActive ? "SELECTED" : "SELECT"}</button>
                       <button className={target.enabled ? "output-button enabled" : "output-button"} onClick={() => { outputEngine.setEnabled(target.id, !target.enabled); setOutputRevision((v) => v + 1); setProjectDirty(true); }}>{target.enabled ? "ENABLED" : "DISABLED"}</button>
                       <button className="output-button" onClick={() => setProjectMessage(target.id + " test signal requested.")}>TEST</button>
                     </div>
