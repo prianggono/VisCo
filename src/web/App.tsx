@@ -1432,7 +1432,7 @@ export function App() {
 
       <section
         className="workspace"
-        style={{ gridTemplateColumns: workspace.library + "px minmax(600px, 1fr) " + workspace.properties + "px" }}
+        style={{ gridTemplateColumns: workspace.library + "px minmax(1200px, 1fr) " + workspace.properties + "px" }}
       >
         <aside className="library panel">
           <div className="panel-title"><span>LIBRARY</span></div>
@@ -1873,7 +1873,7 @@ export function App() {
         </div>
         <div className="scene-controls"><button className="output-button" onClick={() => setSceneManagerOpen(true)}>SCENES ⚙</button><button className="output-button" onClick={() => setAudioRoutingOpen(true)}>AUDIO ROUTING</button>
           <span className="output-status-pill">COMP {activeCompositionId.toUpperCase()}</span>
-          {currentScenes().filter((scene) => scene.compositionId === activeCompositionId).map((scene) => (
+          {currentScenes().filter((scene) => scene.compositionId === activeCompositionId && scene.target.kind !== "display").map((scene) => (
             <button key={scene.id} className={activeSceneId === scene.id ? "output-button enabled" : "output-button"} onClick={() => activateScene(scene.id)} disabled={!scene.enabled}>
               {scene.name.toUpperCase()}
             </button>
@@ -2032,7 +2032,22 @@ export function App() {
               {outputSettings !== "display" && <label>Bitrate<select defaultValue={String((outputSettings === "stream" ? mediaSettings.stream?.bitrate : mediaSettings.record?.bitrate) ?? "auto")} onChange={(event) => applyOutputSettings({ bitrate: event.target.value === "auto" ? "auto" : Number(event.target.value) })}><option value="auto">Auto</option><option value="4000">4 Mbps</option><option value="8000">8 Mbps</option><option value="12000">12 Mbps</option></select></label>}
               {outputSettings === "stream" && <><label>Server<input defaultValue={mediaSettings.stream?.server ?? ""} placeholder="rtmp://server/app" onBlur={(event) => applyOutputSettings({ server: event.target.value })} /></label><label>Stream Key<input defaultValue={mediaSettings.stream?.key ?? ""} type="password" placeholder="Stream key" onBlur={(event) => applyOutputSettings({ key: event.target.value })} /></label></>}
               {outputSettings === "record" && <><label>Target Folder<input defaultValue={mediaSettings.record?.targetFolder ?? ""} placeholder="D:\\Recordings" onBlur={(event) => applyOutputSettings({ targetFolder: event.target.value })} /></label><label>Segment (min)<input type="number" min="1" max="240" defaultValue={mediaSettings.record?.segmentMinutes ?? 60} onBlur={(event) => applyOutputSettings({ segmentMinutes: Math.max(1, Number(event.target.value) || 60) })} /></label></>}
-              {outputSettings === "display" && <div className="property-empty">Use DISPLAY MANAGER to choose and test the physical display target.</div>}
+              {outputSettings === "display" && <div className="display-output-settings">
+                <div className="inspector-subhead">PHYSICAL DISPLAYS</div>
+                {outputEngine.list().filter((target) => target.kind === "display").map((target) => {
+                  const state = outputEngine.getState(target.id);
+                  const isActive = fullscreenState.target.id === target.id;
+                  return <div className="display-output-row" key={target.id}>
+                    <div><strong>{target.id === "display-1" ? "Display 1" : "Display 2"}</strong><small>{isActive ? "ACTIVE TARGET" : "AVAILABLE"} · {state.active ? "OUTPUT ON" : "OUTPUT OFF"}</small></div>
+                    <div className="display-output-actions">
+                      <button className={isActive ? "output-button enabled" : "output-button"} onClick={() => { setFullscreenState((current) => ({ ...current, target: { ...current.target, id: target.id } })); setProjectDirty(true); }}>{isActive ? "SELECTED" : "SELECT"}</button>
+                      <button className={target.enabled ? "output-button enabled" : "output-button"} onClick={() => { outputEngine.setEnabled(target.id, !target.enabled); setOutputRevision((v) => v + 1); setProjectDirty(true); }}>{target.enabled ? "ENABLED" : "DISABLED"}</button>
+                      <button className="output-button" onClick={() => setProjectMessage(target.id + " test signal requested.")}>TEST</button>
+                    </div>
+                  </div>;
+                })}
+                <div className="property-value">Physical display assignment belongs here. Fullscreen uses the selected target.</div>
+              </div>
             </div>
             <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
           </div>
