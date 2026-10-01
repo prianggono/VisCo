@@ -1579,7 +1579,7 @@ export function App() {
               )}
             </div>
 
-                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${160 + globalSlotCount * 112 + 48}px` }}>>
+                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${160 + globalSlotCount * 112 + 48}px` }}>
               <div className="column-spacer" />
               {Array.from({ length: globalSlotCount }, (_, index) => {
                 const column = index + 1;
