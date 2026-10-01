@@ -676,3 +676,43 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
   font-size: 7px;
   letter-spacing: .04em;
 }
+
+
+/* Active Column: Resolume-style vertical highlight across header and slots. */
+.column-cell.active {
+  position: relative;
+}
+.column-cell.active .column-toggle {
+  border-color: #6fc7c0;
+  background: #173a3a;
+  color: #e7fffb;
+  box-shadow: inset 0 0 0 1px #2d7772;
+}
+.column-cell.active > span {
+  color: #9fe5df;
+  font-weight: 800;
+}
+.layer-card.column-active {
+  border-color: #39736f;
+  background: #0d1718;
+  box-shadow: inset 0 0 0 1px #245552, inset 0 2px 0 #5bc0b8;
+}
+.layer-card.column-active .layer-name-row {
+  background: #122324;
+  border-bottom-color: #2c5b59;
+}
+.layer-card.column-active .layer-name {
+  background: #152b2c;
+  color: #ccefeb;
+}
+.layer-card.column-active .layer-box {
+  background: #0a1213;
+}
+.layer-card.column-active .layer-tools {
+  color: #7fb8b4;
+}
+.layer-slot-empty.column-active {
+  border-color: #2d5553;
+  background: #0c1516;
+  box-shadow: inset 0 0 0 1px #1d3e3c, inset 0 2px 0 #3b817b;
+}
