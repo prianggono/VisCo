@@ -1579,9 +1579,9 @@ export function App() {
               )}
             </div>
 
-                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length))}, minmax(112px, 1fr))`, minWidth: `${160 + Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length)) * 112}px` }}>
+                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${160 + globalSlotCount * 112 + 48}px` }}>>
               <div className="column-spacer" />
-              {Array.from({ length: Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length)) }, (_, index) => {
+              {Array.from({ length: globalSlotCount }, (_, index) => {
                 const column = index + 1;
                 const active = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).some((deck) => deckRuntime.getState(deck.id).columns.get(column));
                 return (
@@ -1647,7 +1647,7 @@ export function App() {
                     </div>
                   </div>
 
-                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${Math.max(8, deck.layers.length)}, minmax(112px, 1fr)) 48px`, minWidth: `${Math.max(8, deck.layers.length) * 112 + 48}px` }}>
+                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${globalSlotCount * 112 + 48}px` }}>
                     {Array.from({ length: globalSlotCount }, (_, index) => {
                       const layer = deck.layers[index];
                       if (!layer) {
