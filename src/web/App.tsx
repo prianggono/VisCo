@@ -1652,7 +1652,7 @@ export function App() {
                     {Array.from({ length: globalSlotCount }, (_, index) => {
                       const layer = deck.layers[index];
                       if (!layer) {
-                        return <div className="layer-slot-empty" key={deck.id + "-empty-slot-" + index}><span>Layer {index + 1}</span></div>;
+                        return <div className={deckRuntime.getState(deck.id).columns.get(index + 1) ? "layer-slot-empty column-active" : "layer-slot-empty"} key={deck.id + "-empty-slot-" + index}><span>Layer {index + 1}</span></div>;
                       }
                       if (groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))) {
                         return <div className="layer-slot-empty collapsed" key={layer.id}><span>Layer {index + 1}</span></div>;
