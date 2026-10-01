@@ -2047,7 +2047,7 @@ export function App() {
                   </div>;
                 })}
                 <div className="property-value">Physical display assignment belongs here. Fullscreen uses the selected target.</div>
-              </div>
+              </div>}
             </div>
             <div className="input-select-footer"><div className="modal-drop">Record and Stream consume the same Production Scene frame; only encoder settings are independent.</div><div className="input-select-actions"><button className="modal-cancel" onClick={() => setOutputSettings(null)}>CLOSE</button></div></div>
           </div>
