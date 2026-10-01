@@ -607,3 +607,72 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
   background: #0d1116;
   color: #29313b;
 }
+
+/* Resolume-style deck control strip and exact 1:1 column/slot geometry */
+:root {
+  --control-room-rail: 160px;
+  --control-room-slot: 112px;
+  --control-room-add: 48px;
+}
+.column-header {
+  grid-template-columns: var(--control-room-rail) repeat(8, var(--control-room-slot)) var(--control-room-add);
+  width: max-content;
+  min-width: calc(var(--control-room-rail) + 8 * var(--control-room-slot) + var(--control-room-add));
+}
+.deck-row {
+  grid-template-columns: var(--control-room-rail) max-content;
+  width: max-content;
+}
+.deck-rail {
+  width: var(--control-room-rail);
+  min-width: var(--control-room-rail);
+}
+.layer-strip {
+  grid-template-columns: repeat(8, var(--control-room-slot)) var(--control-room-add);
+  width: max-content;
+}
+.layer-card,
+.layer-slot-empty {
+  width: var(--control-room-slot);
+  min-width: var(--control-room-slot);
+  max-width: var(--control-room-slot);
+}
+.deck-fader-control {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  min-height: 86px;
+  border-bottom: 1px solid #292f38;
+  background: #0d1116;
+}
+.deck-fader-control .deck-faders {
+  height: 86px;
+  min-width: 0;
+  border-bottom: 0;
+}
+.deck-clear-selection-large {
+  width: 42px;
+  height: 86px;
+  border: 0;
+  border-right: 1px solid #292f38;
+  border-radius: 0;
+  background: #151a20;
+  color: #d6dde7;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.deck-clear-selection-large:hover {
+  background: #252d37;
+  color: #fff;
+}
+.deck-clear-selection-large:active {
+  background: #33404d;
+}
+.deck-actions {
+  height: 24px;
+}
+.deck-action {
+  font-size: 7px;
+  letter-spacing: .04em;
+}
