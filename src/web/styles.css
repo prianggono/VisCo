@@ -192,3 +192,32 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
   .audio-routing-grid{grid-template-columns:1fr}
   .audio-routing-arrow{display:none}
 }
+
+
+/* Operator interaction polish */
+.deck-heading { cursor: pointer; }
+.deck-heading:hover { background: rgba(255,255,255,.025); }
+.deck-selected { outline: 1px solid rgba(126,180,255,.42); outline-offset: -1px; }
+.deck-faders { position: relative; }
+.deck-clear-selection {
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(180,190,205,.28);
+  border-radius: 3px;
+  background: #11161d;
+  color: #aeb9c8;
+  font-size: 16px;
+  line-height: 17px;
+  cursor: pointer;
+  z-index: 3;
+}
+.deck-clear-selection:hover {
+  color: #fff;
+  border-color: rgba(130,175,235,.65);
+  background: #1b2430;
+}
+.deck-property-section { margin-top: 8px; }
