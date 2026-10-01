@@ -511,22 +511,27 @@ export function App() {
     setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
     setProjectDirty(true);
   };
+  const globalSlotCount = globalSlotCount;
+
   const addLayerToDeck = (deckId: string) => {
-    const deck = decks.find((item) => item.id === deckId);
-    if (!deck) return;
-    const nextNumber = deck.layers.length + 1;
-    const layer: Layer = {
-      id: deckId + "-layer-" + nextNumber + "-" + Date.now(),
-      name: "Layer " + nextNumber
-    };
+    const activeDecks = decks.filter((item) => compositionIdForDeck(item.id) === activeCompositionId);
+    const nextSlot = globalSlotCount + 1;
+    if (!activeDecks.length) return;
     recordHistory();
-    setDecks((current) => current.map((item) => item.id === deckId
-      ? { ...item, layers: [...item.layers, layer] }
-      : item));
-    setSelectedLayer({ deckId, layerId: layer.id });
+    setDecks((current) => current.map((item) => {
+      if (compositionIdForDeck(item.id) !== activeCompositionId) return item;
+      if (item.layers.length >= nextSlot) return item;
+      const layer: Layer = {
+        id: item.id + "-layer-" + nextSlot + "-" + Date.now(),
+        name: "Layer " + nextSlot
+      };
+      return { ...item, layers: [...item.layers, layer] };
+    }));
+    const target = decks.find((item) => item.id === deckId) ?? activeDecks[0];
+    setSelectedLayer({ deckId: target.id, layerId: target.id + "-layer-" + nextSlot });
     setPropertyTarget("layer");
     setProjectDirty(true);
-    setProjectMessage(deck.name + " · " + layer.name + " added.");
+    setProjectMessage("Global Slot " + nextSlot + " added to all Decks in the active Composition.");
   };
 
   const deleteSelectedLayer = () => {
@@ -1643,7 +1648,14 @@ export function App() {
                   </div>
 
                                     <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${Math.max(8, deck.layers.length)}, minmax(112px, 1fr)) 48px`, minWidth: `${Math.max(8, deck.layers.length) * 112 + 48}px` }}>
-                    {deck.layers.filter((layer) => !groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))).map((layer, index) => {
+                    {Array.from({ length: globalSlotCount }, (_, index) => {
+                      const layer = deck.layers[index];
+                      if (!layer) {
+                        return <div className="layer-slot-empty" key={deck.id + "-empty-slot-" + index}><span>Layer {index + 1}</span></div>;
+                      }
+                      if (groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))) {
+                        return <div className="layer-slot-empty collapsed" key={layer.id}><span>Layer {index + 1}</span></div>;
+                      }
                       const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
                       const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
                       const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
