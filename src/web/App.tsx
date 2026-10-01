@@ -71,6 +71,7 @@ export function App() {
     deckIds: initialDecks.map((deck) => deck.id), groupIds: [], sliceIds: ["slice-default"], locked: false
   }]);
   const [selectedLayer, setSelectedLayer] = useState({ deckId: "deck-1", layerId: "deck-1-layer-2" });
+  const [propertyTarget, setPropertyTarget] = useState<"layer" | "deck">("layer");
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -219,6 +220,7 @@ export function App() {
     }
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
+    setPropertyTarget("layer");
   };
 
   const getPreviewRef = () => {
@@ -1590,14 +1592,15 @@ export function App() {
               const runtimeState = deckRuntime.getState(deck.id);
               const values = { master: runtimeState.masterLevel, audio: runtimeState.audioLevel, opacity: runtimeState.visualLevel };
               return (
-                <section className={"deck-row " + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
+                <section className={"deck-row " + (propertyTarget === "deck" && selectedLayer.deckId === deck.id ? "deck-selected " : "") + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
-                    <div className="deck-heading">
+                    <div className="deck-heading" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }} title="Select Deck properties">
                       <span>{deck.name}</span>
                       <small>{deck.kind.toUpperCase()} · {runtimeState.masterLevel}% MASTER</small>
                       <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
                     </div>
                     <div className="deck-faders">
+                      <button className="deck-clear-selection" title="Deselect Layer" aria-label="Deselect Layer" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }}>×</button>
                       {([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const).map(([label, key]) => (
                         <label className="fader" key={label}>
                           <span>{label}</span>
@@ -1646,7 +1649,7 @@ export function App() {
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                setSelectedLayer({ deckId: deck.id, layerId: layer.id });
+                                programLayer(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
@@ -1672,7 +1675,29 @@ export function App() {
         </section>
 
         <aside className="properties panel">
-          <div className="panel-title property-panel-title"><span>PROPERTIES</span><span className="muted">{selectedLayer.layerId}</span></div>
+          <div className="panel-title property-panel-title"><span>PROPERTIES</span><span className="muted">{propertyTarget === "deck" ? selectedDeck?.id ?? "—" : selectedLayer.layerId}</span></div>
+          {propertyTarget === "deck" ? (() => {
+            const deck = selectedDeck;
+            if (!deck) return <div className="property-empty">No Deck selected.</div>;
+            const runtime = deckRuntime.getState(deck.id);
+            return <>
+              <div className="property-context"><span>{deck.name}</span><small>DECK · {deck.kind.toUpperCase()}</small></div>
+              <div className="property-section deck-property-section">
+                <div className="property-row active"><span>Deck</span><span>⌄</span></div>
+                <div className="property-content">
+                  <label>Name<input value={deck.name} onChange={(event) => updateDeck(deck.id, { name: event.target.value })} /></label>
+                  <label className="property-toggle"><span>Loop</span><input type="checkbox" checked={Boolean(deck.loop)} onChange={(event) => updateDeck(deck.id, { loop: event.target.checked })} /></label>
+                  <div className="inspector-subhead">TRANSITION</div>
+                  <label>Type<select value={deck.transition.type} onChange={(event) => updateDeck(deck.id, { transition: { ...deck.transition, type: event.target.value as Transition["type"] } })}><option value="cut">Cut</option><option value="fade">Fade</option><option value="wipe">Wipe</option></select></label>
+                  <label>Duration (ms)<input type="number" min="0" max="10000" value={deck.transition.durationMs} onChange={(event) => updateDeck(deck.id, { transition: { ...deck.transition, durationMs: Math.max(0, Number(event.target.value) || 0) } })} /></label>
+                  <div className="inspector-subhead">RUNTIME</div>
+                  <div className="property-value">Master {runtime.masterLevel}% · Audio {runtime.audioLevel}% · Opacity {runtime.visualLevel}%</div>
+                  <div className="property-value">Sources {deck.layers.filter((layer) => layer.sourceId).length} · Layers {deck.layers.length}</div>
+                  <div className="property-buttons"><button onClick={() => cloneDeck(deck.id)}>CLONE DECK</button><button onClick={() => setDeckSettingsId(deck.id)}>ADVANCED SETTINGS</button></div>
+                </div>
+              </div>
+            </>;
+          })() : <>
           <div className="property-context"><span>{selectedLayerModel?.name ?? "No layer selected"}</span><small>{selectedDeck?.name ?? "—"} · {selectedLayerModel?.sourceId && libraryEngine.has(selectedLayerModel.sourceId) ? libraryEngine.get(selectedLayerModel.sourceId).kind : "media"}</small></div>
           {["General", "Playback", "Transform", "Layering", "Audio", "Trigger", "Slice", "Document", "List", "Advanced"].map((item) => (
             <div className="property-section" key={item}>
@@ -1826,6 +1851,7 @@ export function App() {
               )}
             </div>
           ))}
+          </>}
         </aside>
       </section>
 
