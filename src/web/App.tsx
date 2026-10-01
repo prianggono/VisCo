@@ -511,6 +511,24 @@ export function App() {
     setSelectedLayer({ deckId: selectedDeck.id, layerId: copy.id });
     setProjectDirty(true);
   };
+  const addLayerToDeck = (deckId: string) => {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck) return;
+    const nextNumber = deck.layers.length + 1;
+    const layer: Layer = {
+      id: deckId + "-layer-" + nextNumber + "-" + Date.now(),
+      name: "Layer " + nextNumber
+    };
+    recordHistory();
+    setDecks((current) => current.map((item) => item.id === deckId
+      ? { ...item, layers: [...item.layers, layer] }
+      : item));
+    setSelectedLayer({ deckId, layerId: layer.id });
+    setPropertyTarget("layer");
+    setProjectDirty(true);
+    setProjectMessage(deck.name + " · " + layer.name + " added.");
+  };
+
   const deleteSelectedLayer = () => {
     if (!selectedDeck || !selectedLayerModel || selectedDeck.layers.length <= 1 || selectedLayerModel.locked) {
       if (selectedLayerModel?.locked) setProjectMessage("Layer is locked.");
@@ -1556,9 +1574,9 @@ export function App() {
               )}
             </div>
 
-            <div className="column-header">
+                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length))}, minmax(112px, 1fr))`, minWidth: `${160 + Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length)) * 112}px` }}>
               <div className="column-spacer" />
-              {Array.from({ length: 8 }, (_, index) => {
+              {Array.from({ length: Math.max(8, ...decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).map((deck) => deck.layers.length)) }, (_, index) => {
                 const column = index + 1;
                 const active = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).some((deck) => deckRuntime.getState(deck.id).columns.get(column));
                 return (
@@ -1624,7 +1642,7 @@ export function App() {
                     </div>
                   </div>
 
-                  <div className="layer-strip">
+                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${Math.max(8, deck.layers.length)}, minmax(112px, 1fr))`, minWidth: `${Math.max(8, deck.layers.length) * 112}px` }}>
                     {deck.layers.filter((layer) => !groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))).map((layer, index) => {
                       const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
                       const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
@@ -1668,6 +1686,7 @@ export function App() {
                         </article>
                       );
                     })}
+                    <button className="add-layer" title="Add Layer Slot" aria-label={"Add Layer Slot to " + deck.name} onClick={() => addLayerToDeck(deck.id)}>+</button>
                   </div>
                 </section>
               );
