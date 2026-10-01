@@ -743,7 +743,8 @@ export function App() {
       const deck = decks.find((candidate) => candidate.layers.some((layer) => layer.id === item.layerId));
       const layer = deck?.layers.find((candidate) => candidate.id === item.layerId);
       if (!deck || !layer?.sourceId) return [];
-      const source = libraryEngine.get(layer.sourceId);
+      const sourceId = layer.sourceId;
+      const source = libraryEngine.get(sourceId);
       const deviceKind = source.metadata?.deviceKind;
       const nativeSourceId =
         deviceKind === "ndi" || deviceKind === "omt" || source.kind === "ndi" || source.kind === "omt"
@@ -759,7 +760,7 @@ export function App() {
       const targets = matchingSlices.length > 0 ? matchingSlices : [null];
       return targets.map((slice) => ({
         id: `${layer.id}-${slice?.id ?? "full"}`,
-        sourceId: layer.sourceId,
+        sourceId,
         x: transform.x,
         y: transform.y,
         width: composition.format.width,
@@ -770,12 +771,12 @@ export function App() {
         opacity: transform.opacity,
         order: item.renderOrder,
         sliceId: slice?.id,
-        mappingMode: slice?.mapping.mode ?? "rectangle",
-        mappingPoints: slice?.mapping.points ?? []
+        mappingMode: slice?.mapping?.mode ?? "rectangle",
+        mappingPoints: slice?.mapping?.points ?? []
       }));
     });
     let cancelled = false;
-    const bindings = [...new Set(renderable.map((layer) => layer.sourceId))].map((sourceId) => {
+    const bindings = [...new Set(renderable.map((layer) => layer.sourceId).filter((sourceId): sourceId is string => Boolean(sourceId)))].map((sourceId) => {
       const source = libraryEngine.get(sourceId);
       const deviceKind = source.metadata?.deviceKind;
       const nativeSourceId =
