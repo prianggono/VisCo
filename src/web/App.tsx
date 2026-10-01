@@ -1578,7 +1578,7 @@ export function App() {
               )}
             </div>
 
-                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${160 + globalSlotCount * 112 + 48}px` }}>
+                        <div className="column-header" style={{ gridTemplateColumns: `160px repeat(${globalSlotCount}, 112px) 48px`, minWidth: `${160 + globalSlotCount * 112 + 48}px` }}>
               <div className="column-spacer" />
               {Array.from({ length: globalSlotCount }, (_, index) => {
                 const column = index + 1;
@@ -1622,8 +1622,9 @@ export function App() {
                       <small>{deck.kind.toUpperCase()} · {runtimeState.masterLevel}% MASTER</small>
                       <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
                     </div>
-                    <div className="deck-faders">
-                      <button className="deck-clear-selection" title="Deselect Layer" aria-label="Deselect Layer" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }}>×</button>
+                    <div className="deck-fader-control">
+                      <button className="deck-clear-selection-large" title="Clear / Deselect Layer" aria-label="Clear / Deselect Layer" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }}>X</button>
+                      <div className="deck-faders">
                       {([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const).map(([label, key]) => (
                         <label className="fader" key={label}>
                           <span>{label}</span>
@@ -1638,15 +1639,16 @@ export function App() {
                           <small>{values[key]}</small>
                         </label>
                       ))}
+                      </div>
                     </div>
                     <div className="deck-actions">
                       <button className="deck-action" title="Clone Deck" onClick={() => cloneDeck(deck.id)}>⧉</button>
-                      <button className="deck-action" title="Delete Deck" onClick={() => deleteDeck(deck.id)}>×</button>
+                      <button className="deck-action" title="Delete Deck" onClick={() => deleteDeck(deck.id)}>DEL</button>
                       <button className="deck-action" title="Deck settings" onClick={() => setDeckSettingsId(deck.id)}>⚙</button>
                     </div>
                   </div>
 
-                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${globalSlotCount}, minmax(112px, 1fr)) 48px`, minWidth: `${globalSlotCount * 112 + 48}px` }}>
+                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${globalSlotCount}, 112px) 48px`, minWidth: `${globalSlotCount * 112 + 48}px` }}>
                     {Array.from({ length: globalSlotCount }, (_, index) => {
                       const layer = deck.layers[index];
                       if (!layer) {
