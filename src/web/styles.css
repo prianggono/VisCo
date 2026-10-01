@@ -578,3 +578,32 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
   background: #171e27;
   color: #dce7f5;
 }
+
+/* Global slot grid: every Deck shares the exact same column geometry. */
+.column-header {
+  grid-template-columns: 160px repeat(8, minmax(112px, 1fr)) 48px;
+}
+.column-add-spacer {
+  min-width: 48px;
+  border: 1px solid #252b34;
+  border-left: 0;
+  background: #0d1116;
+}
+.layer-slot-empty {
+  min-width: 0;
+  height: 124px;
+  box-sizing: border-box;
+  border: 1px solid #20262f;
+  border-radius: 2px;
+  background: #0a0d11;
+  color: #343d49;
+  display: grid;
+  place-items: end center;
+  padding-bottom: 5px;
+  font-size: 6px;
+  overflow: hidden;
+}
+.layer-slot-empty.collapsed {
+  background: #0d1116;
+  color: #29313b;
+}
