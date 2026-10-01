@@ -278,3 +278,66 @@ button, input { font: inherit; color: inherit; border: 0; cursor: pointer; }
   min-width:0;
   max-width:100%;
 }
+
+
+/* Control Room: preserve an operator-safe working width */
+.workspace > .control-room,
+.workspace > main {
+  min-width: 0;
+}
+.decks {
+  min-width: 1200px;
+}
+.column-header {
+  min-width: 1200px;
+}
+.deck-row {
+  min-width: 1200px;
+}
+.layer-card {
+  min-height: 150px;
+}
+.layer-name-row {
+  min-height: 28px;
+}
+.layer-program-button {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.display-output-settings {
+  display:grid;
+  gap:10px;
+  grid-column:1 / -1;
+}
+.display-output-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:12px;
+  border:1px solid #2b313b;
+  border-radius:5px;
+  background:#11161d;
+}
+.display-output-row > div:first-child {
+  display:grid;
+  gap:4px;
+  min-width:150px;
+}
+.display-output-row strong {
+  color:#e3e8ef;
+  font-size:11px;
+}
+.display-output-row small {
+  color:#737e8c;
+  font-size:8px;
+  letter-spacing:.06em;
+}
+.display-output-actions {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
