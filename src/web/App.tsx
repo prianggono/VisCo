@@ -1642,7 +1642,7 @@ export function App() {
                     </div>
                   </div>
 
-                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${Math.max(8, deck.layers.length)}, minmax(112px, 1fr))`, minWidth: `${Math.max(8, deck.layers.length) * 112}px` }}>
+                                    <div className="layer-strip" style={{ gridTemplateColumns: `repeat(${Math.max(8, deck.layers.length)}, minmax(112px, 1fr)) 48px`, minWidth: `${Math.max(8, deck.layers.length) * 112 + 48}px` }}>
                     {deck.layers.filter((layer) => !groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))).map((layer, index) => {
                       const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
                       const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
