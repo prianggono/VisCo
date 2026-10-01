@@ -1584,7 +1584,7 @@ export function App() {
                 const column = index + 1;
                 const active = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).some((deck) => deckRuntime.getState(deck.id).columns.get(column));
                 return (
-                  <div className="column-cell" key={column}>
+                  <div className={active ? "column-cell active" : "column-cell"} key={column}>
                     <button
                       className={active ? "column-toggle active" : "column-toggle"}
                       onClick={() => {
@@ -1664,7 +1664,7 @@ export function App() {
                         : undefined;
                       return (
                         <article
-                          className={"layer-card " + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
+                          className={"layer-card " + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active " : "") + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
                           key={layer.id}
                           draggable
                           onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
