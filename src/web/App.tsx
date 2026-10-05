@@ -1686,7 +1686,7 @@ export function App() {
                         : undefined;
                       return (
                         <article
-                          className={"layer-card " + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active " : "") + ((selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id) || isProgram ? "slot-active " : "") + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
+                          className={"layer-card " + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active " : "") + (deckRuntime.getState(deck.id).activeLayerId === layer.id ? "slot-active " : "") + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
                           key={layer.id}
                           draggable
                           onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
