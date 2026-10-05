@@ -203,6 +203,14 @@ export class DeckRuntime {
     return state;
   }
 
+  setActiveLayer(deckId: string, layerId: string): DeckRuntimeState {
+    const current = this.require(deckId);
+    if (!current.playback.has(layerId)) throw new Error(`Layer "${layerId}" is not registered in deck "${deckId}".`);
+    const state = { ...current, activeLayerId: layerId };
+    this.states.set(deckId, state);
+    return state;
+  }
+
   deselectActiveLayer(deckId: string): DeckRuntimeState {
     return this.clearActiveLayer(deckId);
   }
