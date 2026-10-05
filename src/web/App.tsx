@@ -1612,11 +1612,35 @@ export function App() {
                       onClick={() => {
                         const activeDecks = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId && Boolean(deck.layers[column - 1]));
                         const enabled = !active;
-                        const activeDeckIds = activeDecks.map((deck) => deck.id);
-                        deckRuntime.setExclusiveColumn(activeDeckIds, column, enabled);
+                        deckRuntime.setExclusiveColumn(activeDecks.map((deck) => deck.id), column, enabled);
+
+                        if (enabled) {
+                          const currentProgram = programEngine.getState(activeCompositionId).source;
+                          const programDeck = currentProgram
+                            ? activeDecks.find((deck) => deck.id === currentProgram.deckId && deck.kind === "visual" && Boolean(deckRuntime.getState(deck.id).activeLayerId))
+                            : activeDecks.find((deck) => deck.kind === "visual" && Boolean(deckRuntime.getState(deck.id).activeLayerId));
+                          if (programDeck) {
+                            const activeLayerId = deckRuntime.getState(programDeck.id).activeLayerId;
+                            if (activeLayerId) {
+                              deckProgramController.program(programDeck, activeLayerId, { syncOutputs: false, compositionId: activeCompositionId });
+                              const scene = sceneRuntime.getActive(activeCompositionId);
+                              const program = programEngine.getState(activeCompositionId);
+                              if (scene && program.source) {
+                                try { outputEngine.syncFromScene(scene, program.source); } catch {}
+                              }
+                            }
+                          }
+                        } else {
+                          const currentProgram = programEngine.getState(activeCompositionId).source;
+                          if (currentProgram && !deckRuntime.getState(currentProgram.deckId).activeLayerId) {
+                            clearDeckActiveAndFallback(currentProgram.deckId);
+                          }
+                        }
+
                         activeDecks.forEach((deck) => {
                           if (deck.kind === "audio") {
-                            audioEngine.selectLayer(deck.id, enabled ? deck.layers[column - 1].id : null);
+                            const activeLayerId = deckRuntime.getState(deck.id).activeLayerId;
+                            audioEngine.selectLayer(deck.id, enabled ? activeLayerId : null);
                             audioEngine.setEnabled(deck.id, enabled && deckRuntime.getState(deck.id).masterLevel > 0);
                           }
                         });
@@ -1645,7 +1669,7 @@ export function App() {
                       <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
                     </div>
                     <div className="deck-fader-control">
-                      <button className="deck-clear-selection-large" title="Clear / Deselect Layer" aria-label="Clear / Deselect Layer" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }}>X</button>
+                      <button className="deck-clear-selection-large" title="Clear / Deselect Layer" aria-label="Clear / Deselect Layer" onClick={() => { clearDeckActiveAndFallback(deck.id); setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }}>X</button>
                       <div className="deck-faders">
                       {([["M", "master"], ["A", "audio"], ["V", "opacity"]] as const).map(([label, key]) => (
                         <label className="fader" key={label}>
