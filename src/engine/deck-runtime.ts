@@ -47,6 +47,31 @@ export class DeckRuntime {
     return state;
   }
 
+  /** Enforce the Control Room rule: within a set of Decks, at most one Column may be active. */
+  setExclusiveColumn(deckIds: readonly string[], column: number, enabled: boolean): void {
+    if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
+    const targets = new Set(deckIds);
+    for (const deckId of targets) {
+      const state = this.require(deckId);
+      const columns = new Map<number, boolean>();
+      const playback = new Map(state.playback);
+      for (const [columnIndex, isEnabled] of state.columns) {
+        const nextEnabled = enabled && columnIndex === column;
+        if (isEnabled !== nextEnabled || columnIndex === column) {
+          const layer = Array.from(playback.values())[columnIndex - 1];
+          if (layer) playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: nextEnabled });
+        }
+        if (nextEnabled) columns.set(columnIndex, true);
+      }
+      if (enabled) {
+        const layer = Array.from(playback.values())[column - 1];
+        if (!layer) throw new Error("Column " + column + " does not exist in deck \"" + deckId + "\".");
+        playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: true });
+        columns.set(column, true);
+      }
+      this.states.set(deckId, { ...state, columns, playback });
+    }
+  }
   setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
     if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
     const current = this.require(deckId);
