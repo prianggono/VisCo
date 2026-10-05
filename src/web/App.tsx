@@ -211,7 +211,6 @@ export function App() {
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
     const currentProgram = programEngine.getState(compositionId).source;
-    deckRuntime.setActiveLayer(deckId, layerId);
     if (!currentProgram || currentProgram.deckId === deckId) {
       deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
       const scene = sceneRuntime.getActive(compositionId);
@@ -220,6 +219,8 @@ export function App() {
         try { outputEngine.syncFromScene(scene, program.source); }
         catch (error) { setProjectMessage(error instanceof Error ? error.message : "Program output routing failed."); }
       }
+    } else {
+      deckRuntime.setActiveLayer(deckId, layerId);
     }
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
