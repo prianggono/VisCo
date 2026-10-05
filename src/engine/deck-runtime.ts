@@ -47,7 +47,6 @@ export class DeckRuntime {
     return state;
   }
 
-  /** Enforce the Control Room rule: within a set of Decks, at most one Column may be active. */
   /** Set one active Column across the supplied Decks and synchronize each Deck's active slot. */
   setExclusiveColumn(deckIds: readonly string[], column: number, enabled: boolean): void {
     if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
