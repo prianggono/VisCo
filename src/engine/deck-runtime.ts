@@ -48,28 +48,33 @@ export class DeckRuntime {
   }
 
   /** Enforce the Control Room rule: within a set of Decks, at most one Column may be active. */
+  /** Set one active Column across the supplied Decks and synchronize each Deck's active slot. */
   setExclusiveColumn(deckIds: readonly string[], column: number, enabled: boolean): void {
     if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
-    const targets = new Set(deckIds);
-    for (const deckId of targets) {
+    for (const deckId of new Set(deckIds)) {
       const state = this.require(deckId);
+      const layers = Array.from(state.playback.values());
+      const target = layers[column - 1];
+      if (enabled && !target) throw new Error("Column " + column + " does not exist in deck \"" + deckId + "\".");
       const columns = new Map<number, boolean>();
       const playback = new Map(state.playback);
       for (const [columnIndex, isEnabled] of state.columns) {
         const nextEnabled = enabled && columnIndex === column;
-        if (isEnabled !== nextEnabled || columnIndex === column) {
-          const layer = Array.from(playback.values())[columnIndex - 1];
-          if (layer) playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: nextEnabled });
+        const layer = layers[columnIndex - 1];
+        if (layer && isEnabled !== nextEnabled) {
+          playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: nextEnabled });
         }
         if (nextEnabled) columns.set(columnIndex, true);
       }
-      if (enabled) {
-        const layer = Array.from(playback.values())[column - 1];
-        if (!layer) throw new Error("Column " + column + " does not exist in deck \"" + deckId + "\".");
-        playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: true });
-        columns.set(column, true);
+      if (enabled && target) {
+        playback.set(target.layerId, { ...playback.get(target.layerId)!, playing: true });
       }
-      this.states.set(deckId, { ...state, columns, playback });
+      this.states.set(deckId, {
+        ...state,
+        columns,
+        activeLayerId: enabled && target ? target.layerId : (state.activeLayerId === target?.layerId ? null : state.activeLayerId),
+        playback
+      });
     }
   }
   setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
