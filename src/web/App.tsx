@@ -206,6 +206,17 @@ export function App() {
     setSelectedLayer({ deckId, layerId });
   };
 
+  const syncCurrentProgramOutput = (compositionId: string) => {
+    const scene = sceneRuntime.getActive(compositionId);
+    const program = programEngine.getState(compositionId);
+    if (!scene || !program.source) return;
+    try {
+      outputEngine.syncFromScene(scene, program.source);
+    } catch (error) {
+      setProjectMessage(error instanceof Error ? error.message : "Program output routing failed.");
+    }
+  };
+
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
@@ -213,12 +224,7 @@ export function App() {
     const currentProgram = programEngine.getState(compositionId).source;
     if (!currentProgram || currentProgram.deckId === deckId) {
       deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
-      const scene = sceneRuntime.getActive(compositionId);
-      const program = programEngine.getState(compositionId);
-      if (scene && program.source) {
-        try { outputEngine.syncFromScene(scene, program.source); }
-        catch (error) { setProjectMessage(error instanceof Error ? error.message : "Program output routing failed."); }
-      }
+      syncCurrentProgramOutput(compositionId);
     } else {
       deckRuntime.setActiveLayer(deckId, layerId);
     }
@@ -241,7 +247,10 @@ export function App() {
       });
       if (fallbackDeck) {
         const fallbackLayerId = deckRuntime.getState(fallbackDeck.id).activeLayerId;
-        if (fallbackLayerId) deckProgramController.program(fallbackDeck, fallbackLayerId, { syncOutputs: false, compositionId });
+        if (fallbackLayerId) {
+          deckProgramController.program(fallbackDeck, fallbackLayerId, { syncOutputs: false, compositionId });
+          syncCurrentProgramOutput(compositionId);
+        }
       } else {
         programEngine.clear(compositionId);
       }
@@ -1664,7 +1673,7 @@ export function App() {
               return (
                 <section className={"deck-row " + (propertyTarget === "deck" && selectedLayer.deckId === deck.id ? "deck-selected " : "") + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
-                    <div className="deck-heading" onClick={() => { clearDeckActiveAndFallback(deck.id); setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }} title="Select Deck properties">
+                    <div className="deck-heading" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }} title="Select Deck properties">
                       <span>{deck.name}</span>
                       <small>{deck.kind.toUpperCase()} · {runtimeState.masterLevel}% MASTER</small>
                       <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
