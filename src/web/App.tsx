@@ -1633,11 +1633,7 @@ export function App() {
                             const activeLayerId = deckRuntime.getState(programDeck.id).activeLayerId;
                             if (activeLayerId) {
                               deckProgramController.program(programDeck, activeLayerId, { syncOutputs: false, compositionId: activeCompositionId });
-                              const scene = sceneRuntime.getActive(activeCompositionId);
-                              const program = programEngine.getState(activeCompositionId);
-                              if (scene && program.source) {
-                                try { outputEngine.syncFromScene(scene, program.source); } catch {}
-                              }
+                              syncCurrentProgramOutput(activeCompositionId);
                             }
                           }
                         } else {
