@@ -77,20 +77,6 @@ export class DeckRuntime {
       });
     }
   }
-  setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
-    if (!Number.isInteger(column) || column < 1) throw new Error("Column must be a positive integer.");
-    const current = this.require(deckId);
-    const columns = new Map(current.columns);
-    columns.set(column, enabled);
-    const layer = Array.from(current.playback.values())[column - 1];
-    if (!layer) throw new Error(`Column ${column} does not exist in deck "${deckId}".`);
-    const playback = new Map(current.playback);
-    playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: enabled });
-    const state = { ...current, columns, playback };
-    this.states.set(deckId, state);
-    return state;
-  }
-
   has(deckId: string): boolean {
     return this.states.has(deckId);
   }
@@ -214,10 +200,6 @@ export class DeckRuntime {
     const state = { ...current, activeLayerId: layerId };
     this.states.set(deckId, state);
     return state;
-  }
-
-  deselectActiveLayer(deckId: string): DeckRuntimeState {
-    return this.clearActiveLayer(deckId);
   }
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
