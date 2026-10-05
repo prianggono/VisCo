@@ -210,14 +210,15 @@ export function App() {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
-    deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
-    const scene = sceneRuntime.getActive(compositionId);
-    const program = programEngine.getState(compositionId);
-    if (scene && program.source) {
-      try {
-        outputEngine.syncFromScene(scene, program.source);
-      } catch (error) {
-        setProjectMessage(error instanceof Error ? error.message : "Program output routing failed.");
+    const currentProgram = programEngine.getState(compositionId).source;
+    deckRuntime.setActiveLayer(deckId, layerId);
+    if (!currentProgram || currentProgram.deckId === deckId) {
+      deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
+      const scene = sceneRuntime.getActive(compositionId);
+      const program = programEngine.getState(compositionId);
+      if (scene && program.source) {
+        try { outputEngine.syncFromScene(scene, program.source); }
+        catch (error) { setProjectMessage(error instanceof Error ? error.message : "Program output routing failed."); }
       }
     }
     setRuntimeRevision((value) => value + 1);
@@ -225,6 +226,27 @@ export function App() {
     setPropertyTarget("layer");
   };
 
+  const clearDeckActiveAndFallback = (deckId: string) => {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck) return;
+    const compositionId = compositionIdForDeck(deck.id);
+    const wasProgram = programEngine.getState(compositionId).source?.deckId === deckId;
+    deckRuntime.clearActiveLayer(deckId);
+    if (wasProgram) {
+      const fallbackDeck = decks.find((item) => {
+        if (item.id === deckId || compositionIdForDeck(item.id) !== compositionId) return false;
+        const state = deckRuntime.getState(item.id);
+        return Boolean(state.activeLayerId) && state.masterLevel > 0;
+      });
+      if (fallbackDeck) {
+        const fallbackLayerId = deckRuntime.getState(fallbackDeck.id).activeLayerId;
+        if (fallbackLayerId) deckProgramController.program(fallbackDeck, fallbackLayerId, { syncOutputs: false, compositionId });
+      } else {
+        programEngine.clear(compositionId);
+      }
+    }
+    setRuntimeRevision((value) => value + 1);
+  };
   const getPreviewRef = () => {
     for (const deck of decks) {
       if (compositionIdForDeck(deck.id) !== activeCompositionId) continue;
