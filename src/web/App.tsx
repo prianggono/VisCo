@@ -1639,7 +1639,7 @@ export function App() {
               return (
                 <section className={"deck-row " + (propertyTarget === "deck" && selectedLayer.deckId === deck.id ? "deck-selected " : "") + (deck.kind === "audio" ? "audio-deck" : "")} key={deck.id}>
                   <div className="deck-rail">
-                    <div className="deck-heading" onClick={() => { setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }} title="Select Deck properties">
+                    <div className="deck-heading" onClick={() => { clearDeckActiveAndFallback(deck.id); setSelectedLayer({ deckId: deck.id, layerId: "" }); setPropertyTarget("deck"); }} title="Select Deck properties">
                       <span>{deck.name}</span>
                       <small>{deck.kind.toUpperCase()} · {runtimeState.masterLevel}% MASTER</small>
                       <div className="deck-status-pills"><b>{runtimeState.masterLevel > 0 ? "ACTIVE" : "MUTED"}</b><b>{deck.layers.filter((layer) => layer.sourceId).length} SOURCES</b></div>
