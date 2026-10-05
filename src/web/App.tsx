@@ -1588,14 +1588,14 @@ export function App() {
                     <button
                       className={active ? "column-toggle active" : "column-toggle"}
                       onClick={() => {
+                        const activeDecks = decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId && Boolean(deck.layers[column - 1]));
                         const enabled = !active;
-                        decks.filter((deck) => compositionIdForDeck(deck.id) === activeCompositionId).forEach((deck) => {
-                          if (deck.layers[column - 1]) {
-                            deckRuntime.setColumnEnabled(deck.id, column, enabled);
-                            if (deck.kind === "audio") {
-                              audioEngine.selectLayer(deck.id, enabled ? deck.layers[column - 1].id : null);
-                              audioEngine.setEnabled(deck.id, enabled && deckRuntime.getState(deck.id).masterLevel > 0);
-                            }
+                        const activeDeckIds = activeDecks.map((deck) => deck.id);
+                        deckRuntime.setExclusiveColumn(activeDeckIds, column, enabled);
+                        activeDecks.forEach((deck) => {
+                          if (deck.kind === "audio") {
+                            audioEngine.selectLayer(deck.id, enabled ? deck.layers[column - 1].id : null);
+                            audioEngine.setEnabled(deck.id, enabled && deckRuntime.getState(deck.id).masterLevel > 0);
                           }
                         });
                         setRuntimeRevision((value) => value + 1);
