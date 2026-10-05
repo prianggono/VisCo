@@ -1673,7 +1673,7 @@ export function App() {
                             <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
                               <span>{layer.name}</span>{isPreview && <small>CUE</small>}
                             </button>
-                            {deck.kind === "visual" && <button className={isProgram ? "layer-program-button active" : "layer-program-button"} onClick={() => programLayer(deck.id, layer.id)} title="Send this layer to Program">PROGRAM</button>}
+                            {deck.kind === "visual" && <button className={(isProgram ? "layer-program-button active " : "layer-program-button ") + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active-label" : "")} onClick={() => programLayer(deck.id, layer.id)} title="Send this layer to Program">{deckRuntime.getState(deck.id).columns.get(index + 1) ? "" : "PROGRAM"}</button>}
                           </div>
                           <button
                             className="layer-box"
