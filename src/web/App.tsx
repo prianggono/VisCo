@@ -202,11 +202,6 @@ export function App() {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck) return;
     deckProgramController.preview(deck, layerId);
-    const column = deck.layers.findIndex((layer) => layer.id === layerId) + 1;
-    if (column > 0) {
-      const activeDeckIds = decks.filter((item) => compositionIdForDeck(item.id) === activeCompositionId && Boolean(item.layers[column - 1])).map((item) => item.id);
-      deckRuntime.setExclusiveColumn(activeDeckIds, column, true);
-    }
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
   };
@@ -216,11 +211,6 @@ export function App() {
     if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
     deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
-    const column = deck.layers.findIndex((layer) => layer.id === layerId) + 1;
-    if (column > 0) {
-      const activeDeckIds = decks.filter((item) => compositionIdForDeck(item.id) === compositionId && Boolean(item.layers[column - 1])).map((item) => item.id);
-      deckRuntime.setExclusiveColumn(activeDeckIds, column, true);
-    }
     const scene = sceneRuntime.getActive(compositionId);
     const program = programEngine.getState(compositionId);
     if (scene && program.source) {
