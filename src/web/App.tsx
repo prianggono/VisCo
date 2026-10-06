@@ -1572,6 +1572,10 @@ export function App() {
                     const ref = getPreviewRef();
                     const deck = decks.find((item) => item.id === ref.deckId);
                     const layer = deck?.layers.find((item) => item.id === ref.layerId);
+                    const source = layer?.sourceId ? libraryEngine.get(layer.sourceId) : undefined;
+                    if (layer && source?.kind === "image" && source.uri) {
+                      return <img src={source.uri} alt={source.name} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />;
+                    }
                     return layer ? <span style={compositeLayer(layer).style}>PREVIEW</span> : <span>PREVIEW</span>;
                   })()}
               </div>
@@ -1583,7 +1587,14 @@ export function App() {
                   ? <img src={nativePreviewUrl} alt="VisCo native program" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   : (() => {
                     const program = programEngine.getState(activeCompositionId);
-                    const composed = compositeProgram(program); return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
+                    const programDeck = program.source ? decks.find((item) => item.id === program.source?.deckId) : undefined;
+                    const programLayerModel = programDeck?.layers.find((item) => item.id === program.source?.layerId);
+                    const programSource = programLayerModel?.sourceId ? libraryEngine.get(programLayerModel.sourceId) : undefined;
+                    const composed = compositeProgram(program);
+                    if (programSource?.kind === "image" && programSource.uri) {
+                      return <img src={programSource.uri} alt={programSource.name} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />;
+                    }
+                    return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
                   })()}
                 </div>
               </div>
@@ -1768,7 +1779,9 @@ export function App() {
                               }
                             }}
                           >
-                            <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
+                            <div className="layer-thumb">{layer.sourceId && libraryEngine.has(layer.sourceId) && libraryEngine.get(layer.sourceId).kind === "image" && libraryEngine.get(layer.sourceId).uri
+  ? <img src={libraryEngine.get(layer.sourceId).uri} alt={mediaName ?? layer.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+  : <span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span>}</div>
                             <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : isActive ? "eye on active-slot-indicator" : "eye"}>{isProgram ? "PROGRAM" : isActive ? "ACTIVE" : "◉"}</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">ON AIR</div>}
