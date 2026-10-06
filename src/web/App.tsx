@@ -1769,7 +1769,7 @@ export function App() {
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                toggleLayerActivation(deck.id, layer.id);
+                                programLayer(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
