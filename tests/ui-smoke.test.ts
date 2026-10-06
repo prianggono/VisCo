@@ -35,8 +35,9 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await page.getByRole("button", { name: "Layer 2", exact: true }).first().click();
   await expect(page.locator(".preview-name").first()).toContainText("Layer 2");
   await page.locator(".layer-box").first().click();
-  await page.locator(".layer-program-button").first().click();
   await expect(page.locator(".program-badge").first()).toHaveText("ON AIR");
+  // Program is triggered by the slot itself; there is no separate PROGRAM button.
+  await expect(page.locator(".layer-program-button.active").first()).toContainText("ON AIR");
 
   // Add and collapse a Group around the selected layer.
   const layering = page.locator(".property-row").filter({ hasText: "Layering" }).first();
