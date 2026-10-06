@@ -1774,7 +1774,21 @@ export function App() {
                     {Array.from({ length: globalSlotCount }, (_, index) => {
                       const layer = deck.layers[index];
                       if (!layer) {
-                        return <div className={deckRuntime.getState(deck.id).columns.get(index + 1) ? "layer-slot-empty column-active" : "layer-slot-empty"} key={deck.id + "-empty-slot-" + index}><span>Layer {index + 1}</span></div>;
+                        return (
+                          <button
+                            className={deckRuntime.getState(deck.id).columns.get(index + 1) ? "layer-slot-empty column-active" : "layer-slot-empty"}
+                            key={deck.id + "-empty-slot-" + index}
+                            title={"Empty Slot " + (index + 1) + " — clear Deck " + deck.name + " active state"}
+                            aria-label={"Empty Slot " + (index + 1)}
+                            onClick={() => {
+                              clearDeckActiveAndFallback(deck.id);
+                              setSelectedLayer({ deckId: deck.id, layerId: "" });
+                              setPropertyTarget("deck");
+                            }}
+                          >
+                            <span>Layer {index + 1}</span>
+                          </button>
+                        );
                       }
                       if (groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))) {
                         return <div className="layer-slot-empty collapsed" key={layer.id}><span>Layer {index + 1}</span></div>;
