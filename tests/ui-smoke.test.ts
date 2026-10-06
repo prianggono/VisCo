@@ -72,6 +72,29 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
 });
 
 
+test("VisCo UI E2E: same Deck switches Program, different Deck stays multi-active", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
+
+  const deck1 = page.locator(".deck-row").nth(0);
+  const deck2 = page.locator(".deck-row").nth(1);
+
+  // First slot establishes Program.
+  await deck1.locator(".layer-box").nth(0).click();
+  await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
+
+  // Different Deck becomes ACTIVE but cannot steal Program.
+  await deck2.locator(".layer-box").nth(2).click();
+  await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
+  await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
+
+  // Returning to the same Deck switches Program directly.
+  await deck1.locator(".layer-box").nth(1).click();
+  await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
+  await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
+  await expect(deck1.locator(".layer-card").nth(0)).not.toHaveClass(/program/);
+  await expect(deck1.locator(".layer-card").nth(1)).toHaveClass(/program/);
+}
+
 test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
 
