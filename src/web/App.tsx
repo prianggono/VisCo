@@ -1735,6 +1735,7 @@ export function App() {
                         return <div className="layer-slot-empty collapsed" key={layer.id}><span>Layer {index + 1}</span></div>;
                       }
                       const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
+                      const isActive = deckRuntime.getState(deck.id).activeLayerId === layer.id;
                       const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
                       const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
                         ? libraryEngine.get(layer.sourceId).name
@@ -1769,7 +1770,7 @@ export function App() {
                             }}
                           >
                             <div className="layer-thumb"><span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span></div>
-                            <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : "eye"}>{isProgram ? "PROGRAM" : "◉"}</span></div>
+                            <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : isActive ? "eye on active-slot-indicator" : "eye"}>{isProgram ? "PROGRAM" : isActive ? "ACTIVE" : "◉"}</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">ON AIR</div>}
                           </button>
