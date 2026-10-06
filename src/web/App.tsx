@@ -226,8 +226,33 @@ export function App() {
       deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
       syncCurrentProgramOutput(compositionId);
     } else {
+      // A second Deck can be active at the same time. It becomes the Deck's
+      // active slot, but it does not steal the single global Program source.
       deckRuntime.setActiveLayer(deckId, layerId);
     }
+    setRuntimeRevision((value) => value + 1);
+    setSelectedLayer({ deckId, layerId });
+    setPropertyTarget("layer");
+  };
+
+  const toggleLayerActivation = (deckId: string, layerId: string) => {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
+    const compositionId = compositionIdForDeck(deck.id);
+    const runtime = deckRuntime.getState(deckId);
+    const currentProgram = programEngine.getState(compositionId).source;
+    const isActive = runtime.activeLayerId === layerId;
+
+    if (isActive && currentProgram?.deckId !== deckId) {
+      // Toggle off a secondary active Deck without affecting the global Program.
+      deckRuntime.clearActiveLayer(deckId);
+    } else {
+      // If this Deck is already Program, keep normal Program semantics.
+      // Otherwise activate this Deck independently beside the current Program.
+      programLayer(deckId, layerId);
+      return;
+    }
+
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
     setPropertyTarget("layer");
@@ -1733,7 +1758,7 @@ export function App() {
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                programLayer(deck.id, layer.id);
+                                toggleLayerActivation(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
