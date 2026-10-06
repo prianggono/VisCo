@@ -247,38 +247,21 @@ export function App() {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
-    const current = deckRuntime.getState(deckId).activeLayerId;
-    if (current === layerId) {
-      clearDeckActiveAndFallback(deckId);
+    const currentProgram = programEngine.getState(compositionId).source;
+
+    // Resolume-style rule:
+    // - first active selection becomes Program;
+    // - another slot in the SAME Deck replaces Program;
+    // - selecting a DIFFERENT Deck creates/changes only that Deck's active slot;
+    //   it does not steal Program while the current Program Deck remains active.
+    if (!currentProgram || currentProgram.deckId === deckId) {
+      deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
+      syncCurrentProgramOutput(compositionId);
     } else {
       deckRuntime.setActiveLayer(deckId, layerId);
       deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
-      setRuntimeRevision((value) => value + 1);
     }
-    setSelectedLayer({ deckId, layerId });
-    setPropertyTarget("layer");
-  };
 
-  const programLayer = (deckId: string, layerId: string) => {
-    const deck = decks.find((item) => item.id === deckId);
-    if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    const compositionId = compositionIdForDeck(deck.id);
-    const blockedByOtherActiveDeck = decks.some((item) => {
-      if (item.id === deckId || item.kind !== "visual" || compositionIdForDeck(item.id) !== compositionId) return false;
-      const state = deckRuntime.getState(item.id);
-      return Boolean(state.activeLayerId) && state.masterLevel > 0;
-    });
-    if (blockedByOtherActiveDeck) {
-      deckRuntime.setActiveLayer(deckId, layerId);
-      deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
-      setSelectedLayer({ deckId, layerId });
-      setPropertyTarget("layer");
-      setProjectMessage(deck.name + " is ACTIVE only. Another Deck already owns the Program.");
-      setRuntimeRevision((value) => value + 1);
-      return;
-    }
-    deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
-    syncCurrentProgramOutput(compositionId);
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
     setPropertyTarget("layer");
@@ -1788,7 +1771,7 @@ export function App() {
                             <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
                               <span>{layer.name}</span>{isPreview && <small>CUE</small>}
                             </button>
-                            {deck.kind === "visual" && <button className={(isProgram ? "layer-program-button active " : "layer-program-button ") + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active-label" : "")} onClick={() => programLayer(deck.id, layer.id)} title="Send this layer to Program">{deckRuntime.getState(deck.id).columns.get(index + 1) ? "" : "PROGRAM"}</button>}
+                            {deck.kind === "visual" && isProgram && <span className="layer-program-button active" aria-label="ON AIR">ON AIR</span>}
                           </div>
                           <button
                             className="layer-box"
