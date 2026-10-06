@@ -243,13 +243,40 @@ export function App() {
     }
   };
 
+  const activateLayerSlot = (deckId: string, layerId: string) => {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
+    const compositionId = compositionIdForDeck(deck.id);
+    const current = deckRuntime.getState(deckId).activeLayerId;
+    if (current === layerId) {
+      clearDeckActiveAndFallback(deckId);
+    } else {
+      deckRuntime.setActiveLayer(deckId, layerId);
+      deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
+      setRuntimeRevision((value) => value + 1);
+    }
+    setSelectedLayer({ deckId, layerId });
+    setPropertyTarget("layer");
+  };
+
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
     if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
-    // Large Layer box = direct PROGRAM / ON AIR.
-    // Multi-active remains available through Column triggers; a direct Layer
-    // click intentionally follows the normal operator PROGRAM workflow.
+    const blockedByOtherActiveDeck = decks.some((item) => {
+      if (item.id === deckId || item.kind !== "visual" || compositionIdForDeck(item.id) !== compositionId) return false;
+      const state = deckRuntime.getState(item.id);
+      return Boolean(state.activeLayerId) && state.masterLevel > 0;
+    });
+    if (blockedByOtherActiveDeck) {
+      deckRuntime.setActiveLayer(deckId, layerId);
+      deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
+      setSelectedLayer({ deckId, layerId });
+      setPropertyTarget("layer");
+      setProjectMessage(deck.name + " is ACTIVE only. Another Deck already owns the Program.");
+      setRuntimeRevision((value) => value + 1);
+      return;
+    }
     deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
     syncCurrentProgramOutput(compositionId);
     setRuntimeRevision((value) => value + 1);
@@ -1769,7 +1796,7 @@ export function App() {
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
                               if (deck.kind === "visual") {
-                                programLayer(deck.id, layer.id);
+                                activateLayerSlot(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
                                 audioEngine.selectLayer(deck.id, layer.id);
