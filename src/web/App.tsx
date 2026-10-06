@@ -1793,21 +1793,35 @@ export function App() {
                       if (groups.some((group) => group.collapsed && group.layerIds.includes(layer.id))) {
                         return <div className="layer-slot-empty collapsed" key={layer.id}><span>Layer {index + 1}</span></div>;
                       }
-                      const isProgram = deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
-                      const isActive = deckRuntime.getState(deck.id).activeLayerId === layer.id;
-                      const isPreview = deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
+                      const isEmptyLayer = !layer.sourceId;
+                      const isProgram = !isEmptyLayer && deck.kind === "visual" && getProgramRef().deckId === deck.id && getProgramRef().layerId === layer.id;
+                      const isActive = !isEmptyLayer && deckRuntime.getState(deck.id).activeLayerId === layer.id;
+                      const isPreview = !isEmptyLayer && deck.kind === "visual" && getPreviewRef().deckId === deck.id && getPreviewRef().layerId === layer.id;
                       const mediaName = layer.sourceId && libraryEngine.has(layer.sourceId)
                         ? libraryEngine.get(layer.sourceId).name
                         : undefined;
                       return (
                         <article
-                          className={"layer-card " + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active " : "") + (deckRuntime.getState(deck.id).activeLayerId === layer.id ? "slot-active " : "") + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
+                          className={isEmptyLayer
+                            ? (deckRuntime.getState(deck.id).columns.get(index + 1) ? "layer-card layer-empty column-active" : "layer-card layer-empty")
+                            : "layer-card " + (deckRuntime.getState(deck.id).columns.get(index + 1) ? "column-active " : "") + (deckRuntime.getState(deck.id).activeLayerId === layer.id ? "slot-active " : "") + (selectedLayer.deckId === deck.id && selectedLayer.layerId === layer.id ? "selected " : "") + (isProgram ? "program " : "") + (isPreview ? "preview" : "")}
                           key={layer.id}
                           draggable
                           onDragStart={(event) => event.dataTransfer.setData("text/visco-layer-id", layer.id)}
                         >
                           <div className="layer-name-row">
-                            <button className={"layer-name " + (isPreview ? "preview-name" : "")} onClick={() => selectPreview(deck.id, layer.id)}>
+                            <button
+                              className={"layer-name " + (isPreview ? "preview-name" : "")}
+                              onClick={() => {
+                                if (isEmptyLayer) {
+                                  clearDeckActiveAndFallback(deck.id);
+                                  setSelectedLayer({ deckId: deck.id, layerId: "" });
+                                  setPropertyTarget("deck");
+                                  return;
+                                }
+                                selectPreview(deck.id, layer.id);
+                              }}
+                            >
                               <span>{layer.name}</span>{isPreview && <small>CUE</small>}
                             </button>
                             {deck.kind === "visual" && isProgram && <span className="layer-program-button active" aria-label="ON AIR">ON AIR</span>}
@@ -1817,7 +1831,11 @@ export function App() {
                             onDragOver={(event) => event.preventDefault()}
                             onDrop={(event) => handleLayerDrop(event, deck.id, layer.id)}
                             onClick={() => {
-                              if (deck.kind === "visual") {
+                              if (isEmptyLayer) {
+                                clearDeckActiveAndFallback(deck.id);
+                                setSelectedLayer({ deckId: deck.id, layerId: "" });
+                                setPropertyTarget("deck");
+                              } else if (deck.kind === "visual") {
                                 activateLayerSlot(deck.id, layer.id);
                               } else {
                                 deckRuntime.setLayerPlayback(deck.id, layer.id, { playing: true });
@@ -1828,10 +1846,12 @@ export function App() {
                               }
                             }}
                           >
-                            <div className="layer-thumb">{layer.sourceId && libraryEngine.has(layer.sourceId) && libraryEngine.get(layer.sourceId).kind === "image" && libraryEngine.get(layer.sourceId).uri
-  ? <img src={libraryEngine.get(layer.sourceId).uri} alt={mediaName ?? layer.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-  : <span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span>}</div>
-                            <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : isActive ? "eye on active-slot-indicator" : "eye"}>{isProgram ? "PROGRAM" : isActive ? "ACTIVE" : "◉"}</span></div>
+                            <div className="layer-thumb">{isEmptyLayer
+  ? <span>EMPTY SLOT</span>
+  : layer.sourceId && libraryEngine.has(layer.sourceId) && libraryEngine.get(layer.sourceId).kind === "image" && libraryEngine.get(layer.sourceId).uri
+    ? <img src={libraryEngine.get(layer.sourceId).uri} alt={mediaName ?? layer.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+    : <span>{mediaName || (deck.kind === "audio" ? "AUDIO" : layer.name)}</span>}</div>
+                            <div className="layer-tools"><button title="Move layer up" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, -1); }}>↑</button><button title="Move layer down" onClick={(event) => { event.stopPropagation(); moveLayer(deck.id, layer.id, 1); }}>↓</button><span>{isPreview ? "CUE" : "◌"}</span><span className={isProgram ? "eye on" : isActive ? "eye on active-slot-indicator" : "eye"}>{isProgram ? "PROGRAM" : isActive ? "ACTIVE" : isEmptyLayer ? "EMPTY" : "◉"}</span></div>
                             <div className="overlay-number">{index + 1}</div>
                             {isProgram && <div className="program-badge">ON AIR</div>}
                           </button>
