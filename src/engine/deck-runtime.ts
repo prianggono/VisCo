@@ -183,10 +183,14 @@ export class DeckRuntime {
     }
     this.require(deck.id);
 
+    const current = this.require(deck.id);
+    const playback = new Map(current.playback);
+    playback.set(layerId, { ...playback.get(layerId)!, playing: true });
     const state: DeckRuntimeState = {
-      ...this.require(deck.id),
+      ...current,
       activeLayerId: layerId,
-      previewLayerId: layerId
+      previewLayerId: layerId,
+      playback
     };
 
     this.states.set(deck.id, state);
