@@ -1592,7 +1592,30 @@ export function App() {
             </div></div>
             <div className="monitor program-monitor">
               <div className="monitor-head"><span>PROGRAM</span><span className="on-air">ON AIR</span><div className="monitor-tools"><button onClick={() => setWorkspaceZoom((value) => Math.max(50, value - 10))}>−</button><b>{workspaceZoom}%</b><button onClick={() => setWorkspaceZoom((value) => Math.min(200, value + 10))}>+</button><button onClick={() => setWorkspaceZoom(100)}>FIT</button></div></div>
-              <div className="program-canvas" style={{ overflow: "hidden" }}><div style={{ width: "100%", height: "100%", transform: `scale(${workspaceZoom / 100})`, transformOrigin: "center" }}>
+              <div className="program-canvas" style={{ overflow: "hidden" }}>
+                {(() => {
+                  const programState = programEngine.getState(activeCompositionId);
+                  const transition = programState.transition ?? { type: "cut", durationMs: 0 };
+                  const transitionClass = transition.type === "fade"
+                    ? "program-transition-fade"
+                    : transition.type === "wipe"
+                      ? "program-transition-wipe"
+                      : "";
+                  const transitionKey = programState.source
+                    ? programState.source.deckId + ":" + programState.source.layerId
+                    : "empty";
+                  return (
+                    <div
+                      key={transitionKey}
+                      className={transitionClass}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        transform: `scale(${workspaceZoom / 100})`,
+                        transformOrigin: "center",
+                        animationDuration: transition.durationMs > 0 ? transition.durationMs + "ms" : undefined
+                      }}
+                    >
                 {nativeHostState === "online" && nativeCaptureDevice
                   ? <img src={nativePreviewUrl} alt="VisCo native program" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                   : (() => {
@@ -1606,7 +1629,9 @@ export function App() {
                     }
                     return composed.length ? <span style={composed[0].style}>PROGRAM</span> : <span>PROGRAM</span>;
                   })()}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
