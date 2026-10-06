@@ -30,10 +30,32 @@ type LibraryItem = Source;
 type DeckKind = "visual" | "audio";
 type Deck = DomainDeck & { kind: DeckKind };
 
+const dummySources: Source[] = [
+  {
+    id: "dummy-image-1",
+    name: "Dummy Visual 01",
+    kind: "image",
+    uri: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#163a52"/><stop offset="1" stop-color="#27b3a5"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><circle cx="960" cy="540" r="260" fill="none" stroke="#dffefa" stroke-width="12"/><text x="960" y="555" text-anchor="middle" fill="#fff" font-size="92" font-family="Arial">DUMMY 01</text></svg>`)
+  },
+  {
+    id: "dummy-image-2",
+    name: "Dummy Visual 02",
+    kind: "image",
+    uri: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#43265e"/><stop offset="1" stop-color="#d25b8b"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><rect x="540" y="300" width="840" height="480" rx="40" fill="none" stroke="#fff" stroke-width="12"/><text x="960" y="555" text-anchor="middle" fill="#fff" font-size="92" font-family="Arial">DUMMY 02</text></svg>`)
+  },
+  {
+    id: "dummy-image-3",
+    name: "Dummy Visual 03",
+    kind: "image",
+    uri: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect width="100%" height="100%" fill="#111827"/><path d="M0 800 L480 300 L900 720 L1320 180 L1920 760" fill="none" stroke="#ffcf5a" stroke-width="18"/><text x="960" y="540" text-anchor="middle" fill="#fff" font-size="92" font-family="Arial">DUMMY 03</text></svg>`)
+  }
+];
+
 const makeLayers = (deckKey: string): Layer[] =>
   Array.from({ length: 8 }, (_, index) => ({
     id: deckKey + "-layer-" + (index + 1),
-    name: "Layer " + (index + 1)
+    name: index < 3 ? dummySources[index].name : "Layer " + (index + 1),
+    ...(index < 3 ? { sourceId: dummySources[index].id } : {})
   }));
 
 const initialDecks: Deck[] = [
@@ -135,7 +157,11 @@ export function App() {
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [operatorMode, setOperatorMode] = useState(false);
   const [deckSettingsId, setDeckSettingsId] = useState<string | null>(null);
-  const libraryEngine = useMemo(() => new LibraryEngine(), []);
+  const libraryEngine = useMemo(() => {
+    const engine = new LibraryEngine();
+    dummySources.forEach((source) => engine.add(source));
+    return engine;
+  }, []);
   const groupEngine = useMemo(() => new GroupEngine(), []);
   const nativeHost = useMemo(() => new NativeHostHttpBridge(), []);
   const deviceDiscovery = useMemo(() => {
@@ -147,7 +173,7 @@ export function App() {
   const [nativeCaptureDevice, setNativeCaptureDevice] = useState("");
   const [runtimeAdapters, setRuntimeAdapters] = useState<readonly { name: "NDI" | "OMT" | "ASIO"; available: boolean; library: string; message: string }[]>([]);
   const nativePreviewUrl = "http://127.0.0.1:47822/preview.mjpg";
-  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([]);
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>(dummySources);
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryKindFilter, setLibraryKindFilter] = useState<SourceKind | "all">("all");
   const [librarySort, setLibrarySort] = useState<"name" | "kind">("name");
@@ -219,40 +245,13 @@ export function App() {
 
   const programLayer = (deckId: string, layerId: string) => {
     const deck = decks.find((item) => item.id === deckId);
-    if (!deck || deckRuntime.getState(deckId).masterLevel <= 0) return;
-    const compositionId = compositionIdForDeck(deck.id);
-    const currentProgram = programEngine.getState(compositionId).source;
-    if (!currentProgram || currentProgram.deckId === deckId) {
-      deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
-      syncCurrentProgramOutput(compositionId);
-    } else {
-      // A second Deck can be active at the same time. It becomes the Deck's
-      // active slot, but it does not steal the single global Program source.
-      deckRuntime.setActiveLayer(deckId, layerId);
-    }
-    setRuntimeRevision((value) => value + 1);
-    setSelectedLayer({ deckId, layerId });
-    setPropertyTarget("layer");
-  };
-
-  const toggleLayerActivation = (deckId: string, layerId: string) => {
-    const deck = decks.find((item) => item.id === deckId);
     if (!deck || deck.kind !== "visual" || deckRuntime.getState(deckId).masterLevel <= 0) return;
     const compositionId = compositionIdForDeck(deck.id);
-    const runtime = deckRuntime.getState(deckId);
-    const currentProgram = programEngine.getState(compositionId).source;
-    const isActive = runtime.activeLayerId === layerId;
-
-    if (isActive && currentProgram?.deckId !== deckId) {
-      // Toggle off a secondary active Deck without affecting the global Program.
-      deckRuntime.clearActiveLayer(deckId);
-    } else {
-      // If this Deck is already Program, keep normal Program semantics.
-      // Otherwise activate this Deck independently beside the current Program.
-      programLayer(deckId, layerId);
-      return;
-    }
-
+    // Large Layer box = direct PROGRAM / ON AIR.
+    // Multi-active remains available through Column triggers; a direct Layer
+    // click intentionally follows the normal operator PROGRAM workflow.
+    deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
+    syncCurrentProgramOutput(compositionId);
     setRuntimeRevision((value) => value + 1);
     setSelectedLayer({ deckId, layerId });
     setPropertyTarget("layer");
