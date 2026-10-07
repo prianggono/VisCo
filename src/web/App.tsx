@@ -214,6 +214,9 @@ export function App() {
   const [recoveryAvailable, setRecoveryAvailable] = useState(false);
   const [, setHistoryRevision] = useState(0);
   const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
+  // Remembers the Deck that was explicitly released from Program by X/empty-slot.
+  // Reactivating that Deck is allowed to reclaim Program; other Decks remain multi-active.
+  const releasedProgramDeckRef = useRef<Record<string, string | undefined>>({});
   const [sliceEditorState, setSliceEditorTool] = useSliceEditorTool();
 
   const compositionIdForDeck = (deckId: string): string =>
@@ -254,9 +257,13 @@ export function App() {
     // - another slot in the SAME Deck replaces Program;
     // - selecting a DIFFERENT Deck creates/changes only that Deck's active slot;
     //   it does not steal Program while the current Program Deck remains active.
-    if (!currentProgram || currentProgram.deckId === deckId) {
+    const releasedDeckId = releasedProgramDeckRef.current[compositionId];
+    const reclaimProgram = releasedDeckId === deckId;
+
+    if (!currentProgram || currentProgram.deckId === deckId || reclaimProgram) {
       deckProgramController.program(deck, layerId, { syncOutputs: false, compositionId });
       syncCurrentProgramOutput(compositionId);
+      if (reclaimProgram) delete releasedProgramDeckRef.current[compositionId];
     } else {
       deckRuntime.setActiveLayer(deckId, layerId);
       deckRuntime.setLayerPlayback(deckId, layerId, { playing: true });
@@ -274,6 +281,7 @@ export function App() {
     const wasProgram = programEngine.getState(compositionId).source?.deckId === deckId;
     deckRuntime.clearActiveLayer(deckId);
     if (wasProgram) {
+      releasedProgramDeckRef.current[compositionId] = deckId;
       const fallbackDeck = decks.find((item) => {
         if (item.id === deckId || compositionIdForDeck(item.id) !== compositionId) return false;
         const state = deckRuntime.getState(item.id);
