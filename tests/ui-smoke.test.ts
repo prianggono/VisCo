@@ -114,6 +114,30 @@ test("VisCo UI E2E: empty slot deactivates Deck and fallback Deck takes Program"
   await expect(deck1.locator(".layer-card").nth(3)).toHaveClass(/layer-empty/);
 });
 
+test("VisCo UI E2E: released Program Deck reclaims Program when activated again", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
+
+  const deck1 = page.locator(".deck-row").nth(0);
+  const deck2 = page.locator(".deck-row").nth(1);
+
+  // Deck 1 is Program; Deck 2 is independently ACTIVE.
+  await deck1.locator(".layer-box").nth(0).click();
+  await deck2.locator(".layer-box").nth(0).click();
+  await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
+  await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
+
+  // Release Deck 1. Deck 2 takes Program.
+  await deck1.locator(".deck-clear-selection-large").click();
+  await expect(deck2.locator(".program-badge").first()).toHaveText("ON AIR");
+  await expect(deck1.locator(".program-badge").count()).toBe(0);
+
+  // Reactivating the released Deck 1 must reclaim Program.
+  await deck1.locator(".layer-box").nth(1).click();
+  await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
+  await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
+  await expect(deck2.locator(".program-badge").count()).toBe(0);
+});
+
 test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
 
