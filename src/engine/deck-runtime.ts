@@ -55,7 +55,7 @@ export class DeckRuntime {
       const layers = Array.from(state.playback.values());
       const target = layers[column - 1];
       if (enabled && !target) throw new Error("Column " + column + " does not exist in deck \"" + deckId + "\".");
-      const columns = new Map<number, boolean>();
+      const columns = new Map(state.columns);
       const playback = new Map(state.playback);
       for (const [columnIndex, isEnabled] of state.columns) {
         const nextEnabled = enabled && columnIndex === column;
@@ -63,10 +63,13 @@ export class DeckRuntime {
         if (layer && isEnabled !== nextEnabled) {
           playback.set(layer.layerId, { ...playback.get(layer.layerId)!, playing: nextEnabled });
         }
-        if (nextEnabled) columns.set(columnIndex, true);
+        columns.set(columnIndex, nextEnabled);
       }
+      columns.set(column, enabled);
       if (enabled && target) {
         playback.set(target.layerId, { ...playback.get(target.layerId)!, playing: true });
+      } else if (target) {
+        playback.set(target.layerId, { ...playback.get(target.layerId)!, playing: false });
       }
       this.states.set(deckId, {
         ...state,
@@ -75,6 +78,12 @@ export class DeckRuntime {
         playback
       });
     }
+  }
+
+  /** Enable or disable a single Column and return the resulting Deck state. */
+  setColumnEnabled(deckId: string, column: number, enabled: boolean): DeckRuntimeState {
+    this.setExclusiveColumn([deckId], column, enabled);
+    return this.require(deckId);
   }
   has(deckId: string): boolean {
     return this.states.has(deckId);
@@ -206,13 +215,30 @@ export class DeckRuntime {
   }
 
   clearActiveLayer(deckId: string): DeckRuntimeState {
+    const current = this.require(deckId);
+    const playback = new Map(current.playback);
+    if (current.activeLayerId && playback.has(current.activeLayerId)) {
+      playback.set(current.activeLayerId, {
+        ...playback.get(current.activeLayerId)!,
+        playing: false
+      });
+    }
+    const columns = new Map(current.columns);
+    for (const column of columns.keys()) columns.set(column, false);
     const state: DeckRuntimeState = {
-      ...this.require(deckId),
-      activeLayerId: null
+      ...current,
+      activeLayerId: null,
+      playback,
+      columns
     };
 
     this.states.set(deckId, state);
     return state;
+  }
+
+  /** Compatibility name for the operator's X/deselect action. */
+  deselectActiveLayer(deckId: string): DeckRuntimeState {
+    return this.clearActiveLayer(deckId);
   }
 
   getState(deckId: string): DeckRuntimeState {
