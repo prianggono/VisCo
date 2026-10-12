@@ -31,13 +31,14 @@ test("VisCo UI smoke: no uncaught page errors on startup", async ({ page }) => {
 test("VisCo UI E2E: deck, program, group, slice, scene and output controls", async ({ page }) => {
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
 
-  // Preview and Program
-  await page.locator(".layer-name").filter({ hasText: "Layer 2" }).first().click();
-  await expect(page.locator(".preview-name").first()).toContainText("Layer 2");
-  await page.locator(".layer-box").first().click();
-  await expect(page.locator(".program-badge").first()).toHaveText("ON AIR");
+  // Preview and Program: the first three slots are populated with named dummy media.
+  const previewDeck = page.locator(".deck-row").first();
+  await previewDeck.locator(".layer-name").nth(1).click();
+  await expect(previewDeck.locator(".preview-name")).toContainText("Dummy Visual 02");
+  await previewDeck.locator(".layer-box").nth(1).click();
+  await expect(previewDeck.locator(".layer-card").nth(1).locator(".program-badge")).toHaveText("ON AIR");
   // Program is triggered by the slot itself; there is no separate PROGRAM button.
-  await expect(page.locator(".layer-program-button.active").first()).toContainText("ON AIR");
+  await expect(previewDeck.locator(".layer-card").nth(1).locator(".layer-program-button.active")).toContainText("ON AIR");
 
   // Add and collapse a Group around the selected layer.
   const layering = page.locator(".property-row").filter({ hasText: "Layering" }).first();
