@@ -15,6 +15,16 @@ Work only through these three gates:
 
 **Stop after the UI is validated. Do not begin EXE packaging, installer work, release preparation, or broader OBS/libobs migration until the user explicitly authorizes the next phase.** Keep all work isolated from `main` until checks are green.
 
+## Latest validation results — 2026-10-12
+
+Validated on isolated audit branch commit `0e1822354acbb169945c77f56f16dd48e9bb152f`:
+- **VisCo CI:** passed (unit tests, typecheck, production web build).
+- **Native Windows CI:** passed (CMake configure and Release build on Windows runner).
+- **VisCo UI Smoke:** passed, **7/7 Playwright tests** including Preview/Program, Deck switching/reclaim, Group, Slice, physical display selection, and output settings.
+- UI test fixes use the actual seeded source names and actual Display Output Settings UI; assertions were not removed or weakened.
+- The native UI bridge sends render-source bindings and render-layer plans to the Windows host; native main loop resolves frame references, renders the composition, and submits the resulting frame to the output runtime. This confirms the code path is connected at source/build level, not a claim of physical-hardware validation.
+- **Still unverified on event hardware:** real camera/NDI/OMT ingestion, physical display/LED output, encoder/stream/record output, audio fan-out, and sustained frame pacing. Those are runtime acceptance checks, not reasons to start EXE packaging now.
+
 ## 1. Engine and dependency audit
 
 ### Web application
@@ -65,11 +75,11 @@ Use OBS/libobs as a candidate engine component, not as a wholesale replacement o
 
 Before distribution, review the exact libobs version and all linked plugins/dependencies for GPL-2.0-or-later and other license obligations. Do not assume that dynamic linking automatically removes license obligations. Compare multi-display/LED output, independent output routing, performance, and recovery against the native baseline. Do not remove the existing runtime until parity tests pass.
 
-## 5. Validation gates (not yet passed)
+## 5. Remaining runtime acceptance gates
 
-1. Web: run `npm install`, `npm test`, `npm run typecheck`, and `npm run build` (`package-lock.json` was not found, so `npm ci` is not currently applicable).
-2. UI E2E: start the Vite preview server on port 4173 and run the Playwright smoke suite separately; ensure the browser-only optional-host connection refusal is the only suppressed error.
-3. Native: build with supported Windows/MSVC + Windows SDK using CMake; preserve compiler output and test the actual EXE.
+1. **Passed in CI:** web unit tests, typecheck, and production build.
+2. **Passed in CI:** Playwright UI suite, 7/7 tests; browser-only optional-host connection refusal remains the only suppressed startup network error.
+3. **Passed in CI:** Windows/MSVC CMake configure and Release build. Running the native host with physical devices is still pending.
 4. Integration: prove UI Deck/Layer state reaches the native render plan; Preview does not alter Program; Program transitions are Deck-owned; Trigger sequences do not duplicate routing; output overrides are Deck-level.
 5. Media: test capture → frame registry → composition renderer → physical display; then each of Stream, Record and Virtual Out independently and together at target 30 fps.
 6. Audio: test ASIO/WASAPI device discovery, callback stability, clipping/underruns, gain, and external-audio fan-out to every agreed destination.
@@ -83,6 +93,6 @@ Before distribution, review the exact libobs version and all linked plugins/depe
 
 ## Current disposition
 
-- Existing UI smoke, native Windows build, and core CI workflow runs were observed for the PR; initial snapshots showed them in progress/queued. Their final conclusions must be checked before claiming success.
-- The native fallback correction is a source-level fix only until Windows build and runtime regression validation pass.
-- Next fixes must be based on CI results and targeted tests; no broader engine migration should begin until the current native and UI paths are validated.
+- Latest confirmed commit `0e1822354acbb169945c77f56f16dd48e9bb152f`: core CI, Native Windows CI, and UI Smoke all passed; UI Smoke reported 7/7 tests.
+- The native fallback correction is covered by a successful Windows build, but still needs an actual-host runtime regression test.
+- UI validation is green. Keep the remaining work limited to engine/runtime acceptance and do not start EXE packaging, installer work, or broad OBS/libobs migration until explicitly authorized.
