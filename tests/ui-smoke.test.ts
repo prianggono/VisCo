@@ -129,13 +129,13 @@ test("VisCo UI E2E: released Program Deck reclaims Program when activated again"
   // Release Deck 1. Deck 2 takes Program.
   await deck1.locator(".deck-clear-selection-large").click();
   await expect(deck2.locator(".program-badge").first()).toHaveText("ON AIR");
-  await expect(deck1.locator(".program-badge").count()).toBe(0);
+  await expect(deck1.locator(".program-badge")).toHaveCount(0);
 
   // Reactivating the released Deck 1 must reclaim Program.
   await deck1.locator(".layer-box").nth(1).click();
   await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
   await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
-  await expect(deck2.locator(".program-badge").count()).toBe(0);
+  await expect(deck2.locator(".program-badge")).toHaveCount(0);
 });
 
 test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {
