@@ -6,6 +6,15 @@ This is a source-level audit of the GitHub files accessible during this session.
 
 Latest commit found by repository commit search: `e14181dbd3e3bd97ad7979d46fe33533aa9c6ca9` (`test(ui): cover Program Deck reclaim after X`, 2026-10-07). Branches found: `main` and `feat/real-media-rendering`. The commit's combined status returned no status entries and the workflow-run query returned no runs; this is **unknown/unverified**, not a passing CI result.
 
+## Agreed delivery boundary (2026-10-12)
+
+Work only through these three gates:
+1. Stabilize the foundation: web/unit/type checks and native Windows build must pass.
+2. Connect and validate the engine: prove UI Deck/Layer/Program state reaches the native render path and output routing without duplicate/fallback layers.
+3. Validate the UI: Playwright smoke/E2E must pass for Preview/Program, Deck switching/reclaim, Group, Slice, and output controls; resolve real product bugs rather than weakening assertions.
+
+**Stop after the UI is validated. Do not begin EXE packaging, installer work, release preparation, or broader OBS/libobs migration until the user explicitly authorizes the next phase.** Keep all work isolated from `main` until checks are green.
+
 ## 1. Engine and dependency audit
 
 ### Web application
