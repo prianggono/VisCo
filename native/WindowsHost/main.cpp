@@ -517,18 +517,20 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
           // here keeps the render state live without copying pixel buffers.
         }
       }
-      if (compositionLayers.empty() && network.running()) {
-        if (const auto source = sources.latest("network")) {
+      if (compositionLayers.empty()) {
+        if (network.running()) {
+          if (const auto source = sources.latest("network")) {
+            NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
+            layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
+            layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
+            compositionLayers.push_back(std::move(layer));
+          }
+        } else if (const auto source = sources.latest("capture")) {
           NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
           layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
           layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
           compositionLayers.push_back(std::move(layer));
         }
-      } else if (const auto source = sources.latest("capture")) {
-        NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
-        layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
-        layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
-        compositionLayers.push_back(std::move(layer));
       }
       const auto finalFrame = compositionLayers.empty() ? renderer.render(frame) : renderer.renderComposition(compositionLayers);
       outputs.submit(finalFrame, outputFrameNumber++);
