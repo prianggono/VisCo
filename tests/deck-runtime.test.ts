@@ -25,7 +25,7 @@ describe("Deck Runtime", () => {
       visualLevel: 100,
       playback: new Map([
         ["layer-1", { layerId: "layer-1", playing: false, loop: false, speed: 100 }],
-        ["layer-2", { layerId: "layer-2", playing: false, loop: false, speed: 100 }]
+        ["layer-2", { layerId: "layer-2", playing: true, loop: false, speed: 100 }]
       ]),
       listCursors: new Map(),
       columns: new Map()
