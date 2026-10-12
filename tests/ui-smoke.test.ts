@@ -32,7 +32,7 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
 
   // Preview and Program
-  await page.getByRole("button", { name: "Layer 2", exact: true }).first().click();
+  await page.locator(".layer-name").filter({ hasText: "Layer 2" }).first().click();
   await expect(page.locator(".preview-name").first()).toContainText("Layer 2");
   await page.locator(".layer-box").first().click();
   await expect(page.locator(".program-badge").first()).toHaveText("ON AIR");
@@ -109,7 +109,7 @@ test("VisCo UI E2E: empty slot deactivates Deck and fallback Deck takes Program"
 
   // Empty Layer 4 deactivates Deck 1 instead of entering Program.
   await deck1.locator(".layer-box").nth(3).click();
-  await expect(deck1.locator(".program-badge").count()).toBe(0);
+  await expect(deck1.locator(".program-badge")).toHaveCount(0);
   await expect(deck2.locator(".program-badge").first()).toHaveText("ON AIR");
   await expect(deck1.locator(".layer-card").nth(3)).toHaveClass(/layer-empty/);
 });
