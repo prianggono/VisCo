@@ -11,7 +11,8 @@ Latest commit found by repository commit search: `e14181dbd3e3bd97ad7979d46fe335
 ### Web application
 - `package.json`: React 19, Vite 7, TypeScript 5.9, Vitest 3, Playwright 1.55.
 - Scripts: `npm test`, `npm run build`, `npm run typecheck`. There is no native build script.
-- `.github/workflows/ci.yml` installs Node 20, runs `npm install`, `npm test`, and `npm run build` on Ubuntu. It does not configure MSVC/Windows SDK or invoke CMake.
+- `.github/workflows/ci.yml` installs Node 20 and runs `npm install`, `npm test`, `npm run typecheck`, and `npm run build` on Ubuntu. It does not configure MSVC/Windows SDK or invoke CMake.
+- Separate workflows already exist: `.github/workflows/ui-smoke.yml` runs Playwright and `.github/workflows/native-windows.yml` configures/builds the CMake host on Windows. The initial audit missed these because only `ci.yml` had been inspected first; do not duplicate those jobs in the core workflow.
 - `vite.config.ts` excludes `tests/ui-smoke.test.ts` from Vitest; the Playwright smoke/E2E file therefore needs a separate runner/server step. The checked-in workflow does not run that Playwright file.
 - `tsconfig.app.json` has strict TypeScript and includes `src`.
 
@@ -68,11 +69,11 @@ Before distribution, review the exact libobs version and all linked plugins/depe
 ## Changes made on the isolated audit branch
 
 - Corrected native fallback selection so the capture source is not appended to a non-empty render composition.
-- Expanded `.github/workflows/ci.yml` to include strict TypeScript checking, a separately runnable Playwright UI E2E job, and a Windows/MSVC CMake build job.
+- Added `npm run typecheck` to `.github/workflows/ci.yml`. Existing dedicated workflows already cover Playwright UI smoke/E2E and the Windows/MSVC CMake build, so the redundant duplicate jobs were removed.
 - Added this audit report and opened draft PR #1. `main` has not been modified.
 
 ## Current disposition
 
-- No CI/build/test result is being reported as green. The GitHub connector currently returns no status entries or workflow runs for the branch commit; the new workflow jobs therefore remain pending/unverified from this session.
+- Existing UI smoke, native Windows build, and core CI workflow runs were observed for the PR; initial snapshots showed them in progress/queued. Their final conclusions must be checked before claiming success.
 - The native fallback correction is a source-level fix only until Windows build and runtime regression validation pass.
 - Next fixes must be based on CI results and targeted tests; no broader engine migration should begin until the current native and UI paths are validated.
