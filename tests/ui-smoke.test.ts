@@ -60,9 +60,14 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await sliceSelect.selectOption("corner-pin");
   await expect(sliceSelect).toHaveValue("corner-pin");
 
+  // Physical display selection lives in Display Output Settings, not a top-level DISPLAY 2 button.
+  await page.getByTitle("Display output settings").click();
+  const displayTwo = page.locator(".display-output-row").filter({ hasText: "Display 2" });
+  await displayTwo.getByRole("button", { name: "SELECT", exact: true }).click();
+  await expect(displayTwo.getByRole("button", { name: "SELECTED", exact: true })).toBeVisible();
+  await page.locator(".output-settings-modal .modal-head button").click();
+
   // Scene routing and output controls.
-  await page.getByRole("button", { name: "DISPLAY 2", exact: true }).click();
-  await expect(page.getByRole("button", { name: "DISPLAY 2", exact: true })).toHaveClass(/enabled/);
   await page.getByRole("button", { name: "FULLSCREEN", exact: true }).click();
   await page.getByRole("button", { name: "STREAM", exact: true }).click();
   await page.getByRole("button", { name: "RECORD", exact: true }).click();
