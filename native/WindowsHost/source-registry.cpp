@@ -37,8 +37,8 @@ void SourceRegistry::remove(const std::string& sourceId) {
   }
 }
 
-void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& nativeSourceId) {
-  if (sourceId.empty() || nativeSourceId.empty() || sourceId == nativeSourceId) return;
+bool SourceRegistry::bindAlias(const std::string& sourceId, const std::string& nativeSourceId) {
+  if (sourceId.empty() || nativeSourceId.empty() || sourceId == nativeSourceId) return false;
   std::lock_guard<std::mutex> lock(mutex_);
 
   // Resolve to a producer ID rather than allowing alias chains. This keeps
@@ -46,7 +46,7 @@ void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& n
   std::string resolvedId = nativeSourceId;
   std::unordered_set<std::string> visited;
   while (true) {
-    if (resolvedId == sourceId || !visited.insert(resolvedId).second) return;
+    if (resolvedId == sourceId || !visited.insert(resolvedId).second) return false;
     const auto it = aliases_.find(resolvedId);
     if (it == aliases_.end()) break;
     resolvedId = it->second;
@@ -60,6 +60,7 @@ void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& n
     // Do not leave the previous producer's cached frame after a rebind.
     frames_.erase(sourceId);
   }
+  return true;
 }
 
 } // namespace visco_native
