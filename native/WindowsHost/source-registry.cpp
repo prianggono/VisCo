@@ -6,7 +6,9 @@ void SourceRegistry::publish(const std::string& sourceId, const std::shared_ptr<
   if (sourceId.empty() || !frame) return;
   std::lock_guard<std::mutex> lock(mutex_);
   frames_[sourceId] = frame;
-  for (const auto& [alias, nativeId] : aliases_) if (nativeId == sourceId) frames_[alias] = frame;
+  for (const auto& [alias, nativeId] : aliases_) {
+    if (nativeId == sourceId) frames_[alias] = frame;
+  }
 }
 
 std::shared_ptr<const NativeVideoFrame> SourceRegistry::latest(const std::string& sourceId) const {
@@ -16,16 +18,47 @@ std::shared_ptr<const NativeVideoFrame> SourceRegistry::latest(const std::string
 }
 
 void SourceRegistry::remove(const std::string& sourceId) {
+  if (sourceId.empty()) return;
   std::lock_guard<std::mutex> lock(mutex_);
   frames_.erase(sourceId);
+  aliases_.erase(sourceId);
+
+  // Aliases cache the latest frame for fast reads. Remove those cached frames
+  // together with the source so a stopped/replaced producer cannot leak stale
+  // video into a layer.
+  for (auto it = aliases_.begin(); it != aliases_.end();) {
+    if (it->second == sourceId) {
+      frames_.erase(it->first);
+      it = aliases_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& nativeSourceId) {
-  if (sourceId.empty() || nativeSourceId.empty()) return;
+  if (sourceId.empty() || nativeSourceId.empty() || sourceId == nativeSourceId) return;
   std::lock_guard<std::mutex> lock(mutex_);
-  aliases_[sourceId] = nativeSourceId;
-  const auto it = frames_.find(nativeSourceId);
-  if (it != frames_.end()) frames_[sourceId] = it->second;
+
+  // Resolve to a producer ID rather than allowing alias chains. This keeps
+  // publish/remove deterministic and rejects cycles before changing state.
+  std::string resolvedId = nativeSourceId;
+  for (size_t depth = 0; depth <= aliases_.size(); ++depth) {
+    if (resolvedId == sourceId) return;
+    const auto it = aliases_.find(resolvedId);
+    if (it == aliases_.end()) break;
+    resolvedId = it->second;
+    if (depth == aliases_.size()) return;
+  }
+
+  aliases_[sourceId] = resolvedId;
+  const auto it = frames_.find(resolvedId);
+  if (it != frames_.end()) {
+    frames_[sourceId] = it->second;
+  } else {
+    // Do not leave the previous producer's cached frame after a rebind.
+    frames_.erase(sourceId);
+  }
 }
 
 } // namespace visco_native
