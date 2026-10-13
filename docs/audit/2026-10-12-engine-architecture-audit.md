@@ -96,3 +96,16 @@ Before distribution, review the exact libobs version and all linked plugins/depe
 - Latest confirmed commit `0e1822354acbb169945c77f56f16dd48e9bb152f`: core CI, Native Windows CI, and UI Smoke all passed; UI Smoke reported 7/7 tests.
 - The native fallback correction is covered by a successful Windows build, but still needs an actual-host runtime regression test.
 - UI validation is green. Keep the remaining work limited to engine/runtime acceptance and do not start EXE packaging, installer work, or broad OBS/libobs migration until explicitly authorized.
+
+## Engine integration follow-up — 2026-10-13
+
+A focused source trace of the native Windows host identified concrete blockers beyond the green UI/build checks:
+
+- **Audio mixer is not consumed by the main render/output loop.** `AudioMixer::process` pulls ASIO samples, applies master gain, clamps samples, and counts underruns, but `native/WindowsHost/main.cpp` contains no call to `audioMixer.process(...)`. The HTTP control server exposes ASIO/mixer control and status, but that alone does not create an audio destination. Do not claim ASIO → master bus → recording/stream/Zoom fan-out is connected.
+- **Output runtime currently proves video output paths only.** `NativeOutputRuntime::submit` accepts a `NativeVideoFrame` and sends video to Media Foundation recording, shared-memory virtual output, and NDI/OMT video senders. The inspected interfaces do not accept mixed audio samples; video recording/streaming must not be described as including audio.
+- **Frame pacing is capped by a fixed sleep, not a deadline scheduler.** The main loop submits a frame and then calls `Sleep(33)`; render and output processing time is added to that sleep, so actual cadence can be below 30 FPS. It is not evidence of stable 30 FPS.
+- **Render source binding is metadata + registry lookup.** The bridge serializes layer IDs/source IDs/transforms and the native loop refreshes frames by source ID. If a layer's source cannot be resolved, its frame may remain null; the inspected code does not establish a visible integration failure signal for that layer. This needs an integration test and explicit error/diagnostic handling.
+
+### Disposition of this follow-up
+
+These are source-audit findings, not successful runtime tests. The next safe code task is to add focused integration/unit coverage and design the missing audio-output contract before implementing any audio fan-out. Do not simply call `AudioMixer::process` and discard the samples: that would consume the ASIO ring buffer without routing sound anywhere. Keep EXE packaging, installer/release work, and broad OBS/libobs migration out of scope.
