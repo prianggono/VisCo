@@ -265,13 +265,13 @@ class HttpControlServer {
         }
         { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
         std::ostringstream body;
-        body << "{\\"ok\\":true,\\"layerCount\\":" << renderLayersSnapshot().size()
-             << ",\\"unresolvedSources\\":[";
+        body << "{\"ok\":true,\"layerCount\":" << renderLayersSnapshot().size()
+             << ",\"unresolvedSources\":[";
         for (size_t i = 0; i < unresolvedSources.size(); ++i) {
           if (i) body << ",";
-          body << "\\"" << jsonEscape(unresolvedSources[i]) << "\\"";
+          body << "\"" << jsonEscape(unresolvedSources[i]) << "\"";
         }
-        body << "],\\"ready\\":" << (unresolvedSources.empty() ? "true" : "false") << "}";
+        body << "],\"ready\":" << (unresolvedSources.empty() ? "true" : "false") << "}";
         sendResponse(client, body.str());
       } catch (const std::exception& ex) {
         sendResponse(client, std::string(R"({"ok":false,"message":")") + jsonEscape(ex.what()) + R"("})", "400 Bad Request");
