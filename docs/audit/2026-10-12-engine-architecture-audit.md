@@ -109,3 +109,15 @@ A focused source trace of the native Windows host identified concrete blockers b
 ### Disposition of this follow-up
 
 These are source-audit findings, not successful runtime tests. The next safe code task is to add focused integration/unit coverage and design the missing audio-output contract before implementing any audio fan-out. Do not simply call `AudioMixer::process` and discard the samples: that would consume the ASIO ring buffer without routing sound anywhere. Keep EXE packaging, installer/release work, and broad OBS/libobs migration out of scope.
+
+## Source registry follow-up — 2026-10-13
+
+Further inspection of `SourceRegistry` and the `/render/bind` / `/render/layers` handlers found two additional integration risks:
+
+- `/render/bind` accepts any non-empty native source ID and responds `ok:true` after calling `bindAlias`; it does not validate that the requested native producer is supported or currently available. A successful HTTP response therefore means only that alias metadata was stored.
+- `SourceRegistry::remove(sourceId)` erases only the direct frame entry. It does not clear alias entries that were populated from that source, so an alias can retain the last shared frame after its native source is removed. No current caller of `remove` was confirmed in this trace, so treat this as a lifecycle correctness risk to cover with tests, not as a reproduced production failure.
+- `/render/layers` resolves the frame when the request arrives, and the render loop tries to refresh it from the registry. When the source ID is invalid or unresolved, the endpoint still stores the layer and reports success. The UI therefore needs a distinguishable source-resolution status instead of treating a successful metadata write as proof that pixels are available.
+
+### Next implementation gate
+
+Before connecting more runtime components, add native unit tests for alias binding, publish/update, source removal, unresolved source IDs, and frame refresh across repeated layer updates. Then change the bind/layer endpoints to report validation errors explicitly and expose unresolved-source diagnostics. Keep changes isolated on the audit branch and run the Windows CI before considering the gate complete. Audio routing and frame pacing remain separate blockers; no EXE packaging in this phase.
