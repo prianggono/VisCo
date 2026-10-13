@@ -24,6 +24,7 @@
 #include <sstream>
 #include <cctype>
 #include <cstdlib>
+#include <chrono>
 #include "capture-runtime.h"
 #include "runtime-adapters.h"
 #include "network-frame-runtime.h"
@@ -522,6 +523,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
 
     MSG msg{};
     UINT64 outputFrameNumber = 0;
+    // Pace the render loop against a monotonic 30 FPS deadline. Sleeping for
+    // 33 ms after each frame compounds render time and runs below the target.
+    using FrameClock = std::chrono::steady_clock;
+    const auto framePeriod = std::chrono::duration<double>(1.0 / 30.0);
+    auto nextFrameDeadline = FrameClock::now();
     while(msg.message != WM_QUIT) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
       const auto networkFrame = network.latest();
@@ -553,7 +559,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       }
       const auto finalFrame = compositionLayers.empty() ? renderer.render(frame) : renderer.renderComposition(compositionLayers);
       outputs.submit(finalFrame, outputFrameNumber++);
-      Sleep(33);
+      nextFrameDeadline += std::chrono::duration_cast<FrameClock::duration>(framePeriod);
+      std::this_thread::sleep_until(nextFrameDeadline);
+      const auto afterWait = FrameClock::now();
+      // If rendering/output fell more than one frame behind, drop the stale
+      // deadline instead of running a burst of catch-up frames.
+      if (afterWait > nextFrameDeadline + std::chrono::duration_cast<FrameClock::duration>(framePeriod)) {
+        nextFrameDeadline = afterWait;
+      }
     }
     if (SUCCEEDED(co)) CoUninitialize();
     return 0;
