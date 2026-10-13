@@ -22,7 +22,7 @@ int main() {
 
   // Binding an alias to a live producer immediately exposes its current frame.
   registry.publish("camera-A", first);
-  registry.bindAlias("ui-source", "camera-A");
+  assert(registry.bindAlias("ui-source", "camera-A"));
   assert(registry.latest("ui-source") == first);
 
   // Producer updates must refresh all aliases.
@@ -31,7 +31,7 @@ int main() {
   assert(registry.latest("ui-source") == second);
 
   // Rebinding to an unresolved producer must not retain the old producer frame.
-  registry.bindAlias("ui-source", "camera-B");
+  assert(registry.bindAlias("ui-source", "camera-B"));
   assert(!registry.latest("ui-source"));
   registry.publish("camera-B", replacement);
   assert(registry.latest("ui-source") == replacement);
@@ -43,8 +43,8 @@ int main() {
 
   // Alias chains resolve to the producer, so updates/removal stay consistent.
   registry.publish("camera-A", first);
-  registry.bindAlias("alias-1", "camera-A");
-  registry.bindAlias("alias-2", "alias-1");
+  assert(registry.bindAlias("alias-1", "camera-A"));
+  assert(registry.bindAlias("alias-2", "alias-1"));
   assert(registry.latest("alias-2") == first);
   registry.publish("camera-A", second);
   assert(registry.latest("alias-1") == second);
@@ -54,16 +54,16 @@ int main() {
   assert(!registry.latest("alias-2"));
 
   // Invalid/self aliases must not create state or a cycle.
-  registry.bindAlias("", "camera-A");
-  registry.bindAlias("self", "self");
-  registry.bindAlias("self", "alias-self");
-  registry.bindAlias("alias-self", "self");
+  assert(!registry.bindAlias("", "camera-A"));
+  assert(!registry.bindAlias("self", "self"));
+  assert(registry.bindAlias("self", "alias-self"));
+  assert(!registry.bindAlias("alias-self", "self"));
   assert(!registry.latest("self"));
   assert(!registry.latest("alias-self"));
 
   // Removing an alias itself must detach it from subsequent producer updates.
   registry.publish("camera-C", first);
-  registry.bindAlias("temporary", "camera-C");
+  assert(registry.bindAlias("temporary", "camera-C"));
   registry.remove("temporary");
   registry.publish("camera-C", second);
   assert(!registry.latest("temporary"));
