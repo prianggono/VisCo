@@ -213,13 +213,20 @@ class HttpControlServer {
       const std::string nativeId = queryValue(requestLine, "native");
       if (!sources_ || sourceId.empty() || nativeId.empty()) {
         sendResponse(client, R"({"ok":false,"message":"sourceId and native are required."})", "400 Bad Request");
+      } else if (!sources_->bindAlias(sourceId, nativeId)) {
+        sendResponse(client, R"({"ok":false,"bound":false,"message":"Invalid source alias or alias cycle."})", "400 Bad Request");
       } else {
-        sources_->bindAlias(sourceId, nativeId);
-        sendResponse(client, R"({"ok":true})");
+        const bool available = static_cast<bool>(sources_->latest(sourceId));
+        const std::string message = available
+          ? "Alias bound and a source frame is available."
+          : "Alias registered; waiting for the source to publish its first frame.";
+        sendResponse(client, std::string(R"({"ok":true,"bound":true,"available":)") +
+          (available ? "true" : "false") + R"(,"message":")" + message + R"("})");
       }
     } else if (requestLine.rfind("GET /render/layers", 0) == 0) {
       const std::string value = queryValue(requestLine, "value");
       std::vector<NativeRenderLayer> parsed;
+      std::vector<std::string> unresolvedSources;
       std::stringstream input(value);
       std::string item;
       try {
@@ -231,6 +238,10 @@ class HttpControlServer {
           NativeRenderLayer layer;
           layer.sourceId = v[1];
           layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
+          if (!layer.frame && !layer.sourceId.empty() &&
+              std::find(unresolvedSources.begin(), unresolvedSources.end(), layer.sourceId) == unresolvedSources.end()) {
+            unresolvedSources.push_back(layer.sourceId);
+          }
           layer.x=std::stof(v[2]); layer.y=std::stof(v[3]); layer.width=std::stof(v[4]); layer.height=std::stof(v[5]);
           layer.rotation=std::stof(v[6]); layer.scaleX=std::stof(v[7]); layer.scaleY=std::stof(v[8]);
           layer.opacity=std::stof(v[9]); layer.order=std::stoi(v[10]);
@@ -253,7 +264,15 @@ class HttpControlServer {
           parsed.push_back(std::move(layer));
         }
         { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
-        sendResponse(client, R"({"ok":true})");
+        std::ostringstream body;
+        body << "{\\"ok\\":true,\\"layerCount\\":" << renderLayersSnapshot().size()
+             << ",\\"unresolvedSources\\":[";
+        for (size_t i = 0; i < unresolvedSources.size(); ++i) {
+          if (i) body << ",";
+          body << "\\"" << jsonEscape(unresolvedSources[i]) << "\\"";
+        }
+        body << "],\\"ready\\":" << (unresolvedSources.empty() ? "true" : "false") << "}";
+        sendResponse(client, body.str());
       } catch (const std::exception& ex) {
         sendResponse(client, std::string(R"({"ok":false,"message":")") + jsonEscape(ex.what()) + R"("})", "400 Bad Request");
       }
