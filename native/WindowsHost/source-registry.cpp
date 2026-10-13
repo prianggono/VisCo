@@ -1,4 +1,5 @@
 #include "source-registry.h"
+#include <unordered_set>
 
 namespace visco_native {
 
@@ -43,12 +44,12 @@ void SourceRegistry::bindAlias(const std::string& sourceId, const std::string& n
   // Resolve to a producer ID rather than allowing alias chains. This keeps
   // publish/remove deterministic and rejects cycles before changing state.
   std::string resolvedId = nativeSourceId;
-  for (size_t depth = 0; depth <= aliases_.size(); ++depth) {
-    if (resolvedId == sourceId) return;
+  std::unordered_set<std::string> visited;
+  while (true) {
+    if (resolvedId == sourceId || !visited.insert(resolvedId).second) return;
     const auto it = aliases_.find(resolvedId);
     if (it == aliases_.end()) break;
     resolvedId = it->second;
-    if (depth == aliases_.size()) return;
   }
 
   aliases_[sourceId] = resolvedId;
