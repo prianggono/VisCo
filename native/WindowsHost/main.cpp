@@ -526,6 +526,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const char* asioDriver = std::getenv("VISCO_ASIO_DRIVER");
     if (asioDriver && *asioDriver) {
       if (!asio.start(asioDriver, hwnd, 2)) std::cerr << "ASIO offline: " << asio.error() << "\n";
+      else audioMixer.setSampleRate(asio.sampleRate());
     }
     const char* envProtocol = std::getenv("VISCO_NETWORK_PROTOCOL");
     const char* envSource = std::getenv("VISCO_NETWORK_SOURCE");
@@ -538,7 +539,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
     }
     const char* recordPath = std::getenv("VISCO_RECORD_PATH");
-    if (recordPath && *recordPath) outputs.startRecord(recordPath, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
+    if (recordPath && *recordPath) {
+      const UINT audioRate = asio.running() ? asio.sampleRate() : 0;
+      const UINT audioChannels = asio.running() ? asio.inputChannels() : 0;
+      outputs.startRecord(recordPath, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30, audioRate, audioChannels);
+    }
     const char* virtualName = std::getenv("VISCO_VIRTUAL_OUTPUT");
     if (virtualName && *virtualName) outputs.startVirtual(virtualName, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
     const char* streamProtocol = std::getenv("VISCO_STREAM_PROTOCOL");
@@ -552,6 +557,30 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd, sources);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
+
+    std::atomic<bool> audioPumpRunning{outputs.audioRecording() && asio.running()};
+    std::thread audioPumpThread;
+    if (audioPumpRunning.load()) {
+      audioPumpThread = std::thread([&] {
+        const HRESULT audioCo = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        const UINT sampleRate = asio.sampleRate();
+        const UINT channels = asio.inputChannels();
+        const UINT blockFrames = std::max<UINT>(1, sampleRate / 100);
+        std::vector<float> audioBlock(static_cast<size_t>(blockFrames) * channels, 0.0f);
+        using AudioClock = std::chrono::steady_clock;
+        const auto blockPeriod = std::chrono::duration<double>(static_cast<double>(blockFrames) / sampleRate);
+        auto deadline = AudioClock::now();
+        while (audioPumpRunning.load(std::memory_order_acquire)) {
+          audioMixer.process(audioBlock.data(), blockFrames);
+          outputs.submitAudio(audioBlock.data(), blockFrames);
+          deadline += std::chrono::duration_cast<AudioClock::duration>(blockPeriod);
+          std::this_thread::sleep_until(deadline);
+          const auto now = AudioClock::now();
+          if (now > deadline + std::chrono::duration_cast<AudioClock::duration>(blockPeriod)) deadline = now;
+        }
+        if (SUCCEEDED(audioCo)) CoUninitialize();
+      });
+    }
 
     MSG msg{};
     UINT64 outputFrameNumber = 0;
@@ -600,6 +629,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         nextFrameDeadline = afterWait;
       }
     }
+    audioPumpRunning.store(false, std::memory_order_release);
+    if (audioPumpThread.joinable()) audioPumpThread.join();
+    outputs.stop();
+    asio.stop();
     if (SUCCEEDED(co)) CoUninitialize();
     return 0;
   } catch(const std::exception& ex) {
