@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <limits>
+#include <mutex>
+#include <cmath>
 
 using Microsoft::WRL::ComPtr;
 
@@ -106,7 +108,11 @@ class NativeOutputRuntime::Impl {
 public:
   ComPtr<IMFSinkWriter> writer;
   DWORD writerStream=0;
+  DWORD writerAudioStream=0;
   UINT width=0,height=0,fps=30;
+  UINT audioSampleRate=0,audioChannels=0;
+  UINT64 audioFramesSubmitted=0;
+  std::mutex writerMutex;
   HANDLE mapping=nullptr;
   void* mapped=nullptr;
   size_t mappingSize=0;
@@ -129,12 +135,16 @@ public:
 NativeOutputRuntime::NativeOutputRuntime():impl_(std::make_unique<Impl>()){}
 NativeOutputRuntime::~NativeOutputRuntime(){stop();}
 
-void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT height, UINT fps){
+void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT height, UINT fps, UINT audioSampleRate, UINT audioChannels){
   try{
     if(path.empty()) throw std::runtime_error("Record path is empty.");
+    if(width == 0 || height == 0 || fps == 0) throw std::runtime_error("Record dimensions and frame rate must be positive.");
+    if(audioSampleRate && (audioChannels == 0 || audioChannels > 2)) throw std::runtime_error("Recording audio requires one or two channels.");
     if(impl_->writer){ impl_->writer->Finalize(); impl_->writer.Reset(); }
-    recording_=false;
+    recording_=false; audioRecording_=false;
     impl_->width=width; impl_->height=height; impl_->fps=fps;
+    impl_->audioSampleRate=audioSampleRate; impl_->audioChannels=audioSampleRate ? audioChannels : 0;
+    impl_->audioFramesSubmitted=0;
     ComPtr<IMFAttributes> attrs;
     requireHr(MFCreateAttributes(&attrs,1),"Record attributes failed");
     attrs->SetUINT32(MF_SINK_WRITER_DISABLE_THROTTLING,TRUE);
@@ -151,6 +161,31 @@ void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT 
     outputType->SetUINT32(MF_MT_AVG_BITRATE,std::min<UINT>(std::numeric_limits<UINT>::max(),width*height*fps));
     requireHr(impl_->writer->AddStream(outputType.Get(),&impl_->writerStream),"Add H264 stream failed");
 
+    if (audioSampleRate > 0 && audioChannels > 0) {
+      ComPtr<IMFMediaType> audioOutputType;
+      requireHr(MFCreateMediaType(&audioOutputType),"Record audio output type failed");
+      audioOutputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+      audioOutputType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_AAC);
+      audioOutputType->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, audioChannels);
+      audioOutputType->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, audioSampleRate);
+      audioOutputType->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+      audioOutputType->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, 24000);
+      audioOutputType->SetUINT32(MF_MT_AAC_PAYLOAD_TYPE, 0);
+      audioOutputType->SetUINT32(MF_MT_AAC_AUDIO_PROFILE_LEVEL_INDICATION, 0x29);
+      requireHr(impl_->writer->AddStream(audioOutputType.Get(), &impl_->writerAudioStream), "Add AAC audio stream failed");
+
+      ComPtr<IMFMediaType> audioInputType;
+      requireHr(MFCreateMediaType(&audioInputType), "Record audio input type failed");
+      audioInputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+      audioInputType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+      audioInputType->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, audioChannels);
+      audioInputType->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, audioSampleRate);
+      audioInputType->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+      audioInputType->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, audioChannels * sizeof(int16_t));
+      audioInputType->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, audioSampleRate * audioChannels * sizeof(int16_t));
+      requireHr(impl_->writer->SetInputMediaType(impl_->writerAudioStream, audioInputType.Get(), nullptr), "Set AAC audio input type failed");
+    }
+
     ComPtr<IMFMediaType> inputType;
     requireHr(MFCreateMediaType(&inputType),"Record input type failed");
     inputType->SetGUID(MF_MT_MAJOR_TYPE,MFMediaType_Video);
@@ -162,6 +197,7 @@ void NativeOutputRuntime::startRecord(const std::string& path, UINT width, UINT 
     requireHr(impl_->writer->SetInputMediaType(impl_->writerStream,inputType.Get(),nullptr),"Set H264 input type failed");
     requireHr(impl_->writer->BeginWriting(),"Begin record failed");
     recording_=true;
+    audioRecording_ = audioSampleRate > 0 && audioChannels > 0;
     error_.clear();
   }catch(const std::exception&ex){recording_=false;setError(ex.what());}
 }
@@ -207,6 +243,7 @@ void NativeOutputRuntime::submit(const std::shared_ptr<const NativeVideoFrame>& 
   if(!frame)return;
   try{
     if(recording_ && impl_->writer){
+      std::lock_guard<std::mutex> writerLock(impl_->writerMutex);
       const DWORD row=frame->width*4;
       const DWORD size=row*frame->height;
       ComPtr<IMFMediaBuffer> buffer;
@@ -238,12 +275,50 @@ void NativeOutputRuntime::submit(const std::shared_ptr<const NativeVideoFrame>& 
   }catch(const std::exception&ex){setError(ex.what());}
 }
 
+void NativeOutputRuntime::submitAudio(const float* interleaved, UINT frames){
+  if(!interleaved || frames == 0 || !recording_ || !audioRecording_ || !impl_->writer) return;
+  try {
+    std::lock_guard<std::mutex> writerLock(impl_->writerMutex);
+    const UINT channels = impl_->audioChannels;
+    const UINT sampleRate = impl_->audioSampleRate;
+    if (!channels || !sampleRate) return;
+    const size_t sampleCount = static_cast<size_t>(frames) * channels;
+    std::vector<int16_t> pcm(sampleCount);
+    for (size_t i = 0; i < sampleCount; ++i) {
+      const float value = std::clamp(std::isfinite(interleaved[i]) ? interleaved[i] : 0.0f, -1.0f, 1.0f);
+      pcm[i] = static_cast<int16_t>(value <= -1.0f ? -32768 : std::lround(value * 32767.0f));
+    }
+    const DWORD byteCount = static_cast<DWORD>(pcm.size() * sizeof(int16_t));
+    ComPtr<IMFMediaBuffer> buffer;
+    requireHr(MFCreateMemoryBuffer(byteCount, &buffer), "Record audio buffer failed");
+    BYTE* dst = nullptr; DWORD max = 0, current = 0;
+    requireHr(buffer->Lock(&dst, &max, &current), "Record audio buffer lock failed");
+    std::memcpy(dst, pcm.data(), byteCount);
+    buffer->Unlock();
+    buffer->SetCurrentLength(byteCount);
+    ComPtr<IMFSample> sample;
+    requireHr(MFCreateSample(&sample), "Record audio sample failed");
+    requireHr(sample->AddBuffer(buffer.Get()), "Attach audio buffer failed");
+    const LONGLONG start = static_cast<LONGLONG>(impl_->audioFramesSubmitted * 10000000ULL / sampleRate);
+    const LONGLONG duration = static_cast<LONGLONG>(static_cast<UINT64>(frames) * 10000000ULL / sampleRate);
+    requireHr(sample->SetSampleTime(start), "Set audio sample time failed");
+    requireHr(sample->SetSampleDuration(duration), "Set audio sample duration failed");
+    requireHr(impl_->writer->WriteSample(impl_->writerAudioStream, sample.Get()), "Record audio sample write failed");
+    impl_->audioFramesSubmitted += frames;
+  } catch (const std::exception& ex) {
+    setError(ex.what());
+    audioRecording_ = false;
+  }
+}
+
 void NativeOutputRuntime::stop(){
   if(!impl_)return;
-  if(recording_&&impl_->writer){impl_->writer->Finalize();impl_->writer.Reset();}
+  { std::lock_guard<std::mutex> writerLock(impl_->writerMutex);
+    if(recording_&&impl_->writer){impl_->writer->Finalize();impl_->writer.Reset();}
+  }
   if(impl_->mapped){UnmapViewOfFile(impl_->mapped);impl_->mapped=nullptr;}
   if(impl_->mapping){CloseHandle(impl_->mapping);impl_->mapping=nullptr;}
   if(impl_->omtSender){impl_->omt.destroy(impl_->omtSender);impl_->omtSender=nullptr;}
   if(impl_->ndiSender){impl_->ndi.sendDestroy(impl_->ndiSender);impl_->ndiSender=nullptr;}
-  recording_=virtualOutput_=streaming_=false;impl_->stream=NativeStreamProtocol::None;
+  recording_=audioRecording_=virtualOutput_=streaming_=false;impl_->stream=NativeStreamProtocol::None;
 }

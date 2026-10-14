@@ -24,6 +24,8 @@
 #include <sstream>
 #include <cctype>
 #include <cstdlib>
+#include <chrono>
+#include <cmath>
 #include "capture-runtime.h"
 #include "runtime-adapters.h"
 #include "network-frame-runtime.h"
@@ -116,6 +118,7 @@ class HttpControlServer {
   visco_asio::AsioAudioRuntime* asio_ = nullptr;
   visco_asio::AudioEngine* audioEngine_ = nullptr;
   visco_audio::AudioMixer* audioMixer_ = nullptr;
+  NativeOutputRuntime* outputs_ = nullptr;
   HWND asioWindow_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
@@ -213,13 +216,20 @@ class HttpControlServer {
       const std::string nativeId = queryValue(requestLine, "native");
       if (!sources_ || sourceId.empty() || nativeId.empty()) {
         sendResponse(client, R"({"ok":false,"message":"sourceId and native are required."})", "400 Bad Request");
+      } else if (!sources_->bindAlias(sourceId, nativeId)) {
+        sendResponse(client, R"({"ok":false,"bound":false,"message":"Invalid source alias or alias cycle."})", "400 Bad Request");
       } else {
-        sources_->bindAlias(sourceId, nativeId);
-        sendResponse(client, R"({"ok":true})");
+        const bool available = static_cast<bool>(sources_->latest(sourceId));
+        const std::string message = available
+          ? "Alias bound and a source frame is available."
+          : "Alias registered; waiting for the source to publish its first frame.";
+        sendResponse(client, std::string(R"({"ok":true,"bound":true,"available":)") +
+          (available ? "true" : "false") + R"(,"message":")" + message + R"("})");
       }
     } else if (requestLine.rfind("GET /render/layers", 0) == 0) {
       const std::string value = queryValue(requestLine, "value");
       std::vector<NativeRenderLayer> parsed;
+      std::vector<std::string> unresolvedSources;
       std::stringstream input(value);
       std::string item;
       try {
@@ -230,7 +240,12 @@ class HttpControlServer {
           if (v.size() < 17 || ((v.size() - 17) % 2) != 0) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
           layer.sourceId = v[1];
-          layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
+          if (layer.sourceId.empty()) throw std::runtime_error("Render layer sourceId is required.");
+          layer.frame = sources_ ? sources_->latest(layer.sourceId) : nullptr;
+          if (!layer.frame && !layer.sourceId.empty() &&
+              std::find(unresolvedSources.begin(), unresolvedSources.end(), layer.sourceId) == unresolvedSources.end()) {
+            unresolvedSources.push_back(layer.sourceId);
+          }
           layer.x=std::stof(v[2]); layer.y=std::stof(v[3]); layer.width=std::stof(v[4]); layer.height=std::stof(v[5]);
           layer.rotation=std::stof(v[6]); layer.scaleX=std::stof(v[7]); layer.scaleY=std::stof(v[8]);
           layer.opacity=std::stof(v[9]); layer.order=std::stoi(v[10]);
@@ -240,9 +255,31 @@ class HttpControlServer {
           if (!v[14].empty()) layer.cropBottom=std::stof(v[14]);
           layer.sliceId=v[15];
           layer.mappingMode=v[16].empty() ? "rectangle" : v[16];
+          if (layer.mappingMode != "rectangle" && layer.mappingMode != "corner-pin" && layer.mappingMode != "polygon") {
+            throw std::runtime_error("Unsupported mapping mode.");
+          }
+          const float transformValues[] = {
+            layer.x, layer.y, layer.width, layer.height, layer.rotation,
+            layer.scaleX, layer.scaleY, layer.opacity, layer.cropLeft,
+            layer.cropTop, layer.cropRight, layer.cropBottom
+          };
+          for (const float number : transformValues) {
+            if (!std::isfinite(number)) throw std::runtime_error("Render layer values must be finite numbers.");
+          }
+          if (layer.width <= 0.0f || layer.height <= 0.0f) {
+            throw std::runtime_error("Render layer width and height must be positive.");
+          }
+          if (layer.opacity < 0.0f || layer.opacity > 1.0f) {
+            throw std::runtime_error("Render layer opacity must be between 0 and 1.");
+          }
           for (size_t i=17; i<v.size(); i+=2) {
             if (v[i].empty() || v[i+1].empty()) throw std::runtime_error("Mapping point requires x and y.");
-            layer.mappingPoints.emplace_back(std::stof(v[i]), std::stof(v[i+1]));
+            const float pointX = std::stof(v[i]);
+            const float pointY = std::stof(v[i+1]);
+            if (!std::isfinite(pointX) || !std::isfinite(pointY)) {
+              throw std::runtime_error("Mapping points must be finite numbers.");
+            }
+            layer.mappingPoints.emplace_back(pointX, pointY);
           }
           if (layer.mappingMode == "corner-pin" && layer.mappingPoints.size() != 4) {
             throw std::runtime_error("Corner-pin layer requires four mapping points.");
@@ -253,26 +290,45 @@ class HttpControlServer {
           parsed.push_back(std::move(layer));
         }
         { std::lock_guard<std::mutex> lock(renderMutex_); renderLayers_ = std::move(parsed); }
-        sendResponse(client, R"({"ok":true})");
+        std::ostringstream body;
+        body << "{\"ok\":true,\"layerCount\":" << renderLayersSnapshot().size()
+             << ",\"unresolvedSources\":[";
+        for (size_t i = 0; i < unresolvedSources.size(); ++i) {
+          if (i) body << ",";
+          body << "\"" << jsonEscape(unresolvedSources[i]) << "\"";
+        }
+        body << "],\"ready\":" << (unresolvedSources.empty() ? "true" : "false") << "}";
+        sendResponse(client, body.str());
       } catch (const std::exception& ex) {
         sendResponse(client, std::string(R"({"ok":false,"message":")") + jsonEscape(ex.what()) + R"("})", "400 Bad Request");
       }
     } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
-      const auto s = audioMixer_->stats();
+      const auto s = audioMixer_ ? audioMixer_->stats() : visco_audio::AudioBusStats{};
+      const bool recordingAudio = outputs_ && outputs_->audioRecording();
       std::ostringstream body;
       body << "{\"processedFrames\":" << s.processedFrames
            << ",\"underrunFrames\":" << s.underrunFrames
            << ",\"sampleRate\":" << s.sampleRate
            << ",\"channels\":" << s.channels
-           << ",\"masterGain\":" << s.masterGain << "}";
+           << ",\"masterGain\":" << s.masterGain
+           << ",\"connectedToOutput\":" << (recordingAudio ? "true" : "false")
+           << ",\"recordingAudio\":" << (recordingAudio ? "true" : "false")
+           << ",\"streamingAudio\":false"
+           << ",\"outputIntegration\":\"" << (recordingAudio ? "recording-aac" : "not-connected") << "\"}";
       sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /audio/mixer/master", 0) == 0) {
       const auto q = requestLine.find("gain=");
-      if (q == std::string::npos) {
+      if (!audioMixer_) {
+        sendResponse(client, "{\"ok\":false,\"message\":\"audio mixer unavailable\"}", "503 Service Unavailable");
+      } else if (q == std::string::npos) {
         sendResponse(client, "{\"ok\":false,\"message\":\"gain is required\"}", "400 Bad Request");
       } else {
         try {
-          audioMixer_->setMasterGain(std::stof(requestLine.substr(q + 5)));
+          const std::string gainValue = queryValue(requestLine, "gain");
+          size_t parsed = 0;
+          const float gain = std::stof(gainValue, &parsed);
+          if (parsed != gainValue.size() || !std::isfinite(gain)) throw std::runtime_error("invalid gain");
+          audioMixer_->setMasterGain(gain);
           sendResponse(client, "{\"ok\":true}");
         } catch (...) {
           sendResponse(client, "{\"ok\":false,\"message\":\"invalid gain\"}", "400 Bad Request");
@@ -397,8 +453,8 @@ public:
     return renderLayers_;
   }
 
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, NativeOutputRuntime& outputs, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; outputs_ = &outputs; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -474,6 +530,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const char* asioDriver = std::getenv("VISCO_ASIO_DRIVER");
     if (asioDriver && *asioDriver) {
       if (!asio.start(asioDriver, hwnd, 2)) std::cerr << "ASIO offline: " << asio.error() << "\n";
+      else audioMixer.setSampleRate(asio.sampleRate());
     }
     const char* envProtocol = std::getenv("VISCO_NETWORK_PROTOCOL");
     const char* envSource = std::getenv("VISCO_NETWORK_SOURCE");
@@ -486,7 +543,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
       capture.start(media.enumerateVideoDeviceInfo().front().symbolicLink, 1280, 720, 30);
     }
     const char* recordPath = std::getenv("VISCO_RECORD_PATH");
-    if (recordPath && *recordPath) outputs.startRecord(recordPath, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
+    if (recordPath && *recordPath) {
+      const UINT audioRate = asio.running() ? asio.sampleRate() : 0;
+      const UINT audioChannels = asio.running() ? asio.inputChannels() : 0;
+      outputs.startRecord(recordPath, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30, audioRate, audioChannels);
+    }
     const char* virtualName = std::getenv("VISCO_VIRTUAL_OUTPUT");
     if (virtualName && *virtualName) outputs.startVirtual(virtualName, static_cast<UINT>(outputWidth), static_cast<UINT>(outputHeight), 30);
     const char* streamProtocol = std::getenv("VISCO_STREAM_PROTOCOL");
@@ -497,12 +558,41 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
 
     HttpControlServer http;
-    http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd, sources);
+    http.start(media, audio, capture, runtimes, network, outputs, asio, audioEngine, audioMixer, hwnd, sources);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
+    std::atomic<bool> audioPumpRunning{outputs.audioRecording() && asio.running()};
+    std::thread audioPumpThread;
+    if (audioPumpRunning.load()) {
+      audioPumpThread = std::thread([&] {
+        const HRESULT audioCo = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        const UINT sampleRate = asio.sampleRate();
+        const UINT channels = asio.inputChannels();
+        const UINT blockFrames = std::max<UINT>(1, sampleRate / 100);
+        std::vector<float> audioBlock(static_cast<size_t>(blockFrames) * channels, 0.0f);
+        using AudioClock = std::chrono::steady_clock;
+        const auto blockPeriod = std::chrono::duration<double>(static_cast<double>(blockFrames) / sampleRate);
+        auto deadline = AudioClock::now();
+        while (audioPumpRunning.load(std::memory_order_acquire) && outputs.audioRecording()) {
+          audioMixer.process(audioBlock.data(), blockFrames);
+          outputs.submitAudio(audioBlock.data(), blockFrames);
+          deadline += std::chrono::duration_cast<AudioClock::duration>(blockPeriod);
+          std::this_thread::sleep_until(deadline);
+          const auto now = AudioClock::now();
+          if (now > deadline + std::chrono::duration_cast<AudioClock::duration>(blockPeriod)) deadline = now;
+        }
+        if (SUCCEEDED(audioCo)) CoUninitialize();
+      });
+    }
+
     MSG msg{};
     UINT64 outputFrameNumber = 0;
+    // Pace the render loop against a monotonic 30 FPS deadline. Sleeping for
+    // 33 ms after each frame compounds render time and runs below the target.
+    using FrameClock = std::chrono::steady_clock;
+    const auto framePeriod = std::chrono::duration<double>(1.0 / 30.0);
+    auto nextFrameDeadline = FrameClock::now();
     while(msg.message != WM_QUIT) {
       while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){ TranslateMessage(&msg); DispatchMessageW(&msg); }
       const auto networkFrame = network.latest();
@@ -517,23 +607,36 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
           // here keeps the render state live without copying pixel buffers.
         }
       }
-      if (compositionLayers.empty() && network.running()) {
-        if (const auto source = sources.latest("network")) {
+      if (compositionLayers.empty()) {
+        if (network.running()) {
+          if (const auto source = sources.latest("network")) {
+            NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
+            layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
+            layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
+            compositionLayers.push_back(std::move(layer));
+          }
+        } else if (const auto source = sources.latest("capture")) {
           NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
           layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
           layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
           compositionLayers.push_back(std::move(layer));
         }
-      } else if (const auto source = sources.latest("capture")) {
-        NativeRenderLayer layer; layer.frame = source; layer.x = 0; layer.y = 0;
-        layer.width = static_cast<float>(outputWidth); layer.height = static_cast<float>(outputHeight);
-        layer.scaleX = 1.0f; layer.scaleY = 1.0f; layer.opacity = 1.0f; layer.order = 0;
-        compositionLayers.push_back(std::move(layer));
       }
       const auto finalFrame = compositionLayers.empty() ? renderer.render(frame) : renderer.renderComposition(compositionLayers);
       outputs.submit(finalFrame, outputFrameNumber++);
-      Sleep(33);
+      nextFrameDeadline += std::chrono::duration_cast<FrameClock::duration>(framePeriod);
+      std::this_thread::sleep_until(nextFrameDeadline);
+      const auto afterWait = FrameClock::now();
+      // If rendering/output fell more than one frame behind, drop the stale
+      // deadline instead of running a burst of catch-up frames.
+      if (afterWait > nextFrameDeadline + std::chrono::duration_cast<FrameClock::duration>(framePeriod)) {
+        nextFrameDeadline = afterWait;
+      }
     }
+    audioPumpRunning.store(false, std::memory_order_release);
+    if (audioPumpThread.joinable()) audioPumpThread.join();
+    outputs.stop();
+    asio.stop();
     if (SUCCEEDED(co)) CoUninitialize();
     return 0;
   } catch(const std::exception& ex) {
