@@ -118,6 +118,7 @@ class HttpControlServer {
   visco_asio::AsioAudioRuntime* asio_ = nullptr;
   visco_asio::AudioEngine* audioEngine_ = nullptr;
   visco_audio::AudioMixer* audioMixer_ = nullptr;
+  NativeOutputRuntime* outputs_ = nullptr;
   HWND asioWindow_ = nullptr;
 
   static void sendResponse(SOCKET client, const std::string& body, const char* status = "200 OK") {
@@ -303,14 +304,17 @@ class HttpControlServer {
       }
     } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
       const auto s = audioMixer_ ? audioMixer_->stats() : visco_audio::AudioBusStats{};
+      const bool recordingAudio = outputs_ && outputs_->audioRecording();
       std::ostringstream body;
       body << "{\"processedFrames\":" << s.processedFrames
            << ",\"underrunFrames\":" << s.underrunFrames
            << ",\"sampleRate\":" << s.sampleRate
            << ",\"channels\":" << s.channels
            << ",\"masterGain\":" << s.masterGain
-           << ",\"connectedToOutput\":false"
-           << ",\"outputIntegration\":\"not-connected\"}";
+           << ",\"connectedToOutput\":" << (recordingAudio ? "true" : "false")
+           << ",\"recordingAudio\":" << (recordingAudio ? "true" : "false")
+           << ",\"streamingAudio\":false"
+           << ",\"outputIntegration\":\"" << (recordingAudio ? "recording-aac" : "not-connected") << "\"}";
       sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /audio/mixer/master", 0) == 0) {
       const auto q = requestLine.find("gain=");
@@ -449,8 +453,8 @@ public:
     return renderLayers_;
   }
 
-  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
-    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
+  void start(MediaFoundationHost& media, WasapiHost& audio, MediaCaptureHost& capture, RuntimeAdapterRegistry& runtimes, NetworkFrameRuntime& network, NativeOutputRuntime& outputs, visco_asio::AsioAudioRuntime& asio, visco_asio::AudioEngine& audioEngine, visco_audio::AudioMixer& audioMixer, HWND asioWindow, visco_native::SourceRegistry& sources, unsigned short port = 47821) {
+    media_ = &media; audio_ = &audio; capture_ = &capture; runtimes_ = &runtimes; network_ = &network; outputs_ = &outputs; asio_ = &asio; audioEngine_ = &audioEngine; audioMixer_ = &audioMixer; asioWindow_ = asioWindow; sources_ = &sources;
     WSADATA data{}; check(WSAStartup(MAKEWORD(2,2), &data), "WSAStartup failed");
     listener_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener_ == INVALID_SOCKET) throw std::runtime_error("Native HTTP socket failed");
@@ -554,7 +558,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     }
 
     HttpControlServer http;
-    http.start(media, audio, capture, runtimes, network, asio, audioEngine, audioMixer, hwnd, sources);
+    http.start(media, audio, capture, runtimes, network, outputs, asio, audioEngine, audioMixer, hwnd, sources);
     std::wcout << L"VisCo native host ready. Cameras: " << cameras.size()
                << L", audio capture devices: " << audioDevices.size() << L"\n";
 
