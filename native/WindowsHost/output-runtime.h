@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <atomic>
 
 enum class NativeStreamProtocol { None, NDI, OMT };
 
@@ -16,7 +17,7 @@ public:
   void startStream(NativeStreamProtocol protocol, const std::string& name, UINT width, UINT height, UINT fps = 30);
 
   void submit(const std::shared_ptr<const NativeVideoFrame>& frame, UINT64 frameNumber);
-  bool audioRecording() const { return audioRecording_; }
+  bool audioRecording() const { return audioRecording_.load(std::memory_order_acquire); }
   void submitAudio(const float* interleaved, UINT frames);
   void stop();
   bool recording() const { return recording_; }
@@ -28,7 +29,7 @@ private:
   class Impl;
   std::unique_ptr<Impl> impl_;
   bool recording_ = false;
-  bool audioRecording_ = false;
+  std::atomic<bool> audioRecording_{false};
   bool virtualOutput_ = false;
   bool streaming_ = false;
   std::string error_;
