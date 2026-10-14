@@ -173,3 +173,25 @@ The latest UI Smoke workflow passed on commit 1f89747b737be2c99f4652f52a019250eb
 ### Gate 5 — delivery boundary
 
 Keep all work on audit/engine-migration-2026-10-12; keep PR #1 as draft; do not merge to main. Do not begin EXE packaging, installer, release preparation, licensing work, or broad OBS/libobs migration. Stop after engine/runtime acceptance and UI validation, then report the evidence and remaining hardware-only checks before asking for the next phase.
+
+
+## Execution update — 2026-10-14
+
+The audit branch has progressed beyond the initial snapshot above. The latest confirmed pre-change baseline was commit `5a65990b2d441775429dd0b160d76052189af209`, where web CI, native Windows CTest/build, and UI Smoke were all green. That evidence applies to that commit only; it must not be treated as validation of subsequent commits.
+
+### Additional native render-contract hardening
+
+Commit `07bf2a44712c26f9cce2d8eaa44255b36e750375` adds request validation to `GET /render/layers`:
+- Reject a render layer with an empty source ID instead of incorrectly reporting the plan as ready.
+- Reject unknown mapping modes; supported modes are `rectangle`, `corner-pin`, and `polygon`.
+- Reject non-finite transform, crop, and mapping-point values.
+- Reject non-positive width/height and opacity outside 0–1.
+- Preserve the existing unresolved-source report: a syntactically valid layer whose source has not published a frame remains unresolved and must not be treated as ready.
+
+### Acceptance status after this change
+
+- **Code changed:** native render-layer request validation only.
+- **CI for commit `07bf2a4`:** not yet confirmed by the available workflow/status lookup; treat as pending/unverified until GitHub Actions reports results.
+- **Audio:** the ASIO capture engine and mixer tests exist, but the mixer is not connected to a real recording/streaming audio sink. Do not claim end-to-end audio.
+- **Hardware:** camera/network input, physical display/LED, NDI/OMT runtime, recording/streaming, audio fan-out, and sustained 30 FPS still require runtime/hardware acceptance.
+- **Delivery:** remain on `audit/engine-migration-2026-10-12`; do not merge to `main`, package an EXE, or begin installer/release work. UI fixes remain after engine validation.
