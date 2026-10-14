@@ -574,7 +574,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         using AudioClock = std::chrono::steady_clock;
         const auto blockPeriod = std::chrono::duration<double>(static_cast<double>(blockFrames) / sampleRate);
         auto deadline = AudioClock::now();
-        while (audioPumpRunning.load(std::memory_order_acquire)) {
+        while (audioPumpRunning.load(std::memory_order_acquire) && outputs.audioRecording()) {
           audioMixer.process(audioBlock.data(), blockFrames);
           outputs.submitAudio(audioBlock.data(), blockFrames);
           deadline += std::chrono::duration_cast<AudioClock::duration>(blockPeriod);
