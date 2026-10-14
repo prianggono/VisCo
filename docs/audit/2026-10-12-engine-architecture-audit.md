@@ -202,3 +202,22 @@ Commit `07bf2a44712c26f9cce2d8eaa44255b36e750375` adds request validation to `GE
 Commit `09d4286` makes the current audio boundary explicit in `GET /audio/mixer/status`: `connectedToOutput:false` and `outputIntegration:"not-connected"`. The master-gain endpoint now rejects partially parsed/non-finite values and reports an unavailable mixer instead of dereferencing a null pointer.
 
 The correct next implementation boundary is **not** to drain AudioMixer samples from the 30 FPS video loop. ASIO capture is callback/ring-buffer driven, while video composition is frame/deadline driven. A safe output integration needs a clocked audio consumer and explicit fan-out to each supported output, sample-rate/channel conversion where needed, timestamps aligned to the output clock, and underrun/overflow accounting. Recording must add an audio stream to the Media Foundation sink writer; network protocols must use their supported audio-frame APIs. Until those sinks exist and pass tests, the API explicitly reports audio as disconnected.
+
+
+## Execution update — audio recording path prototype (2026-10-14)
+
+The isolated branch now contains a first native audio-to-recording path:
+- ASIO's active sample rate is propagated to the audio engine and mixer; the engine stores the sample rate atomically for status reads.
+- ASIO startup rejects a driver with fewer input channels than requested, avoiding reading interleaved stereo frames from a mono scratch buffer.
+- When `VISCO_RECORD_PATH` and a working `VISCO_ASIO_DRIVER` are configured, the Media Foundation sink writer is configured with an AAC audio stream alongside the H.264 video stream.
+- A dedicated paced audio-pump thread consumes mixer blocks independently of the 30 FPS video render loop and submits PCM blocks to the recording sink. Audio timestamps are derived from cumulative submitted sample frames at the configured ASIO sample rate; writer calls are serialized with a mutex.
+- `GET /audio/mixer/status` now reports whether AAC recording audio is connected. NDI/OMT streaming audio remains explicitly unsupported by this path.
+- Added a native mixer test for sample-rate propagation and retained the existing sample, gain, and underrun checks.
+
+### Remaining acceptance gates for this audio prototype
+
+- Automated workflow results for the new audio-path commits are **not yet visible/confirmed**; do not treat earlier green CI on commit `169afe9` as proof for this code.
+- The Windows CI build/CTest must pass before considering the code-level gate green.
+- A Windows runtime test with an actual ASIO driver must verify that the resulting MP4/MOV (depending on sink-writer URL/container) contains synchronized, audible AAC audio and H.264 video, and that long-running capture does not overflow the ASIO ring or accumulate A/V drift.
+- Audio fan-out to NDI/OMT streaming is still not implemented. This change only targets Media Foundation recording.
+- If the audio sink reports a write error, the audio pump stops instead of continuing to drain and discard ASIO samples.
