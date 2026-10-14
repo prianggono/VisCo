@@ -221,3 +221,13 @@ The isolated branch now contains a first native audio-to-recording path:
 - A Windows runtime test with an actual ASIO driver must verify that the resulting MP4/MOV (depending on sink-writer URL/container) contains synchronized, audible AAC audio and H.264 video, and that long-running capture does not overflow the ASIO ring or accumulate A/V drift.
 - Audio fan-out to NDI/OMT streaming is still not implemented. This change only targets Media Foundation recording.
 - If the audio sink reports a write error, the audio pump stops instead of continuing to drain and discard ASIO samples.
+
+
+### Validation update — current native audio prototype baseline
+
+On commit `5f85a696708e302345d87724752b1b52cea01aad`, all three automated workflows completed successfully:
+- [VisCo CI](https://github.com/prianggono/VisCo/actions/runs/38512869822): unit tests, typecheck, production build passed.
+- [Native Windows CI](https://github.com/prianggono/VisCo/actions/runs/38512869819): CMake configure, Release build, and native CTest passed.
+- [UI Smoke](https://github.com/prianggono/VisCo/actions/runs/38512869830): Playwright smoke suite passed.
+
+This supersedes the earlier pending-CI note for the audio prototype at that tested commit. The native build and unit tests validate compilation and mixer behavior, not the Media Foundation AAC encoder's behavior with a real ASIO device. Actual file playback, A/V sync, long-duration overflow, and streaming audio remain unverified.
