@@ -23,7 +23,7 @@ struct AudioEngineStats{uint64_t callbackBlocks=0,callbackFrames=0,droppedFrames
 class AudioEngine{
 public:AudioEngine(uint32_t sampleRate=48000,uint32_t channels=2,uint32_t capacityFrames=96000);
 bool pushInterleaved(const float*,uint32_t)noexcept;uint32_t pullInterleaved(float*,uint32_t)noexcept;AudioEngineStats stats()const noexcept;uint32_t availableFrames()const noexcept;void setSampleRate(uint32_t)noexcept;
-private:std::vector<float>ring_;uint32_t channels_,capacityFrames_,sampleRate_;std::atomic<uint64_t>readFrame_{0},writeFrame_{0},callbackBlocks_{0},callbackFrames_{0},droppedFrames_{0},overruns_{0};std::atomic<uint32_t>sampleRate_;
+private:std::vector<float>ring_;uint32_t channels_,capacityFrames_;std::atomic<uint64_t>readFrame_{0},writeFrame_{0},callbackBlocks_{0},callbackFrames_{0},droppedFrames_{0},overruns_{0};std::atomic<uint32_t>sampleRate_;
 };
 struct AsioDriverInfo{std::string id,name,description,clsid;};
 class AsioAudioRuntime{
