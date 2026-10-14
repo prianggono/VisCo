@@ -30,6 +30,12 @@ uint32_t AudioMixer::process(float* outputInterleaved, uint32_t frames) {
   return available;
 }
 
+void AudioMixer::setSampleRate(uint32_t sampleRate) noexcept {
+  if (sampleRate == 0) return;
+  std::lock_guard<std::mutex> lock(mutex_);
+  sampleRate_ = sampleRate;
+}
+
 void AudioMixer::setMasterGain(float gain) noexcept {
   if (!std::isfinite(gain)) gain = 1.0f;
   std::lock_guard<std::mutex> lock(mutex_);
