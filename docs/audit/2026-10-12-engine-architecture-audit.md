@@ -121,3 +121,55 @@ Further inspection of `SourceRegistry` and the `/render/bind` / `/render/layers`
 ### Next implementation gate
 
 Before connecting more runtime components, add native unit tests for alias binding, publish/update, source removal, unresolved source IDs, and frame refresh across repeated layer updates. Then change the bind/layer endpoints to report validation errors explicitly and expose unresolved-source diagnostics. Keep changes isolated on the audit branch and run the Windows CI before considering the gate complete. Audio routing and frame pacing remain separate blockers; no EXE packaging in this phase.
+
+
+## Updated execution record — 2026-10-14
+
+This section supersedes older status statements above where they conflict with newer code and CI evidence.
+
+### Gate 1 — video engine and output trace
+
+The current branch now uses a monotonic std::chrono::steady_clock deadline in native/WindowsHost/main.cpp instead of sleeping 33 ms after each rendered frame. The loop schedules at 30 FPS and resets a stale deadline when it falls more than one frame behind. This removes the fixed-sleep accumulation problem at source level; **it does not prove sustained 30 FPS on event hardware**.
+
+The traced video path is:
+1. The HTTP bridge accepts render-layer descriptors and resolves logical source IDs through SourceRegistry.
+2. The main loop refreshes each layer's frame from the registry.
+3. The D3D11 renderer renders the composition (or the single fallback frame when no composition layers are configured).
+4. NativeOutputRuntime::submit(frame, frameNumber) sends the resulting video frame to the configured Media Foundation record writer, shared-memory virtual output, and/or NDI/OMT sender.
+
+The fallback behavior is guarded by compositionLayers.empty(), preventing the automatic camera/network fallback from being appended to a non-empty user composition. Remaining gap: a successful layer-plan HTTP response and a successful build do not prove the selected source is publishing pixels or that a physical output is displaying them. The /render/layers response exposes ready and unresolvedSources; runtime-level UI-to-native contract coverage and hardware acceptance are still required.
+
+### Gate 2 — audio integration contract
+
+Current source evidence:
+- ASIO callback ingestion writes audio frames to AudioEngine.
+- AudioMixer::process(outputInterleaved, frames) pulls those frames, applies master gain, clamps samples and zero-fills underruns; the native CTest suite exercises the mixer.
+- The HTTP server exposes ASIO status and mixer gain/status.
+- **The production main loop does not call AudioMixer::process, and NativeOutputRuntime accepts only video frames.** Therefore, no complete master-bus-to-record/stream audio route currently exists in the inspected code.
+
+Required integration contract before implementing fan-out:
+1. Define a timestamped, sample-rate/channel-aware mixed-audio packet (48 kHz stereo as the current mixer default) and explicit ownership/lifetime rules for its sample buffer.
+2. Keep audio acquisition/mixing on a real-time-safe path; do not perform blocking encoding, network sends, or allocation-heavy work inside the ASIO callback.
+3. Give each output adapter an explicit audio capability/status. Media Foundation recording needs a synchronized audio stream and sample timestamps; NDI/OMT need their respective audio-frame APIs/runtime support. Shared-memory virtual output needs a documented audio contract or must be labelled video-only.
+4. Use a bounded queue between mixing and output consumers, define underrun/overflow policy and counters, and keep video/audio timestamps aligned. One destination must not consume samples before another destination can read them.
+5. Add deterministic tests for sample timing, gain/clipping, underrun/overflow, independent output enable/disable, and multi-destination fan-out before claiming end-to-end audio.
+
+Do not call the mixer and discard its samples: that would drain the ASIO ring buffer without producing audible or recorded output. Do not report recording/streaming as audio-capable until the destination-specific path and tests exist.
+
+### Gate 3 — runtime/hardware acceptance
+
+This repository/CI session cannot physically validate the user's cameras, ASIO device, NDI/OMT peers, LED processor, or output displays. These are explicitly **not tested**, not failed and not passed. On target hardware, record evidence for:
+- Camera selection, stop/start, unplug/reconnect and actual frames reaching Preview/Program.
+- NDI and OMT receive/send independently, only when their compatible runtime/SDK is installed.
+- Display selection and physical LED/display output; confirm the intended composition appears without an extra fallback layer.
+- Recording playback and stream receiver checks; inspect errors and actual frame rate rather than relying only on HTTP ok responses.
+- Measured render/output cadence over a sustained run, dropped/late frames, CPU/GPU/memory and recovery after source loss.
+- Audio loopback, callback stability, gain, clipping, underrun/overflow, and each required destination after audio integration is implemented.
+
+### Gate 4 — UI
+
+The latest UI Smoke workflow passed on commit 1f89747b737be2c99f4652f52a019250eb7445ef. That is a green automated UI regression result, not physical-runtime validation. UI redesign/fixes remain sequenced after the engine/output and audio contract gates, per the agreed workflow. Do not weaken assertions to force a green result.
+
+### Gate 5 — delivery boundary
+
+Keep all work on audit/engine-migration-2026-10-12; keep PR #1 as draft; do not merge to main. Do not begin EXE packaging, installer, release preparation, licensing work, or broad OBS/libobs migration. Stop after engine/runtime acceptance and UI validation, then report the evidence and remaining hardware-only checks before asking for the next phase.
