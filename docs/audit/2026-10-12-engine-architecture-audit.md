@@ -195,3 +195,10 @@ Commit `07bf2a44712c26f9cce2d8eaa44255b36e750375` adds request validation to `GE
 - **Audio:** the ASIO capture engine and mixer tests exist, but the mixer is not connected to a real recording/streaming audio sink. Do not claim end-to-end audio.
 - **Hardware:** camera/network input, physical display/LED, NDI/OMT runtime, recording/streaming, audio fan-out, and sustained 30 FPS still require runtime/hardware acceptance.
 - **Delivery:** remain on `audit/engine-migration-2026-10-12`; do not merge to `main`, package an EXE, or begin installer/release work. UI fixes remain after engine validation.
+
+
+### Audio output contract and runtime status
+
+Commit `09d4286` makes the current audio boundary explicit in `GET /audio/mixer/status`: `connectedToOutput:false` and `outputIntegration:"not-connected"`. The master-gain endpoint now rejects partially parsed/non-finite values and reports an unavailable mixer instead of dereferencing a null pointer.
+
+The correct next implementation boundary is **not** to drain AudioMixer samples from the 30 FPS video loop. ASIO capture is callback/ring-buffer driven, while video composition is frame/deadline driven. A safe output integration needs a clocked audio consumer and explicit fan-out to each supported output, sample-rate/channel conversion where needed, timestamps aligned to the output clock, and underrun/overflow accounting. Recording must add an audio stream to the Media Foundation sink writer; network protocols must use their supported audio-frame APIs. Until those sinks exist and pass tests, the API explicitly reports audio as disconnected.
