@@ -302,21 +302,29 @@ class HttpControlServer {
         sendResponse(client, std::string(R"({"ok":false,"message":")") + jsonEscape(ex.what()) + R"("})", "400 Bad Request");
       }
     } else if (requestLine.rfind("GET /audio/mixer/status", 0) == 0) {
-      const auto s = audioMixer_->stats();
+      const auto s = audioMixer_ ? audioMixer_->stats() : visco_audio::AudioBusStats{};
       std::ostringstream body;
       body << "{\"processedFrames\":" << s.processedFrames
            << ",\"underrunFrames\":" << s.underrunFrames
            << ",\"sampleRate\":" << s.sampleRate
            << ",\"channels\":" << s.channels
-           << ",\"masterGain\":" << s.masterGain << "}";
+           << ",\"masterGain\":" << s.masterGain
+           << ",\"connectedToOutput\":false"
+           << ",\"outputIntegration\":\"not-connected\"}";
       sendResponse(client, body.str());
     } else if (requestLine.rfind("GET /audio/mixer/master", 0) == 0) {
       const auto q = requestLine.find("gain=");
-      if (q == std::string::npos) {
+      if (!audioMixer_) {
+        sendResponse(client, "{\"ok\":false,\"message\":\"audio mixer unavailable\"}", "503 Service Unavailable");
+      } else if (q == std::string::npos) {
         sendResponse(client, "{\"ok\":false,\"message\":\"gain is required\"}", "400 Bad Request");
       } else {
         try {
-          audioMixer_->setMasterGain(std::stof(requestLine.substr(q + 5)));
+          const std::string gainValue = queryValue(requestLine, "gain");
+          size_t parsed = 0;
+          const float gain = std::stof(gainValue, &parsed);
+          if (parsed != gainValue.size() || !std::isfinite(gain)) throw std::runtime_error("invalid gain");
+          audioMixer_->setMasterGain(gain);
           sendResponse(client, "{\"ok\":true}");
         } catch (...) {
           sendResponse(client, "{\"ok\":false,\"message\":\"invalid gain\"}", "400 Bad Request");
