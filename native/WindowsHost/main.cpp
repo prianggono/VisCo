@@ -25,6 +25,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <chrono>
+#include <cmath>
 #include "capture-runtime.h"
 #include "runtime-adapters.h"
 #include "network-frame-runtime.h"
@@ -238,7 +239,8 @@ class HttpControlServer {
           if (v.size() < 17 || ((v.size() - 17) % 2) != 0) throw std::runtime_error("Invalid render layer descriptor.");
           NativeRenderLayer layer;
           layer.sourceId = v[1];
-          layer.frame = sources_ ? sources_->latest(v[1]) : nullptr;
+          if (layer.sourceId.empty()) throw std::runtime_error("Render layer sourceId is required.");
+          layer.frame = sources_ ? sources_->latest(layer.sourceId) : nullptr;
           if (!layer.frame && !layer.sourceId.empty() &&
               std::find(unresolvedSources.begin(), unresolvedSources.end(), layer.sourceId) == unresolvedSources.end()) {
             unresolvedSources.push_back(layer.sourceId);
@@ -252,9 +254,31 @@ class HttpControlServer {
           if (!v[14].empty()) layer.cropBottom=std::stof(v[14]);
           layer.sliceId=v[15];
           layer.mappingMode=v[16].empty() ? "rectangle" : v[16];
+          if (layer.mappingMode != "rectangle" && layer.mappingMode != "corner-pin" && layer.mappingMode != "polygon") {
+            throw std::runtime_error("Unsupported mapping mode.");
+          }
+          const float transformValues[] = {
+            layer.x, layer.y, layer.width, layer.height, layer.rotation,
+            layer.scaleX, layer.scaleY, layer.opacity, layer.cropLeft,
+            layer.cropTop, layer.cropRight, layer.cropBottom
+          };
+          for (const float number : transformValues) {
+            if (!std::isfinite(number)) throw std::runtime_error("Render layer values must be finite numbers.");
+          }
+          if (layer.width <= 0.0f || layer.height <= 0.0f) {
+            throw std::runtime_error("Render layer width and height must be positive.");
+          }
+          if (layer.opacity < 0.0f || layer.opacity > 1.0f) {
+            throw std::runtime_error("Render layer opacity must be between 0 and 1.");
+          }
           for (size_t i=17; i<v.size(); i+=2) {
             if (v[i].empty() || v[i+1].empty()) throw std::runtime_error("Mapping point requires x and y.");
-            layer.mappingPoints.emplace_back(std::stof(v[i]), std::stof(v[i+1]));
+            const float pointX = std::stof(v[i]);
+            const float pointY = std::stof(v[i+1]);
+            if (!std::isfinite(pointX) || !std::isfinite(pointY)) {
+              throw std::runtime_error("Mapping points must be finite numbers.");
+            }
+            layer.mappingPoints.emplace_back(pointX, pointY);
           }
           if (layer.mappingMode == "corner-pin" && layer.mappingPoints.size() != 4) {
             throw std::runtime_error("Corner-pin layer requires four mapping points.");
