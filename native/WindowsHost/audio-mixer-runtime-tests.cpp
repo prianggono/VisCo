@@ -42,6 +42,11 @@ int main() {
   REQUIRE(stats.channels == 2);
   REQUIRE(approximatelyEqual(stats.masterGain, 2.0f));
 
+  engine.setSampleRate(44100);
+  mixer.setSampleRate(44100);
+  REQUIRE(engine.stats().sampleRate == 44100);
+  REQUIRE(mixer.stats().sampleRate == 44100);
+
   mixer.setMasterGain(9.0f);
   REQUIRE(approximatelyEqual(mixer.masterGain(), 4.0f));
   mixer.setMasterGain(-1.0f);
