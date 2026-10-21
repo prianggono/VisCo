@@ -19,6 +19,7 @@ public:
 
   void submit(const std::shared_ptr<const NativeVideoFrame>& frame, UINT64 frameNumber);
   bool audioRecording() const { return audioRecording_.load(std::memory_order_acquire); }
+  void disableAudioRecording() { audioRecording_.store(false, std::memory_order_release); }
   void submitAudio(const float* interleaved, UINT frames);
   void stop();
   bool recording() const { return recording_; }
