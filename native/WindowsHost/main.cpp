@@ -575,6 +575,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         const auto blockPeriod = std::chrono::duration<double>(static_cast<double>(blockFrames) / sampleRate);
         auto deadline = AudioClock::now();
         while (audioPumpRunning.load(std::memory_order_acquire) && outputs.audioRecording()) {
+          // Media Foundation's audio stream clock is fixed when recording starts.
+          // If the ASIO driver changes rate mid-recording, stop audio submission
+          // instead of writing timestamps with a stale sample-rate clock.
+          if (audioEngine.stats().sampleRate != sampleRate) {
+            outputs.disableAudioRecording();
+            std::cerr << "Audio recording stopped: ASIO sample rate changed during recording. Video recording will continue.\\n";
+            break;
+          }
           audioMixer.process(audioBlock.data(), blockFrames);
           outputs.submitAudio(audioBlock.data(), blockFrames);
           deadline += std::chrono::duration_cast<AudioClock::duration>(blockPeriod);
