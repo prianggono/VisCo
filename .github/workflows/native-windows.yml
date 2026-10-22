@@ -13,3 +13,5 @@ jobs:
         run: cmake -S native/WindowsHost -B build/native
       - name: Build
         run: cmake --build build/native --config Release
+      - name: Run native CTest suite
+        run: ctest --test-dir build/native -C Release --output-on-failure

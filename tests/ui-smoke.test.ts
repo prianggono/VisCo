@@ -31,13 +31,14 @@ test("VisCo UI smoke: no uncaught page errors on startup", async ({ page }) => {
 test("VisCo UI E2E: deck, program, group, slice, scene and output controls", async ({ page }) => {
   await page.goto("http://127.0.0.1:4173", { waitUntil: "networkidle" });
 
-  // Preview and Program
-  await page.getByRole("button", { name: "Layer 2", exact: true }).first().click();
-  await expect(page.locator(".preview-name").first()).toContainText("Layer 2");
-  await page.locator(".layer-box").first().click();
-  await expect(page.locator(".program-badge").first()).toHaveText("ON AIR");
+  // Preview and Program: the first three slots are populated with named dummy media.
+  const previewDeck = page.locator(".deck-row").first();
+  await previewDeck.locator(".layer-name").nth(1).click();
+  await expect(previewDeck.locator(".preview-name")).toContainText("Dummy Visual 02");
+  await previewDeck.locator(".layer-box").nth(1).click();
+  await expect(previewDeck.locator(".layer-card").nth(1).locator(".program-badge")).toHaveText("ON AIR");
   // Program is triggered by the slot itself; there is no separate PROGRAM button.
-  await expect(page.locator(".layer-program-button.active").first()).toContainText("ON AIR");
+  await expect(previewDeck.locator(".layer-card").nth(1).locator(".layer-program-button.active")).toContainText("ON AIR");
 
   // Add and collapse a Group around the selected layer.
   const layering = page.locator(".property-row").filter({ hasText: "Layering" }).first();
@@ -59,9 +60,14 @@ test("VisCo UI E2E: deck, program, group, slice, scene and output controls", asy
   await sliceSelect.selectOption("corner-pin");
   await expect(sliceSelect).toHaveValue("corner-pin");
 
+  // Physical display selection lives in Display Output Settings, not a top-level DISPLAY 2 button.
+  await page.getByTitle("Display output settings").click();
+  const displayTwo = page.locator(".display-output-row").filter({ hasText: "Display 2" });
+  await displayTwo.getByRole("button", { name: "SELECT", exact: true }).click();
+  await expect(displayTwo.getByRole("button", { name: "SELECTED", exact: true })).toBeVisible();
+  await page.locator(".output-settings-modal .modal-head button").click();
+
   // Scene routing and output controls.
-  await page.getByRole("button", { name: "DISPLAY 2", exact: true }).click();
-  await expect(page.getByRole("button", { name: "DISPLAY 2", exact: true })).toHaveClass(/enabled/);
   await page.getByRole("button", { name: "FULLSCREEN", exact: true }).click();
   await page.getByRole("button", { name: "STREAM", exact: true }).click();
   await page.getByRole("button", { name: "RECORD", exact: true }).click();
@@ -109,7 +115,7 @@ test("VisCo UI E2E: empty slot deactivates Deck and fallback Deck takes Program"
 
   // Empty Layer 4 deactivates Deck 1 instead of entering Program.
   await deck1.locator(".layer-box").nth(3).click();
-  await expect(deck1.locator(".program-badge").count()).toBe(0);
+  await expect(deck1.locator(".program-badge")).toHaveCount(0);
   await expect(deck2.locator(".program-badge").first()).toHaveText("ON AIR");
   await expect(deck1.locator(".layer-card").nth(3)).toHaveClass(/layer-empty/);
 });
@@ -129,13 +135,13 @@ test("VisCo UI E2E: released Program Deck reclaims Program when activated again"
   // Release Deck 1. Deck 2 takes Program.
   await deck1.locator(".deck-clear-selection-large").click();
   await expect(deck2.locator(".program-badge").first()).toHaveText("ON AIR");
-  await expect(deck1.locator(".program-badge").count()).toBe(0);
+  await expect(deck1.locator(".program-badge")).toHaveCount(0);
 
   // Reactivating the released Deck 1 must reclaim Program.
   await deck1.locator(".layer-box").nth(1).click();
   await expect(deck1.locator(".program-badge").first()).toHaveText("ON AIR");
   await expect(deck2.locator(".active-slot-indicator").first()).toBeVisible();
-  await expect(deck2.locator(".program-badge").count()).toBe(0);
+  await expect(deck2.locator(".program-badge")).toHaveCount(0);
 });
 
 test("VisCo UI E2E: Composition isolation and lifecycle", async ({ page }) => {

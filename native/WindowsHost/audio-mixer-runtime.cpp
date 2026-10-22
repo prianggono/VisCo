@@ -15,7 +15,9 @@ uint32_t AudioMixer::process(float* outputInterleaved, uint32_t frames) {
 
   const size_t availableSamples = static_cast<size_t>(available) * channels_;
   for (size_t i = 0; i < availableSamples; ++i) {
-    const float sample = inputBuffer_[i] * gain;
+    const float inputSample = inputBuffer_[i];
+    // Malformed device samples must not propagate NaN/Inf into recording encoders.
+    const float sample = std::isfinite(inputSample) ? inputSample * gain : 0.0f;
     outputInterleaved[i] = std::clamp(sample, -1.0f, 1.0f);
   }
   const size_t missingSamples = (static_cast<size_t>(frames) - available) * channels_;
@@ -28,6 +30,12 @@ uint32_t AudioMixer::process(float* outputInterleaved, uint32_t frames) {
     underrunFrames_ += frames - available;
   }
   return available;
+}
+
+void AudioMixer::setSampleRate(uint32_t sampleRate) noexcept {
+  if (sampleRate == 0) return;
+  std::lock_guard<std::mutex> lock(mutex_);
+  sampleRate_ = sampleRate;
 }
 
 void AudioMixer::setMasterGain(float gain) noexcept {

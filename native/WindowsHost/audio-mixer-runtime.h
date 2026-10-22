@@ -21,6 +21,7 @@ public:
 
   uint32_t process(float* outputInterleaved, uint32_t frames);
   void setMasterGain(float gain) noexcept;
+  void setSampleRate(uint32_t sampleRate) noexcept;
   float masterGain() const noexcept;
   AudioBusStats stats() const noexcept;
 
