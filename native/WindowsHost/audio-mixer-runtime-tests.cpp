@@ -52,5 +52,27 @@ int main() {
   mixer.setMasterGain(-1.0f);
   REQUIRE(approximatelyEqual(mixer.masterGain(), 0.0f));
 
+  const float malformed[] = {NAN, INFINITY};
+  REQUIRE(engine.pushInterleaved(malformed, 1));
+  float sanitized[2] = {7.0f, 7.0f};
+  REQUIRE(mixer.process(sanitized, 1) == 1);
+  REQUIRE(approximatelyEqual(sanitized[0], 0.0f));
+  REQUIRE(approximatelyEqual(sanitized[1], 0.0f));
+
+  visco_asio::AudioEngine smallEngine(48000, 2, 2);
+  const float firstBlock[] = {0.1f, -0.1f, 0.2f, -0.2f};
+  const float overflowBlock[] = {0.3f, -0.3f};
+  REQUIRE(smallEngine.pushInterleaved(firstBlock, 2));
+  REQUIRE(!smallEngine.pushInterleaved(overflowBlock, 1));
+  const auto overflowStats = smallEngine.stats();
+  REQUIRE(overflowStats.overruns == 1);
+  REQUIRE(overflowStats.droppedFrames == 1);
+  float retained[4] = {};
+  REQUIRE(smallEngine.pullInterleaved(retained, 2) == 2);
+  REQUIRE(approximatelyEqual(retained[0], 0.1f));
+  REQUIRE(approximatelyEqual(retained[1], -0.1f));
+  REQUIRE(approximatelyEqual(retained[2], 0.2f));
+  REQUIRE(approximatelyEqual(retained[3], -0.2f));
+
   return 0;
 }
